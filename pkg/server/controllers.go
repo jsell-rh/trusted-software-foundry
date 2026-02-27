@@ -20,22 +20,14 @@ type ControllersServer struct {
 	startOnce             sync.Once
 }
 
-func (s *ControllersServer) Start() {
-	s.startOnce.Do(func() {
-		log := logger.NewLogger(context.Background())
-		log.Infof("Kind controller listening for events")
-		ctx, cancel := context.WithCancel(context.Background())
-		s.cancel = cancel
-		s.done = make(chan struct{})
-		go func() {
-			defer close(s.done)
-			s.SessionFactory.NewListener(ctx, "events", func(id string) {
-				s.KindControllerManager.Handle(id)
-				if s.Broker != nil {
-					s.Broker.Publish(id)
-				}
-			})
-		}()
+func (s ControllersServer) Start() {
+	log := logger.NewLogger(context.Background())
+	log.Infof("Kind controller listening for events")
+	s.SessionFactory.NewListener(context.Background(), "events", func(id string) {
+		s.KindControllerManager.Handle(id)
+		if s.Broker != nil {
+			s.Broker.Publish(id)
+		}
 	})
 }
 
@@ -83,7 +75,6 @@ func NewDefaultHealthCheckServer(env *environments.Env) *HealthCheckServer {
 		EnableHTTPS:   env.Config.HealthCheck.EnableHTTPS,
 		HTTPSCertFile: env.Config.Server.HTTPSCertFile,
 		HTTPSKeyFile:  env.Config.Server.HTTPSKeyFile,
-		SentryTimeout: env.Config.Sentry.Timeout,
 	})
 }
 
@@ -93,7 +84,6 @@ func NewDefaultMetricsServer(env *environments.Env) Server {
 		EnableHTTPS:   env.Config.Metrics.EnableHTTPS,
 		HTTPSCertFile: env.Config.Server.HTTPSCertFile,
 		HTTPSKeyFile:  env.Config.Server.HTTPSKeyFile,
-		SentryTimeout: env.Config.Sentry.Timeout,
 	})
 }
 
