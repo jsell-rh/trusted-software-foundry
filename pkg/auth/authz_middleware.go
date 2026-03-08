@@ -13,7 +13,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/openshift-online/rh-trex-ai/pkg/client/apiclient"
+	"github.com/jsell-rh/trusted-software-components/pkg/client/apiclient"
 )
 
 type AuthorizationMiddleware interface {

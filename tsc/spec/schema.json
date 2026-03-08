@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12",
-  "$id": "https://github.com/openshift-online/rh-trex-ai/tsc/spec/schema.json",
+  "$id": "https://github.com/jsell-rh/trusted-software-components/tsc/spec/schema.json",
   "title": "TSC Application IR Spec",
   "description": "Intermediate Representation for a Trusted Software Components application. AI agents write this file; the TSC compiler assembles audited components to produce a working binary.",
   "type": "object",

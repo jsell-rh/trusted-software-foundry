@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/openshift-online/rh-trex-ai/tsc/spec"
+	"github.com/jsell-rh/trusted-software-components/tsc/spec"
 )
 
 // --- SpeciesValidator tests ---

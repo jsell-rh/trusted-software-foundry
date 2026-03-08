@@ -14,11 +14,11 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	"github.com/openshift-online/rh-trex-ai/pkg/auth"
-	"github.com/openshift-online/rh-trex-ai/pkg/db"
-	"github.com/openshift-online/rh-trex-ai/pkg/environments"
-	"github.com/openshift-online/rh-trex-ai/pkg/logger"
-	"github.com/openshift-online/rh-trex-ai/pkg/server/grpcutil"
+	"github.com/jsell-rh/trusted-software-components/pkg/auth"
+	"github.com/jsell-rh/trusted-software-components/pkg/db"
+	"github.com/jsell-rh/trusted-software-components/pkg/environments"
+	"github.com/jsell-rh/trusted-software-components/pkg/logger"
+	"github.com/jsell-rh/trusted-software-components/pkg/server/grpcutil"
 )
 
 var (

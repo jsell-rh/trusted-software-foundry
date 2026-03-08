@@ -3,8 +3,8 @@ package server
 import (
 	"github.com/gorilla/mux"
 
-	"github.com/openshift-online/rh-trex-ai/pkg/auth"
-	"github.com/openshift-online/rh-trex-ai/pkg/environments"
+	"github.com/jsell-rh/trusted-software-components/pkg/auth"
+	"github.com/jsell-rh/trusted-software-components/pkg/environments"
 )
 
 type ServicesInterface interface {

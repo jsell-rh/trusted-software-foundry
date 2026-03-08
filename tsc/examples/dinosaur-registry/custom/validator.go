@@ -27,7 +27,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/openshift-online/rh-trex-ai/tsc/spec"
+	"github.com/jsell-rh/trusted-software-components/tsc/spec"
 )
 
 // handlerFunc is a local adapter that lets a plain function satisfy spec.HTTPHandler.

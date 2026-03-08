@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	"github.com/openshift-online/rh-trex-ai/pkg/util"
+	"github.com/jsell-rh/trusted-software-components/pkg/util"
 )
 
 type Logger interface {

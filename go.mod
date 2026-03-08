@@ -1,4 +1,4 @@
-module github.com/openshift-online/rh-trex-ai
+module github.com/jsell-rh/trusted-software-components
 
 go 1.24.0
 

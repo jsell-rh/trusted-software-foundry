@@ -8,10 +8,10 @@ import (
 	"github.com/golang/glog"
 	"github.com/spf13/pflag"
 
-	"github.com/openshift-online/rh-trex-ai/pkg/client/apiclient"
-	"github.com/openshift-online/rh-trex-ai/pkg/config"
-	"github.com/openshift-online/rh-trex-ai/pkg/errors"
-	"github.com/openshift-online/rh-trex-ai/pkg/registry"
+	"github.com/jsell-rh/trusted-software-components/pkg/client/apiclient"
+	"github.com/jsell-rh/trusted-software-components/pkg/config"
+	"github.com/jsell-rh/trusted-software-components/pkg/errors"
+	"github.com/jsell-rh/trusted-software-components/pkg/registry"
 )
 
 var (

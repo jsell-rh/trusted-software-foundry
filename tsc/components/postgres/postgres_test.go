@@ -3,7 +3,7 @@ package postgres
 import (
 	"testing"
 
-	"github.com/openshift-online/rh-trex-ai/tsc/spec"
+	"github.com/jsell-rh/trusted-software-components/tsc/spec"
 )
 
 func TestComponentMetadata(t *testing.T) {

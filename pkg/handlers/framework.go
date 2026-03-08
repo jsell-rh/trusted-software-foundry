@@ -6,8 +6,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/openshift-online/rh-trex-ai/pkg/errors"
-	"github.com/openshift-online/rh-trex-ai/pkg/logger"
+	"github.com/jsell-rh/trusted-software-components/pkg/errors"
+	"github.com/jsell-rh/trusted-software-components/pkg/logger"
 )
 
 // handlerConfig defines the common things each REST controller must do.

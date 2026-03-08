@@ -11,9 +11,9 @@ import (
 	healthgrpc "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
-	"github.com/openshift-online/rh-trex-ai/pkg/auth"
-	"github.com/openshift-online/rh-trex-ai/pkg/environments"
-	"github.com/openshift-online/rh-trex-ai/pkg/server/grpcutil"
+	"github.com/jsell-rh/trusted-software-components/pkg/auth"
+	"github.com/jsell-rh/trusted-software-components/pkg/environments"
+	"github.com/jsell-rh/trusted-software-components/pkg/server/grpcutil"
 )
 
 // Global interceptor registries for pre-auth interceptors

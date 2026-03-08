@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/openshift-online/rh-trex-ai/tsc/compiler"
+	"github.com/jsell-rh/trusted-software-components/tsc/compiler"
 )
 
 func explainCmd() *cobra.Command {

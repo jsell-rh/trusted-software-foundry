@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openshift-online/rh-trex-ai/pkg/api"
-	"github.com/openshift-online/rh-trex-ai/pkg/dao/mocks"
-	"github.com/openshift-online/rh-trex-ai/pkg/db"
-	"github.com/openshift-online/rh-trex-ai/pkg/services"
+	"github.com/jsell-rh/trusted-software-components/pkg/api"
+	"github.com/jsell-rh/trusted-software-components/pkg/dao/mocks"
+	"github.com/jsell-rh/trusted-software-components/pkg/db"
+	"github.com/jsell-rh/trusted-software-components/pkg/services"
 )
 
 // mockLockFactory for testing - always succeeds to acquire locks

@@ -3,10 +3,10 @@ package trex
 import (
 	"sync"
 
-	"github.com/openshift-online/rh-trex-ai/pkg/api/presenters"
-	"github.com/openshift-online/rh-trex-ai/pkg/config"
-	"github.com/openshift-online/rh-trex-ai/pkg/errors"
-	"github.com/openshift-online/rh-trex-ai/pkg/handlers"
+	"github.com/jsell-rh/trusted-software-components/pkg/api/presenters"
+	"github.com/jsell-rh/trusted-software-components/pkg/config"
+	"github.com/jsell-rh/trusted-software-components/pkg/errors"
+	"github.com/jsell-rh/trusted-software-components/pkg/handlers"
 )
 
 type Config struct {

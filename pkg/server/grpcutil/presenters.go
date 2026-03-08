@@ -3,9 +3,9 @@ package grpcutil
 import (
 	"net/http"
 
-	"github.com/openshift-online/rh-trex-ai/pkg/api"
-	pb "github.com/openshift-online/rh-trex-ai/pkg/api/grpc/rh_trex/v1"
-	"github.com/openshift-online/rh-trex-ai/pkg/errors"
+	"github.com/jsell-rh/trusted-software-components/pkg/api"
+	pb "github.com/jsell-rh/trusted-software-components/pkg/api/grpc/rh_trex/v1"
+	"github.com/jsell-rh/trusted-software-components/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

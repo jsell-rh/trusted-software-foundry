@@ -8,8 +8,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/openshift-online/rh-trex-ai/pkg/logger"
-	"github.com/openshift-online/rh-trex-ai/pkg/services"
+	"github.com/jsell-rh/trusted-software-components/pkg/logger"
+	"github.com/jsell-rh/trusted-software-components/pkg/services"
 )
 
 // SyncController implements periodic "sync-the-world" functionality to handle missed events.

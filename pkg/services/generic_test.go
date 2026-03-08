@@ -4,15 +4,15 @@ import (
 	"context"
 	"testing"
 
-	"github.com/openshift-online/rh-trex-ai/pkg/dao"
-	"github.com/openshift-online/rh-trex-ai/pkg/db"
-	dbmocks "github.com/openshift-online/rh-trex-ai/pkg/db/mocks"
+	"github.com/jsell-rh/trusted-software-components/pkg/dao"
+	"github.com/jsell-rh/trusted-software-components/pkg/db"
+	dbmocks "github.com/jsell-rh/trusted-software-components/pkg/db/mocks"
 
 	"github.com/onsi/gomega/types"
 	"github.com/yaacov/tree-search-language/pkg/tsl"
 
-	"github.com/openshift-online/rh-trex-ai/pkg/api"
-	"github.com/openshift-online/rh-trex-ai/pkg/errors"
+	"github.com/jsell-rh/trusted-software-components/pkg/api"
+	"github.com/jsell-rh/trusted-software-components/pkg/errors"
 
 	. "github.com/onsi/gomega"
 )

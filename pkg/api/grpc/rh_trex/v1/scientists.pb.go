@@ -559,7 +559,7 @@ const file_rh_trex_v1_scientists_proto_rawDesc = "" +
 	"\x0fUpdateScientist\x12\".rh_trex.v1.UpdateScientistRequest\x1a\x15.rh_trex.v1.Scientist\x12Z\n" +
 	"\x0fDeleteScientist\x12\".rh_trex.v1.DeleteScientistRequest\x1a#.rh_trex.v1.DeleteScientistResponse\x12W\n" +
 	"\x0eListScientists\x12!.rh_trex.v1.ListScientistsRequest\x1a\".rh_trex.v1.ListScientistsResponse\x12X\n" +
-	"\x0fWatchScientists\x12\".rh_trex.v1.WatchScientistsRequest\x1a\x1f.rh_trex.v1.ScientistWatchEvent0\x01BKZIgithub.com/openshift-online/rh-trex-ai/pkg/api/grpc/rh_trex/v1;rh_trex_v1b\x06proto3"
+	"\x0fWatchScientists\x12\".rh_trex.v1.WatchScientistsRequest\x1a\x1f.rh_trex.v1.ScientistWatchEvent0\x01BKZIgithub.com/jsell-rh/trusted-software-components/pkg/api/grpc/rh_trex/v1;rh_trex_v1b\x06proto3"
 
 var (
 	file_rh_trex_v1_scientists_proto_rawDescOnce sync.Once

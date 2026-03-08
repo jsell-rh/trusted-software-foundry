@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openshift-online/rh-trex-ai/pkg/trex"
+	"github.com/jsell-rh/trusted-software-components/pkg/trex"
 )
 
 func RequestLoggingMiddleware(handler http.Handler) http.Handler {

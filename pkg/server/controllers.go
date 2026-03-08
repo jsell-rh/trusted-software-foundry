@@ -6,11 +6,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/openshift-online/rh-trex-ai/pkg/controllers"
-	"github.com/openshift-online/rh-trex-ai/pkg/db"
-	"github.com/openshift-online/rh-trex-ai/pkg/environments"
-	"github.com/openshift-online/rh-trex-ai/pkg/logger"
-	"github.com/openshift-online/rh-trex-ai/pkg/services"
+	"github.com/jsell-rh/trusted-software-components/pkg/controllers"
+	"github.com/jsell-rh/trusted-software-components/pkg/db"
+	"github.com/jsell-rh/trusted-software-components/pkg/environments"
+	"github.com/jsell-rh/trusted-software-components/pkg/logger"
+	"github.com/jsell-rh/trusted-software-components/pkg/services"
 )
 
 type ControllersServer struct {

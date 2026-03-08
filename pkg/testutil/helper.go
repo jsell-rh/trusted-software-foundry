@@ -16,10 +16,10 @@ import (
 
 	amv1 "github.com/openshift-online/ocm-sdk-go/accountsmgmt/v1"
 
-	"github.com/openshift-online/rh-trex-ai/pkg/config"
-	"github.com/openshift-online/rh-trex-ai/pkg/db"
-	"github.com/openshift-online/rh-trex-ai/pkg/testutil/mocks"
-	"github.com/openshift-online/rh-trex-ai/pkg/trex"
+	"github.com/jsell-rh/trusted-software-components/pkg/config"
+	"github.com/jsell-rh/trusted-software-components/pkg/db"
+	"github.com/jsell-rh/trusted-software-components/pkg/testutil/mocks"
+	"github.com/jsell-rh/trusted-software-components/pkg/trex"
 )
 
 const (
