@@ -14,7 +14,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/openshift-online/rh-trex-ai/tsc/spec"
+	"github.com/jsell-rh/trusted-software-components/tsc/spec"
 )
 
 // AuditRecord is a catalog entry that binds a component name and version to

@@ -7,9 +7,9 @@ import (
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 
-	"github.com/openshift-online/rh-trex-ai/pkg/config"
-	"github.com/openshift-online/rh-trex-ai/pkg/db"
-	"github.com/openshift-online/rh-trex-ai/pkg/db/db_session"
+	"github.com/jsell-rh/trusted-software-components/pkg/config"
+	"github.com/jsell-rh/trusted-software-components/pkg/db"
+	"github.com/jsell-rh/trusted-software-components/pkg/db/db_session"
 )
 
 func NewMigrateCommand(serviceName string) *cobra.Command {

@@ -31,7 +31,7 @@ import (
 
 	gojwt "github.com/golang-jwt/jwt/v4"
 
-	"github.com/openshift-online/rh-trex-ai/tsc/spec"
+	"github.com/jsell-rh/trusted-software-components/tsc/spec"
 )
 
 // auditHash is the SHA-256 of the source tree at the time this version was audited.

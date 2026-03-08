@@ -12,9 +12,9 @@ import (
 
 	"github.com/lib/pq"
 
-	"github.com/openshift-online/rh-trex-ai/pkg/config"
-	"github.com/openshift-online/rh-trex-ai/pkg/db"
-	trexlogger "github.com/openshift-online/rh-trex-ai/pkg/logger"
+	"github.com/jsell-rh/trusted-software-components/pkg/config"
+	"github.com/jsell-rh/trusted-software-components/pkg/db"
+	trexlogger "github.com/jsell-rh/trusted-software-components/pkg/logger"
 )
 
 type Default struct {

@@ -37,7 +37,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 
-	"github.com/openshift-online/rh-trex-ai/tsc/spec"
+	"github.com/jsell-rh/trusted-software-components/tsc/spec"
 )
 
 // auditHash is the SHA-256 of the source tree at the time this version was audited.

@@ -7,8 +7,8 @@ import (
 
 	gojwt "github.com/golang-jwt/jwt/v4"
 
-	authjwt "github.com/openshift-online/rh-trex-ai/tsc/components/auth/jwt"
-	"github.com/openshift-online/rh-trex-ai/tsc/spec"
+	authjwt "github.com/jsell-rh/trusted-software-components/tsc/components/auth/jwt"
+	"github.com/jsell-rh/trusted-software-components/tsc/spec"
 )
 
 // handlerFunc adapts a function to spec.HTTPHandler for use in tests.

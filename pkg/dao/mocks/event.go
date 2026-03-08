@@ -6,9 +6,9 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/openshift-online/rh-trex-ai/pkg/api"
-	"github.com/openshift-online/rh-trex-ai/pkg/dao"
-	"github.com/openshift-online/rh-trex-ai/pkg/errors"
+	"github.com/jsell-rh/trusted-software-components/pkg/api"
+	"github.com/jsell-rh/trusted-software-components/pkg/dao"
+	"github.com/jsell-rh/trusted-software-components/pkg/errors"
 )
 
 var _ dao.EventDao = &eventDaoMock{}

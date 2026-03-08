@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/openshift-online/rh-trex-ai/pkg/logger"
+	"github.com/jsell-rh/trusted-software-components/pkg/logger"
 )
 
 // BearerTokenMiddleware creates HTTP middleware for bearer token authentication

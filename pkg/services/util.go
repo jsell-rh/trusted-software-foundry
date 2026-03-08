@@ -6,7 +6,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/openshift-online/rh-trex-ai/pkg/errors"
+	"github.com/jsell-rh/trusted-software-components/pkg/errors"
 )
 
 // Field names suspected to contain personally identifiable information

@@ -1,6 +1,6 @@
 package custom
 
-import "github.com/openshift-online/rh-trex-ai/tsc/spec"
+import "github.com/jsell-rh/trusted-software-components/tsc/spec"
 
 // Register wires all custom code into the compiled application.
 //
@@ -11,7 +11,7 @@ import "github.com/openshift-online/rh-trex-ai/tsc/spec"
 //
 //	package main
 //
-//	import "github.com/openshift-online/rh-trex-ai/tsc/examples/dinosaur-registry/custom"
+//	import "github.com/jsell-rh/trusted-software-components/tsc/examples/dinosaur-registry/custom"
 //
 //	func init() {
 //	    // Register is called after the compiler-generated init completes.

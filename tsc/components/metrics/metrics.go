@@ -17,7 +17,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/openshift-online/rh-trex-ai/tsc/spec"
+	"github.com/jsell-rh/trusted-software-components/tsc/spec"
 )
 
 const (

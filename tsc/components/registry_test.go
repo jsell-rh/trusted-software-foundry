@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/openshift-online/rh-trex-ai/tsc/components"
-	"github.com/openshift-online/rh-trex-ai/tsc/spec"
+	"github.com/jsell-rh/trusted-software-components/tsc/components"
+	"github.com/jsell-rh/trusted-software-components/tsc/spec"
 )
 
 // fakeComponent is a minimal spec.Component for testing.

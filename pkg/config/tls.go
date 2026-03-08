@@ -8,7 +8,7 @@ import (
 
 	"github.com/spf13/pflag"
 	
-	tlsutil "github.com/openshift-online/rh-trex-ai/pkg/tls"
+	tlsutil "github.com/jsell-rh/trusted-software-components/pkg/tls"
 )
 
 // TLSConfig holds TLS configuration for servers and clients

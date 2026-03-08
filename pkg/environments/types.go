@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/openshift-online/rh-trex-ai/pkg/client/apiclient"
-	"github.com/openshift-online/rh-trex-ai/pkg/config"
-	"github.com/openshift-online/rh-trex-ai/pkg/db"
+	"github.com/jsell-rh/trusted-software-components/pkg/client/apiclient"
+	"github.com/jsell-rh/trusted-software-components/pkg/config"
+	"github.com/jsell-rh/trusted-software-components/pkg/db"
 )
 
 const (

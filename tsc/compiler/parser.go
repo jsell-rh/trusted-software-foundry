@@ -11,7 +11,7 @@ import (
 	"github.com/ghodss/yaml"
 	goyaml "gopkg.in/yaml.v3"
 
-	"github.com/openshift-online/rh-trex-ai/tsc/spec"
+	"github.com/jsell-rh/trusted-software-components/tsc/spec"
 )
 
 // defaultSchemaPath returns the path to tsc/spec/schema.json resolved relative

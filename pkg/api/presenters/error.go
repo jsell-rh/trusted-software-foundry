@@ -1,8 +1,8 @@
 package presenters
 
 import (
-	"github.com/openshift-online/rh-trex-ai/pkg/api/openapi"
-	"github.com/openshift-online/rh-trex-ai/pkg/errors"
+	"github.com/jsell-rh/trusted-software-components/pkg/api/openapi"
+	"github.com/jsell-rh/trusted-software-components/pkg/errors"
 )
 
 func PresentError(err *errors.ServiceError) openapi.Error {

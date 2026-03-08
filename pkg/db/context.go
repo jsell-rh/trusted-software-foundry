@@ -3,8 +3,8 @@ package db
 import (
 	"context"
 
-	dbContext "github.com/openshift-online/rh-trex-ai/pkg/db/db_context"
-	"github.com/openshift-online/rh-trex-ai/pkg/logger"
+	dbContext "github.com/jsell-rh/trusted-software-components/pkg/db/db_context"
+	"github.com/jsell-rh/trusted-software-components/pkg/logger"
 )
 
 // NewContext returns a new context with transaction stored in it.

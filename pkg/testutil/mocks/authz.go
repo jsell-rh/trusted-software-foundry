@@ -3,7 +3,7 @@ package mocks
 import (
 	"context"
 
-	"github.com/openshift-online/rh-trex-ai/pkg/client/apiclient"
+	"github.com/jsell-rh/trusted-software-components/pkg/client/apiclient"
 )
 
 var _ apiclient.Authorization = &AuthzValidatorMock{}

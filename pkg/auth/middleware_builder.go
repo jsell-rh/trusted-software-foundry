@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/openshift-online/rh-trex-ai/pkg/config"
+	"github.com/jsell-rh/trusted-software-components/pkg/config"
 	"google.golang.org/grpc"
 )
 

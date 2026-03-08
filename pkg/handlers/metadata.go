@@ -22,7 +22,7 @@ import (
 	"net/http"
 
 	"github.com/golang/glog"
-	"github.com/openshift-online/rh-trex-ai/pkg/api"
+	"github.com/jsell-rh/trusted-software-components/pkg/api"
 )
 
 var metadataID = "rh-trex-ai"
