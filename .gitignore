@@ -52,4 +52,4 @@ generated/
 # Don't push the testing password file
 secrets/db.password
 
-.claude/settings.local.json
+.claude/settings.local.json.worktrees/
