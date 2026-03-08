@@ -19,6 +19,20 @@ type IRSpec struct {
 	Auth       *IRAuth           `yaml:"auth"       json:"auth,omitempty"`
 	Database   *IRDatabase       `yaml:"database"   json:"database,omitempty"`
 	Observ     *IRObservability  `yaml:"observability" json:"observability,omitempty"`
+	Hooks      []IRHook          `yaml:"hooks"      json:"hooks,omitempty"`
+}
+
+// IRHook declares a custom code injection point in the application lifecycle.
+// The compiler copies the referenced Go file into the generated project and
+// generates a typed call site at the declared lifecycle point.
+type IRHook struct {
+	Name           string   `yaml:"name"           json:"name"`
+	Point          string   `yaml:"point"          json:"point"`
+	Service        string   `yaml:"service"        json:"service,omitempty"`
+	Routes         []string `yaml:"routes"         json:"routes,omitempty"`
+	Topic          string   `yaml:"topic"          json:"topic,omitempty"`
+	Resources      []string `yaml:"resources"      json:"resources,omitempty"`
+	Implementation string   `yaml:"implementation" json:"implementation"`
 }
 
 // IRMetadata holds application identity fields.
@@ -131,8 +145,8 @@ func Validate(spec *IRSpec) []error {
 		errs = append(errs, fmt.Errorf(format, args...))
 	}
 
-	if spec.APIVersion != "tsc/v1" {
-		add("apiVersion must be 'tsc/v1', got %q", spec.APIVersion)
+	if spec.APIVersion != "tsc/v1" && spec.APIVersion != "tsc/v2" {
+		add("apiVersion must be 'tsc/v1' or 'tsc/v2', got %q", spec.APIVersion)
 	}
 	if spec.Kind != "Application" {
 		add("kind must be 'Application', got %q", spec.Kind)
@@ -253,6 +267,43 @@ func Validate(spec *IRSpec) []error {
 	}
 	if len(spec.Resources) > 0 && spec.Database == nil {
 		add("resources declared but no database block — add a database block")
+	}
+
+	// Hooks validation
+	validHookPoints := map[string]bool{
+		"pre-handler": true, "post-handler": true,
+		"pre-db": true, "post-db": true,
+		"pre-publish": true, "post-consume": true,
+	}
+	reHookImpl := regexp.MustCompile(`^hooks/[a-z][a-z0-9_/]*\.go$`)
+	hookNames := map[string]bool{}
+	for i, h := range spec.Hooks {
+		hp := fmt.Sprintf("hooks[%d](%s)", i, h.Name)
+		if !reKebab.MatchString(h.Name) {
+			add("%s: name must be kebab-case", hp)
+		}
+		if hookNames[h.Name] {
+			add("%s: duplicate hook name", hp)
+		}
+		hookNames[h.Name] = true
+		if !validHookPoints[h.Point] {
+			add("%s: unknown point %q — must be one of pre-handler, post-handler, pre-db, post-db, pre-publish, post-consume", hp, h.Point)
+		}
+		if !reHookImpl.MatchString(h.Implementation) {
+			add("%s: implementation must match hooks/*.go pattern, got %q", hp, h.Implementation)
+		}
+		// topic hooks require event-capable point
+		if h.Topic != "" && h.Point != "pre-publish" && h.Point != "post-consume" {
+			add("%s: topic is only valid for pre-publish or post-consume hooks", hp)
+		}
+		// routes hooks require handler-capable point
+		if len(h.Routes) > 0 && h.Point != "pre-handler" && h.Point != "post-handler" {
+			add("%s: routes is only valid for pre-handler or post-handler hooks", hp)
+		}
+		// db hooks with resources require database
+		if (h.Point == "pre-db" || h.Point == "post-db") && spec.Database == nil {
+			add("%s: pre-db/post-db hooks require a database block", hp)
+		}
 	}
 
 	return errs

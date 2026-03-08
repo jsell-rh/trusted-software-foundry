@@ -9,8 +9,8 @@
   "properties": {
     "apiVersion": {
       "type": "string",
-      "const": "tsc/v1",
-      "description": "API version of this spec. Must be 'tsc/v1'."
+      "enum": ["tsc/v1", "tsc/v2"],
+      "description": "API version of this spec. 'tsc/v1' for CRUD apps; 'tsc/v2' for complex apps (graph, events, authz). Hooks are available in both versions."
     },
     "kind": {
       "type": "string",
@@ -187,6 +187,11 @@
           }
         }
       }
+    },
+    "hooks": {
+      "type": "array",
+      "description": "Custom code hooks — the escape hatch for business logic that trusted components cannot cover. The AI declares hook points; human engineers implement the Go functions. The compiler copies hooks/*.go unchanged into the generated project and generates call sites at each declared lifecycle point.",
+      "items": { "$ref": "#/$defs/hook" }
     }
   },
   "$defs": {
@@ -259,6 +264,48 @@
           "type": "boolean",
           "default": false,
           "description": "When true, this timestamp field is the soft-delete marker. List queries exclude soft-deleted records."
+        }
+      }
+    },
+    "hook": {
+      "type": "object",
+      "required": ["name", "point", "implementation"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "description": "Unique hook name in kebab-case, e.g. 'enrich-request-context'."
+        },
+        "point": {
+          "type": "string",
+          "enum": ["pre-handler", "post-handler", "pre-db", "post-db", "pre-publish", "post-consume"],
+          "description": "Lifecycle point where custom code is injected. 'pre-handler'/'post-handler': HTTP request lifecycle. 'pre-db'/'post-db': database operation lifecycle. 'pre-publish'/'post-consume': event bus lifecycle."
+        },
+        "service": {
+          "type": "string",
+          "description": "Service name this hook applies to (from services[] block, or omit for single-service apps)."
+        },
+        "routes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "HTTP route patterns this hook applies to (for pre/post-handler hooks). Omit to apply to all routes."
+        },
+        "topic": {
+          "type": "string",
+          "description": "Event topic name this hook applies to (for pre-publish/post-consume hooks)."
+        },
+        "resources": {
+          "oneOf": [
+            { "type": "string", "const": "all" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Resource names this hook applies to (for pre-db/post-db hooks). 'all' or a list of resource names."
+        },
+        "implementation": {
+          "type": "string",
+          "pattern": "^hooks/[a-z][a-z0-9_/]*\\.go$",
+          "description": "Path to the human-written Go file implementing this hook, relative to the repo root. Must be under hooks/. The compiler copies this file into the generated project and generates a typed call site."
         }
       }
     }
