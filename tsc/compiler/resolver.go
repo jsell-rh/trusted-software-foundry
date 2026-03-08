@@ -7,6 +7,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+
+	"gopkg.in/yaml.v3"
 )
 
 // ResolvedComponent is a component whose registry entry and audit hash have been verified.
@@ -63,14 +65,42 @@ func (r *FileRegistry) Lookup(name, version string) (*RegistryEntry, error) {
 	return entry, nil
 }
 
+// registryEntryYAML is the YAML wire format for a registry entry file.
+// File path: <indexDir>/<name>/<version>.yaml
+type registryEntryYAML struct {
+	Name      string `yaml:"name"`
+	Version   string `yaml:"version"`
+	Module    string `yaml:"module"`
+	AuditHash string `yaml:"audit_hash"`
+}
+
 // parseRegistryEntry parses a YAML registry entry.
-// Uses simple field extraction to avoid external yaml dependency at this layer.
+// Expected format:
+//
+//	name: tsc-http
+//	version: v1.0.0
+//	module: github.com/openshift-online/tsc-components/http
+//	audit_hash: <sha256-hex>
 func parseRegistryEntry(data []byte) (*RegistryEntry, error) {
-	// Delegate to gopkg.in/yaml.v3 — already a project dependency.
-	// This is a placeholder; full implementation follows TSC-Architect's schema.
-	entry := &RegistryEntry{}
-	_ = data // TODO: implement full YAML parse once TSC-Architect publishes schema
-	return entry, nil
+	var raw registryEntryYAML
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return nil, fmt.Errorf("invalid registry entry YAML: %w", err)
+	}
+	if raw.Name == "" {
+		return nil, fmt.Errorf("registry entry missing required field: name")
+	}
+	if raw.Version == "" {
+		return nil, fmt.Errorf("registry entry missing required field: version")
+	}
+	if raw.Module == "" {
+		return nil, fmt.Errorf("registry entry missing required field: module")
+	}
+	return &RegistryEntry{
+		Name:      raw.Name,
+		Version:   raw.Version,
+		Module:    raw.Module,
+		AuditHash: raw.AuditHash,
+	}, nil
 }
 
 // Resolver resolves and verifies component entries from the registry.
