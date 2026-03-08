@@ -86,12 +86,12 @@ func NewResolver(registry Registry, sourceDir string) *Resolver {
 	return &Resolver{registry: registry, sourceDir: sourceDir}
 }
 
-// ResolveAll resolves all components declared in the spec and verifies their audit hashes.
-// Returns an ordered slice of resolved components (order matches spec.Components iteration).
-func (r *Resolver) ResolveAll(spec *Spec) ([]ResolvedComponent, error) {
-	resolved := make([]ResolvedComponent, 0, len(spec.Components))
+// ResolveAll resolves all components declared in the spec components map and verifies their audit hashes.
+// Returns a slice of resolved components.
+func (r *Resolver) ResolveAll(components map[string]string) ([]ResolvedComponent, error) {
+	resolved := make([]ResolvedComponent, 0, len(components))
 
-	for name, version := range spec.Components {
+	for name, version := range components {
 		entry, err := r.registry.Lookup(name, version)
 		if err != nil {
 			return nil, fmt.Errorf("resolving component %q: %w", name, err)
