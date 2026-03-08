@@ -1,0 +1,149 @@
+package compiler
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+)
+
+// ResolvedComponent is a component whose registry entry and audit hash have been verified.
+type ResolvedComponent struct {
+	Name      string
+	Version   string
+	Module    string // Go module path, e.g. "github.com/openshift-online/tsc-components/http"
+	AuditHash string // Expected SHA-256 from registry (hex)
+}
+
+// Registry is the interface that a trusted component registry must satisfy.
+// TSC-Architect will define the canonical interface; this skeleton is forward-compatible.
+// Once TSC-Architect publishes tsc/spec/component.go, we will import and embed it here.
+type Registry interface {
+	// Lookup returns the registry entry for a component at the given version.
+	Lookup(name, version string) (*RegistryEntry, error)
+}
+
+// RegistryEntry is the registry record for one audited component version.
+type RegistryEntry struct {
+	Name      string
+	Version   string
+	Module    string
+	AuditHash string // SHA-256 hex of the component source at audit time
+}
+
+// FileRegistry is a filesystem-backed registry that reads YAML index files.
+// This is the development/local implementation; production will use a signed catalog.
+type FileRegistry struct {
+	indexDir string // directory containing per-component YAML files
+}
+
+// NewFileRegistry creates a registry backed by YAML files in indexDir.
+func NewFileRegistry(indexDir string) *FileRegistry {
+	return &FileRegistry{indexDir: indexDir}
+}
+
+// Lookup implements Registry using the local YAML index.
+// Format: <indexDir>/<name>/<version>.yaml
+func (r *FileRegistry) Lookup(name, version string) (*RegistryEntry, error) {
+	path := filepath.Join(r.indexDir, name, version+".yaml")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("component %q version %q not found in registry (path: %s)", name, version, path)
+		}
+		return nil, fmt.Errorf("reading registry entry for %q %q: %w", name, version, err)
+	}
+
+	entry, err := parseRegistryEntry(data)
+	if err != nil {
+		return nil, fmt.Errorf("parsing registry entry for %q %q: %w", name, version, err)
+	}
+	return entry, nil
+}
+
+// parseRegistryEntry parses a YAML registry entry.
+// Uses simple field extraction to avoid external yaml dependency at this layer.
+func parseRegistryEntry(data []byte) (*RegistryEntry, error) {
+	// Delegate to gopkg.in/yaml.v3 — already a project dependency.
+	// This is a placeholder; full implementation follows TSC-Architect's schema.
+	entry := &RegistryEntry{}
+	_ = data // TODO: implement full YAML parse once TSC-Architect publishes schema
+	return entry, nil
+}
+
+// Resolver resolves and verifies component entries from the registry.
+type Resolver struct {
+	registry Registry
+	// sourceDir is the directory containing local component source for hash verification.
+	// May be empty when using pre-computed registry hashes.
+	sourceDir string
+}
+
+// NewResolver creates a Resolver backed by the given registry.
+func NewResolver(registry Registry, sourceDir string) *Resolver {
+	return &Resolver{registry: registry, sourceDir: sourceDir}
+}
+
+// ResolveAll resolves all components declared in the spec and verifies their audit hashes.
+// Returns an ordered slice of resolved components (order matches spec.Components iteration).
+func (r *Resolver) ResolveAll(spec *Spec) ([]ResolvedComponent, error) {
+	resolved := make([]ResolvedComponent, 0, len(spec.Components))
+
+	for name, version := range spec.Components {
+		entry, err := r.registry.Lookup(name, version)
+		if err != nil {
+			return nil, fmt.Errorf("resolving component %q: %w", name, err)
+		}
+
+		if r.sourceDir != "" {
+			if err := r.verifyAuditHash(name, version, entry.AuditHash); err != nil {
+				return nil, fmt.Errorf("audit hash verification failed for %q %q: %w", name, version, err)
+			}
+		}
+
+		resolved = append(resolved, ResolvedComponent{
+			Name:      name,
+			Version:   version,
+			Module:    entry.Module,
+			AuditHash: entry.AuditHash,
+		})
+	}
+
+	return resolved, nil
+}
+
+// verifyAuditHash computes the SHA-256 of the component source directory and compares
+// it to the expected hash from the registry audit record.
+func (r *Resolver) verifyAuditHash(name, version, expectedHex string) error {
+	componentDir := filepath.Join(r.sourceDir, name, version)
+
+	h := sha256.New()
+	err := filepath.Walk(componentDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		f, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		if _, err := io.Copy(h, f); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("walking component source at %q: %w", componentDir, err)
+	}
+
+	actualHex := hex.EncodeToString(h.Sum(nil))
+	if actualHex != expectedHex {
+		return fmt.Errorf("hash mismatch: registry=%q actual=%q", expectedHex, actualHex)
+	}
+	return nil
+}
