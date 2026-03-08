@@ -1,0 +1,579 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12",
+  "$id": "https://github.com/jsell-rh/trusted-software-components/tsc/spec/schema-v2.json",
+  "title": "TSC Application IR Spec v2",
+  "description": "Extended IR for complex applications: property graphs, multi-service, advanced events, SpiceDB authz, Redis state, bi-temporality, multi-tenancy, and custom code hooks.",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "components"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {
+      "type": "string",
+      "enum": ["tsc/v1", "tsc/v2"],
+      "description": "API version. 'tsc/v1' for simple CRUD apps; 'tsc/v2' for complex apps with graph/events/authz extensions."
+    },
+    "kind": {
+      "type": "string",
+      "const": "Application"
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["name", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "name":        { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "version":     { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "description": { "type": "string" }
+      }
+    },
+    "components": {
+      "type": "object",
+      "description": "SBOM: pinned versions of all trusted components.",
+      "propertyNames": {
+        "enum": [
+          "tsc-http",
+          "tsc-postgres",
+          "tsc-auth-jwt",
+          "tsc-auth-spicedb",
+          "tsc-grpc",
+          "tsc-health",
+          "tsc-metrics",
+          "tsc-events",
+          "tsc-graph-age",
+          "tsc-kafka",
+          "tsc-nats",
+          "tsc-redis",
+          "tsc-redis-streams",
+          "tsc-temporal",
+          "tsc-tenancy",
+          "tsc-service-router"
+        ]
+      },
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
+      },
+      "minProperties": 1
+    },
+    "resources": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/resource" }
+    },
+    "api": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "rest": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "base_path":      { "type": "string", "pattern": "^/", "default": "/api/v1" },
+            "version_header": { "type": "boolean", "default": true }
+          }
+        },
+        "grpc": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "port":    { "type": "integer", "minimum": 1, "maximum": 65535, "default": 9000 }
+          }
+        }
+      }
+    },
+    "auth": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type":       { "type": "string", "enum": ["jwt", "none"] },
+        "jwk_url":    { "type": "string" },
+        "required":   { "type": "boolean", "default": true },
+        "allow_mock": { "type": "string" }
+      },
+      "if":   { "properties": { "type": { "const": "jwt" } } },
+      "then": { "required": ["jwk_url"] }
+    },
+    "database": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type":       { "type": "string", "enum": ["postgres"] },
+        "migrations": { "type": "string", "enum": ["auto", "manual"], "default": "auto" }
+      }
+    },
+    "observability": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "health_check": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "port": { "type": "integer", "minimum": 1, "maximum": 65535, "default": 8083 },
+            "path": { "type": "string", "default": "/healthz" }
+          }
+        },
+        "metrics": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "port": { "type": "integer", "minimum": 1, "maximum": 65535, "default": 8080 },
+            "path": { "type": "string", "default": "/metrics" }
+          }
+        }
+      }
+    },
+    "graph": { "$ref": "#/$defs/graphConfig" },
+    "services": {
+      "type": "array",
+      "description": "Multi-service decomposition. Each entry compiles to a separate main_<name>.go.",
+      "items": { "$ref": "#/$defs/service" }
+    },
+    "events": { "$ref": "#/$defs/eventsConfig" },
+    "authz":  { "$ref": "#/$defs/authzConfig" },
+    "state":  { "$ref": "#/$defs/stateConfig" },
+    "temporal": { "$ref": "#/$defs/temporalConfig" },
+    "tenancy":  { "$ref": "#/$defs/tenancyConfig" },
+    "hooks": {
+      "type": "array",
+      "description": "Custom code hooks — the escape hatch. AI declares hook points; engineers implement.",
+      "items": { "$ref": "#/$defs/hook" }
+    }
+  },
+  "$defs": {
+    "resource": {
+      "type": "object",
+      "required": ["name", "plural", "fields", "operations"],
+      "additionalProperties": false,
+      "properties": {
+        "name":       { "type": "string", "pattern": "^[A-Z][a-zA-Z0-9]*$" },
+        "plural":     { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "fields":     { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/field" } },
+        "operations": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": { "type": "string", "enum": ["create", "read", "update", "delete", "list"] }
+        },
+        "events": { "type": "boolean", "default": false }
+      }
+    },
+    "field": {
+      "type": "object",
+      "required": ["name", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "name":        { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+        "type":        { "type": "string", "enum": ["string", "int", "float", "bool", "timestamp", "uuid"] },
+        "required":    { "type": "boolean", "default": false },
+        "max_length":  { "type": "integer", "minimum": 1 },
+        "auto":        { "type": "string", "enum": ["created", "updated"] },
+        "soft_delete": { "type": "boolean", "default": false }
+      }
+    },
+    "graphConfig": {
+      "type": "object",
+      "required": ["backend"],
+      "additionalProperties": false,
+      "properties": {
+        "backend": {
+          "type": "string",
+          "enum": ["age"],
+          "description": "Graph storage backend. 'age' = Apache AGE (PostgreSQL extension)."
+        },
+        "node_types": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/graphNodeType" }
+        },
+        "edge_types": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/graphEdgeType" }
+        },
+        "mutations": { "$ref": "#/$defs/graphMutationsConfig" },
+        "queries":   { "$ref": "#/$defs/graphQueriesConfig" }
+      }
+    },
+    "graphNodeType": {
+      "type": "object",
+      "required": ["name", "labels"],
+      "additionalProperties": false,
+      "properties": {
+        "name":   { "type": "string", "pattern": "^[A-Z][a-zA-Z0-9]*$" },
+        "labels": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" } },
+        "properties": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/graphProperty" }
+        }
+      }
+    },
+    "graphEdgeType": {
+      "type": "object",
+      "required": ["name", "from", "to"],
+      "additionalProperties": false,
+      "properties": {
+        "name":       { "type": "string", "pattern": "^[A-Z][a-zA-Z0-9]*$" },
+        "from":       { "type": "string" },
+        "to":         { "type": "string" },
+        "directed":   { "type": "boolean", "default": true },
+        "properties": { "type": "array", "items": { "$ref": "#/$defs/graphProperty" } }
+      }
+    },
+    "graphProperty": {
+      "type": "object",
+      "required": ["name", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "name":     { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+        "type":     { "type": "string", "enum": ["string", "int", "float", "bool", "timestamp", "uuid"] },
+        "required": { "type": "boolean", "default": false },
+        "indexed":  { "type": "boolean", "default": false },
+        "system":   {
+          "type": "boolean", "default": false,
+          "description": "System-managed property; not user-editable. Compiler generates platform middleware to set it."
+        }
+      }
+    },
+    "graphMutationsConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operations": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["DEFINE", "CREATE", "UPDATE", "DELETE"] },
+          "uniqueItems": true
+        },
+        "bulk_loading":     { "type": "boolean", "default": false },
+        "mutation_format":  { "type": "string", "enum": ["jsonl", "json"], "default": "json" }
+      }
+    },
+    "graphQueriesConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "language":   { "type": "string", "enum": ["cypher"], "default": "cypher" },
+        "max_depth":  { "type": "integer", "minimum": 1, "maximum": 50, "default": 10 },
+        "expose_api": { "type": "boolean", "default": true }
+      }
+    },
+    "service": {
+      "type": "object",
+      "required": ["name", "role"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "role": {
+          "type": "string",
+          "enum": ["rest-api", "grpc-api", "worker", "metrics", "scheduler"],
+          "description": "Service role determines which generated entrypoint template is used."
+        },
+        "port":       { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "components": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Subset of top-level components active in this service."
+        },
+        "resources": {
+          "oneOf": [
+            { "type": "string", "const": "all" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Resources owned by this service."
+        },
+        "triggers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/serviceTrigger" }
+        }
+      }
+    },
+    "serviceTrigger": {
+      "type": "object",
+      "required": ["event", "handler"],
+      "additionalProperties": false,
+      "properties": {
+        "event":   { "type": "string", "description": "Event topic or name that triggers this handler." },
+        "handler": { "type": "string", "description": "Handler name dispatched to by the generated worker loop." }
+      }
+    },
+    "eventsConfig": {
+      "type": "object",
+      "required": ["backend"],
+      "additionalProperties": false,
+      "properties": {
+        "backend": {
+          "type": "string",
+          "enum": ["kafka", "nats", "redis-streams", "pg-notify"],
+          "description": "Event bus backend."
+        },
+        "broker":           { "$ref": "#/$defs/eventsBroker" },
+        "schema_registry":  { "$ref": "#/$defs/eventsSchemaRegistry" },
+        "topics":           { "type": "array", "items": { "$ref": "#/$defs/eventTopic" } },
+        "producers":        { "type": "array", "items": { "$ref": "#/$defs/eventProducer" } },
+        "consumers":        { "type": "array", "items": { "$ref": "#/$defs/eventConsumer" } }
+      }
+    },
+    "eventsBroker": {
+      "type": "object",
+      "required": ["url"],
+      "additionalProperties": false,
+      "properties": {
+        "url": { "type": "string", "description": "Broker URL or env-var reference, e.g. '${KAFKA_BOOTSTRAP_SERVERS}'." }
+      }
+    },
+    "eventsSchemaRegistry": {
+      "type": "object",
+      "required": ["url", "format"],
+      "additionalProperties": false,
+      "properties": {
+        "url":    { "type": "string" },
+        "format": { "type": "string", "enum": ["avro", "json", "protobuf"] }
+      }
+    },
+    "eventTopic": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name":             { "type": "string", "pattern": "^[a-z][a-z0-9.-]*$" },
+        "partitions":       { "type": "integer", "minimum": 1, "default": 1 },
+        "replication":      { "type": "integer", "minimum": 1, "default": 1 },
+        "retention_hours":  { "type": "integer", "minimum": 1 },
+        "schema":           { "type": "string", "description": "Resource name or inline schema ref." },
+        "role": {
+          "type": "string",
+          "enum": ["standard", "dead-letter-queue"],
+          "default": "standard"
+        },
+        "source": {
+          "type": "string",
+          "description": "For dead-letter-queue topics: the source topic name."
+        }
+      }
+    },
+    "eventProducer": {
+      "type": "object",
+      "required": ["service", "topics"],
+      "additionalProperties": false,
+      "properties": {
+        "service": { "type": "string" },
+        "topics":  { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "eventConsumer": {
+      "type": "object",
+      "required": ["service", "topics"],
+      "additionalProperties": false,
+      "properties": {
+        "service":      { "type": "string" },
+        "topics":       { "type": "array", "items": { "type": "string" } },
+        "group_id":     { "type": "string" },
+        "error_topic":  { "type": "string", "description": "Topic for failed messages (DLQ)." }
+      }
+    },
+    "authzConfig": {
+      "type": "object",
+      "required": ["backend"],
+      "additionalProperties": false,
+      "properties": {
+        "backend": { "type": "string", "enum": ["spicedb", "opa", "casbin"] },
+        "spicedb": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "endpoint": { "type": "string" },
+            "token":    { "type": "string" },
+            "tls":      { "type": "boolean", "default": true }
+          }
+        },
+        "schema_file": {
+          "type": "string",
+          "description": "Path to the SpiceDB .zed or OPA .rego schema within the repo. Human-written; not generated."
+        },
+        "enforcement": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "default": { "type": "string", "enum": ["deny", "allow"], "default": "deny" }
+          }
+        },
+        "policies": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/authzPolicy" }
+        }
+      }
+    },
+    "authzPolicy": {
+      "type": "object",
+      "required": ["resource", "operations"],
+      "additionalProperties": false,
+      "properties": {
+        "resource":     { "type": "string" },
+        "subject_type": { "type": "string", "default": "user" },
+        "object_type":  { "type": "string" },
+        "operations": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Maps CRUD operation names to authz permission strings."
+        }
+      }
+    },
+    "stateConfig": {
+      "type": "object",
+      "required": ["backends"],
+      "additionalProperties": false,
+      "properties": {
+        "backends": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/stateBackend" }
+        },
+        "uses": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/stateUse" }
+        }
+      }
+    },
+    "stateBackend": {
+      "type": "object",
+      "required": ["name", "type", "url"],
+      "additionalProperties": false,
+      "properties": {
+        "name":        { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "type":        { "type": "string", "enum": ["redis"] },
+        "url":         { "type": "string" },
+        "default_ttl": { "type": "integer", "minimum": 1, "description": "Default TTL in seconds." }
+      }
+    },
+    "stateUse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cache": {
+          "type": "string",
+          "description": "Backend name to use for response caching."
+        },
+        "rate_limit": {
+          "type": "string",
+          "description": "Backend name to use for rate limiting."
+        },
+        "distributed_lock": {
+          "type": "string",
+          "description": "Backend name to use for distributed locking."
+        },
+        "resources": {
+          "oneOf": [
+            { "type": "string", "const": "all" },
+            { "type": "array", "items": { "type": "string" } }
+          ]
+        },
+        "routes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "HTTP route patterns to apply rate limiting to."
+        },
+        "requests_per_second": { "type": "integer", "minimum": 1 },
+        "burst":               { "type": "integer", "minimum": 1 },
+        "operations": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["create", "read", "update", "delete", "list"] },
+          "description": "Operations that acquire a distributed lock before executing."
+        }
+      }
+    },
+    "temporalConfig": {
+      "type": "object",
+      "required": ["enabled"],
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "valid_time": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "field": { "type": "string", "description": "Resource field name marking valid-time start." }
+          }
+        },
+        "transaction_time": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "auto": {
+              "type": "boolean", "default": true,
+              "description": "When true, the compiler generates triggers/middleware to maintain transaction time."
+            }
+          }
+        },
+        "resources": {
+          "oneOf": [
+            { "type": "string", "const": "all" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Resources that get bi-temporal tracking."
+        },
+        "query_api": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "as_of_param":     { "type": "string", "default": "as_of" },
+            "between_param":   { "type": "string", "default": "between" }
+          }
+        }
+      }
+    },
+    "tenancyConfig": {
+      "type": "object",
+      "required": ["model"],
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "type": "string",
+          "enum": ["schema", "row", "database"],
+          "description": "'schema' = PostgreSQL schema per tenant; 'row' = tenant_id column; 'database' = separate DB per tenant."
+        },
+        "tenant_identifier": {
+          "type": "object",
+          "required": ["source"],
+          "additionalProperties": false,
+          "properties": {
+            "source": { "type": "string", "enum": ["jwt_claim", "header", "subdomain"] },
+            "claim":  { "type": "string", "description": "JWT claim name when source=jwt_claim." },
+            "header": { "type": "string", "description": "HTTP header name when source=header." }
+          }
+        },
+        "resources": {
+          "oneOf": [
+            { "type": "string", "const": "all" },
+            { "type": "array", "items": { "type": "string" } }
+          ]
+        },
+        "admin_bypass": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "role": { "type": "string", "description": "JWT role that bypasses tenant filtering." }
+          }
+        }
+      }
+    },
+    "hook": {
+      "type": "object",
+      "required": ["name", "point", "implementation"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "point": {
+          "type": "string",
+          "enum": ["pre-handler", "post-handler", "pre-db", "post-db", "pre-publish", "post-consume"],
+          "description": "Lifecycle point where the custom code is injected."
+        },
+        "service":  { "type": "string", "description": "Service this hook applies to." },
+        "routes":   { "type": "array", "items": { "type": "string" }, "description": "HTTP routes (for pre/post-handler hooks)." },
+        "topic":    { "type": "string", "description": "Event topic (for pre-publish/post-consume hooks)." },
+        "implementation": {
+          "type": "string",
+          "pattern": "^hooks/.*\\.go$",
+          "description": "Path to the human-written Go file, relative to the repo root. Must be under hooks/."
+        }
+      }
+    }
+  }
+}
