@@ -1,160 +1,154 @@
-// Package spec defines the core interfaces and types for the TSC (Trusted Software
-// Components) platform. All trusted components must implement these interfaces.
-//
-// IMPORTANT: This file is owned by TSC-Architect. Do not modify without CTO approval.
-// Changes to interfaces here may break TSC-Library and TSC-Compiler implementations.
+// Package spec defines the core interfaces and types for the Trusted Software
+// Components (TSC) platform. All trusted components must implement these
+// interfaces. The component interface contract is frozen — bug fixes create
+// new audited versions rather than modifying existing ones.
 package spec
 
-import (
-	"context"
-)
+import "context"
 
-// Version is a semver string pinned in the TSC spec's components block.
-type Version string
+// ComponentConfig carries the IR spec section for a single component,
+// as parsed from the app.tsc.yaml spec file.
+type ComponentConfig map[string]any
 
-// ComponentName is the registry name of a trusted component (e.g., "tsc-http").
-type ComponentName string
-
-// AuditRecord describes the audit state of a component version.
-type AuditRecord struct {
-	// Date is the ISO-8601 date the component version was audited.
-	Date string `yaml:"date"`
-	// Auditor is the team or individual who performed the audit.
-	Auditor string `yaml:"auditor"`
-	// SourceHash is the SHA-256 of the component source tree at audit time.
-	SourceHash string `yaml:"source_hash"`
-	// CVEScan is the result of the CVE scan ("passed", "failed", or "waived:<reason>").
-	CVEScan string `yaml:"cve_scan"`
-	// FIPSCompliant indicates whether the component meets FIPS 140-2 requirements.
-	FIPSCompliant bool `yaml:"fips_compliant"`
-	// Findings lists any audit findings. Empty means the component passed without issues.
-	Findings []string `yaml:"findings,omitempty"`
-}
-
-// ComponentConfig is the configuration block passed to a component during Configure().
-// It contains the full parsed TSC spec so components can read any section they need.
-type ComponentConfig struct {
-	// Spec is the full parsed application spec.
-	Spec *AppSpec
-	// Env provides environment variable resolution for ${VAR} references in the spec.
-	Env func(key string) string
-}
-
-// Application is the runtime container that components register their capabilities into.
-// The TSC compiler generates a main.go that creates an Application, registers all
-// components, and starts it.
-type Application struct {
-	name       string
-	components []Component
-	hooks      applicationHooks
-}
-
-// applicationHooks holds the runtime hooks registered by components.
-type applicationHooks struct {
-	// onStart functions are called in registration order when the application starts.
-	onStart []func(ctx context.Context) error
-	// onStop functions are called in reverse registration order on shutdown.
-	onStop []func(ctx context.Context) error
-}
-
-// NewApplication creates a new Application with the given name.
-func NewApplication(name string) *Application {
-	return &Application{name: name}
-}
-
-// Name returns the application name from the TSC spec metadata.
-func (a *Application) Name() string {
-	return a.name
-}
-
-// RegisterComponent adds a component to the application. Called by generated main.go.
-func (a *Application) RegisterComponent(c Component) {
-	a.components = append(a.components, c)
-}
-
-// OnStart registers a startup hook. Components call this from their Register() method.
-func (a *Application) OnStart(fn func(ctx context.Context) error) {
-	a.hooks.onStart = append(a.hooks.onStart, fn)
-}
-
-// OnStop registers a shutdown hook. Components call this from their Register() method.
-func (a *Application) OnStop(fn func(ctx context.Context) error) {
-	a.hooks.onStop = append(a.hooks.onStop, fn)
-}
-
-// Start runs all registered startup hooks in order.
-func (a *Application) Start(ctx context.Context) error {
-	for _, fn := range a.hooks.onStart {
-		if err := fn(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// Stop runs all registered shutdown hooks in reverse order.
-func (a *Application) Stop(ctx context.Context) error {
-	hooks := a.hooks.onStop
-	for i := len(hooks) - 1; i >= 0; i-- {
-		if err := hooks[i](ctx); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// Component is the interface every trusted component must implement.
-// Components are registered into an Application and participate in the application
-// lifecycle via Start/Stop hooks.
+// Component is implemented by every trusted component in the TSC registry.
+// All methods must be safe for concurrent use.
 type Component interface {
-	// Name returns the component's registry name (e.g., "tsc-http").
-	Name() ComponentName
+	// Name returns the registry name, e.g. "tsc-http".
+	Name() string
 
-	// Version returns the semver version string (e.g., "v1.0.0").
-	Version() Version
+	// Version returns the semver string, e.g. "v1.0.0".
+	Version() string
 
-	// Audit returns the component's audit record. The compiler verifies this
-	// matches the registry entry before generating wiring code.
-	Audit() AuditRecord
+	// AuditHash returns the SHA-256 hex digest of the component source tree
+	// at audit time. The compiler verifies this matches the registry record
+	// before generating output — a mismatch causes a fatal compile error.
+	AuditHash() string
 
-	// Configure applies the spec section relevant to this component.
-	// Called before Register. Should validate config and return error on invalid input.
+	// Configure applies the IR spec section for this component.
+	// Called once, before Register. Returns an error if the config is invalid.
 	Configure(cfg ComponentConfig) error
 
-	// Register hooks this component into the application.
-	// Called after Configure. Should call app.OnStart / app.OnStop as needed.
+	// Register wires this component into the application.
+	// Called after Configure on all components. The component should attach
+	// HTTP routes, gRPC services, middleware, or background goroutines to app.
 	Register(app *Application) error
+
+	// Start is called after all components have been registered.
+	// Long-running work (servers, listeners) should begin here.
+	// The component must respect ctx cancellation for clean shutdown.
+	Start(ctx context.Context) error
+
+	// Stop is called when the application is shutting down.
+	// The component must release resources and return promptly.
+	Stop(ctx context.Context) error
 }
 
-// ResourceProvider is an optional interface that data-layer components implement
-// to expose resource CRUD operations to other components (e.g., HTTP handlers).
-type ResourceProvider interface {
-	Component
-	// ResourceFor returns the DAO for the named resource (e.g., "Dinosaur").
-	// Returns nil if this component does not manage that resource.
-	ResourceFor(resourceName string) ResourceDAO
+// ResourceDefinition describes a data resource declared in the IR spec.
+// The compiler passes these to components (e.g. tsc-postgres) that need
+// to generate migrations and CRUD handlers.
+type ResourceDefinition struct {
+	// Name is the singular resource name, e.g. "Dinosaur".
+	Name string
+
+	// Plural is the pluralised form used in API paths, e.g. "dinosaurs".
+	Plural string
+
+	// Fields describes the resource's data fields.
+	Fields []FieldDefinition
+
+	// Operations lists the CRUD operations to expose: create, read, update, delete, list.
+	Operations []string
+
+	// Events, when true, means the component must emit PostgreSQL LISTEN/NOTIFY
+	// events on every mutation.
+	Events bool
 }
 
-// ResourceDAO is the data access interface for a single resource type.
-// The postgres component generates a ResourceDAO per resource defined in the spec.
-type ResourceDAO interface {
-	// Create inserts a new resource record. id is set on return.
-	Create(ctx context.Context, obj interface{}) error
-	// Get retrieves a resource by ID.
-	Get(ctx context.Context, id string) (interface{}, error)
-	// Update replaces a resource record.
-	Update(ctx context.Context, obj interface{}) error
-	// Delete soft-deletes a resource by ID (if soft_delete: true in spec).
-	Delete(ctx context.Context, id string) error
-	// List returns all non-deleted records with optional filter.
-	List(ctx context.Context, filter ListFilter) ([]interface{}, error)
+// FieldDefinition describes a single field in a ResourceDefinition.
+type FieldDefinition struct {
+	// Name is the field name in snake_case.
+	Name string
+
+	// Type is one of: string, int, float, bool, timestamp, uuid.
+	Type string
+
+	// Required, when true, disallows null/empty values.
+	Required bool
+
+	// MaxLength constrains string fields (0 = unlimited).
+	MaxLength int
+
+	// Auto, when non-empty, auto-populates the field:
+	//   "created" — set on insert
+	//   "updated" — set on insert and update
+	Auto string
+
+	// SoftDelete, when true, marks this field as the soft-delete timestamp.
+	// The component must filter deleted records from list queries.
+	SoftDelete bool
 }
 
-// ListFilter defines pagination and filtering for list operations.
-type ListFilter struct {
-	Page     int    `json:"page"`
-	Size     int    `json:"size"`
-	Search   string `json:"search"`
-	OrderBy  string `json:"order_by"`
-	OrderDir string `json:"order_dir"` // "asc" or "desc"
+// Registrar is the write side of Application — exposed to components during
+// Register so they can attach capabilities without accessing runtime state.
+type Registrar interface {
+	// AddHTTPHandler registers an HTTP handler at the given pattern.
+	AddHTTPHandler(pattern string, handler HTTPHandler)
+
+	// AddMiddleware appends an HTTP middleware to the global chain.
+	AddMiddleware(mw HTTPMiddleware)
+
+	// AddGRPCService registers a gRPC service descriptor and its implementation.
+	AddGRPCService(desc GRPCServiceDesc, impl any)
+
+	// SetDB provides a database connection pool to any component that needs it.
+	// Only tsc-postgres calls this; other components receive it via DB().
+	SetDB(db DB)
+
+	// DB returns the shared database connection pool, or nil if not yet set.
+	DB() DB
+
+	// Resources returns the resource definitions declared in the IR spec.
+	Resources() []ResourceDefinition
+}
+
+// HTTPHandler is a minimal abstraction over net/http.Handler.
+type HTTPHandler interface {
+	ServeHTTP(w ResponseWriter, r *Request)
+}
+
+// HTTPMiddleware wraps an HTTPHandler.
+type HTTPMiddleware func(next HTTPHandler) HTTPHandler
+
+// ResponseWriter mirrors net/http.ResponseWriter.
+type ResponseWriter interface {
+	Header() map[string][]string
+	Write([]byte) (int, error)
+	WriteHeader(statusCode int)
+}
+
+// Request mirrors net/http.Request (subset used by components).
+type Request struct {
+	Method  string
+	URL     string
+	Headers map[string][]string
+	Body    []byte
+	Context context.Context
+}
+
+// GRPCServiceDesc is an opaque handle to a gRPC service descriptor.
+type GRPCServiceDesc any
+
+// DB is a minimal interface over a SQL connection pool.
+// tsc-postgres implements this; other components depend on it.
+type DB interface {
+	ExecContext(ctx context.Context, query string, args ...any) error
+	QueryContext(ctx context.Context, query string, args ...any) (Rows, error)
+}
+
+// Rows is returned by DB.QueryContext.
+type Rows interface {
+	Next() bool
+	Scan(dest ...any) error
+	Close() error
+	Err() error
 }

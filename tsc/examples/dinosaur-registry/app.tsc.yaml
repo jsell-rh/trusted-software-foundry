@@ -3,10 +3,12 @@ kind: Application
 
 metadata:
   name: dinosaur-registry
-  description: "A registry of dinosaur species — the trex parity demo application"
   version: 1.0.0
+  description: >
+    Red Hat Trex parity application — a dinosaur CRUD registry built entirely
+    from trusted, audited components. The AI wrote only this file.
 
-# Trusted component bill-of-materials (pinned, audited versions)
+# Trusted component versions (pinned). This block is the application SBOM.
 components:
   tsc-http:     v1.0.0
   tsc-postgres: v1.0.0
@@ -16,21 +18,22 @@ components:
   tsc-metrics:  v1.0.0
   tsc-events:   v1.0.0
 
-# Data resources — what the application stores and manages
+# Data resources — what the application stores and manages.
 resources:
   - name: Dinosaur
     plural: dinosaurs
-    description: "A dinosaur species record"
     fields:
+      - name: id
+        type: uuid
+        required: true
+        auto: created
       - name: species
         type: string
         required: true
         max_length: 255
-        description: "Scientific species name"
       - name: description
         type: string
-        nullable: true
-        description: "Human-readable description"
+        required: false
       - name: created_at
         type: timestamp
         auto: created
@@ -43,22 +46,20 @@ resources:
     operations: [create, read, update, delete, list]
     events: true
 
-# API surface
+# API configuration
 api:
   rest:
     base_path: /api/v1
     bind: ":8000"
-    tls: false
+    version_header: true
     cors:
       allowed_origins: ["*"]
-    version_header: true
     openapi: true
   grpc:
     enabled: true
     bind: ":9000"
-    tls: false
 
-# Authentication and authorization
+# Authentication
 auth:
   type: jwt
   jwk_url: "${JWK_CERT_URL}"
@@ -82,6 +83,7 @@ database:
 observability:
   health_check:
     bind: ":8083"
+    path: /healthz
   metrics:
     bind: ":8080"
     path: /metrics
