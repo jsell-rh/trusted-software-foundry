@@ -35,6 +35,10 @@ AI agents write the IR spec. The compiler produces the source code.
 All generated code is assembled from pre-audited, version-pinned trusted components.`,
 	}
 	cmd.AddCommand(compileCmd())
+	cmd.AddCommand(scaffoldCmd())
+	cmd.AddCommand(lintCmd())
+	cmd.AddCommand(explainCmd())
+	cmd.AddCommand(diffCmd())
 	return cmd
 }
 
