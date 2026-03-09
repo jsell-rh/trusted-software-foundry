@@ -308,6 +308,11 @@
           "enum": ["age"],
           "description": "Graph storage backend. 'age' = Apache AGE (PostgreSQL extension). Requires foundry-graph-age component."
         },
+        "graph_name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "description": "Name of the AGE graph to create/use. Defaults to the application name with underscores."
+        },
         "node_types": {
           "type": "array",
           "items": { "$ref": "#/$defs/graphNodeType" }
@@ -323,48 +328,32 @@
 
     "graphNodeType": {
       "type": "object",
-      "required": ["name", "labels"],
+      "required": ["label"],
       "additionalProperties": false,
       "properties": {
-        "name":   { "type": "string", "pattern": "^[A-Z][a-zA-Z0-9]*$" },
-        "labels": {
-          "type": "array",
-          "minItems": 1,
-          "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" }
-        },
+        "label":    { "type": "string", "pattern": "^[A-Z][a-zA-Z0-9]*$", "description": "AGE node label in PascalCase (e.g. 'Cluster')." },
+        "id_field": { "type": "string", "description": "Field used as the node identity key. Defaults to 'id'." },
         "properties": {
           "type": "array",
-          "items": { "$ref": "#/$defs/graphProperty" }
+          "description": "Property names stored on this node. Type is resolved from the resource definition.",
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" }
         }
       }
     },
 
     "graphEdgeType": {
       "type": "object",
-      "required": ["name", "from", "to"],
+      "required": ["label", "from", "to"],
       "additionalProperties": false,
       "properties": {
-        "name":       { "type": "string", "pattern": "^[A-Z][a-zA-Z0-9]*$" },
-        "from":       { "type": "string", "description": "Source node type name." },
-        "to":         { "type": "string", "description": "Target node type name." },
-        "directed":   { "type": "boolean", "default": true },
-        "properties": { "type": "array", "items": { "$ref": "#/$defs/graphProperty" } }
-      }
-    },
-
-    "graphProperty": {
-      "type": "object",
-      "required": ["name", "type"],
-      "additionalProperties": false,
-      "properties": {
-        "name":     { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
-        "type":     { "type": "string", "enum": ["string", "int", "float", "bool", "timestamp", "uuid"] },
-        "required": { "type": "boolean", "default": false },
-        "indexed":  { "type": "boolean", "default": false },
-        "system": {
-          "type": "boolean",
-          "default": false,
-          "description": "System-managed property; not user-editable. Platform middleware sets it automatically."
+        "label":    { "type": "string", "pattern": "^[A-Z_][A-Z0-9_]*$", "description": "AGE edge label in SCREAMING_SNAKE_CASE (e.g. 'HAS_NODE_POOL')." },
+        "from":     { "type": "string", "description": "Source node label." },
+        "to":       { "type": "string", "description": "Target node label." },
+        "directed": { "type": "boolean", "default": true },
+        "properties": {
+          "type": "array",
+          "description": "Property names stored on this edge.",
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" }
         }
       }
     },

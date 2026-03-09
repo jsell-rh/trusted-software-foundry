@@ -44,36 +44,31 @@ type IRHook struct {
 
 // IRGraphConfig configures property graph capabilities (Apache AGE).
 type IRGraphConfig struct {
-	Backend   string              `yaml:"backend"    json:"backend"`
-	NodeTypes []IRGraphNodeType   `yaml:"node_types" json:"node_types,omitempty"`
-	EdgeTypes []IRGraphEdgeType   `yaml:"edge_types" json:"edge_types,omitempty"`
-	Mutations *IRGraphMutations   `yaml:"mutations"  json:"mutations,omitempty"`
-	Queries   *IRGraphQueries     `yaml:"queries"    json:"queries,omitempty"`
+	Backend   string            `yaml:"backend"    json:"backend"`
+	GraphName string            `yaml:"graph_name" json:"graph_name,omitempty"`
+	NodeTypes []IRGraphNodeType `yaml:"node_types" json:"node_types,omitempty"`
+	EdgeTypes []IRGraphEdgeType `yaml:"edge_types" json:"edge_types,omitempty"`
+	Mutations *IRGraphMutations `yaml:"mutations"  json:"mutations,omitempty"`
+	Queries   *IRGraphQueries   `yaml:"queries"    json:"queries,omitempty"`
 }
 
-// IRGraphNodeType describes a node label in the property graph.
+// IRGraphNodeType describes a node label in the Apache AGE property graph.
+// Label is PascalCase (e.g. "Cluster"). Properties is a list of field names
+// to persist on the node — type information is derived from the resource definition.
 type IRGraphNodeType struct {
-	Name       string          `yaml:"name"       json:"name"`
-	Labels     []string        `yaml:"labels"     json:"labels"`
-	Properties []IRGraphProp   `yaml:"properties" json:"properties,omitempty"`
+	Label      string   `yaml:"label"      json:"label"`
+	IDField    string   `yaml:"id_field"   json:"id_field,omitempty"`
+	Properties []string `yaml:"properties" json:"properties,omitempty"`
 }
 
-// IRGraphEdgeType describes an edge relationship in the property graph.
+// IRGraphEdgeType describes a directed relationship between two node labels.
+// Label follows SCREAMING_SNAKE_CASE convention (e.g. "HAS_NODE_POOL").
 type IRGraphEdgeType struct {
-	Name       string          `yaml:"name"       json:"name"`
-	From       string          `yaml:"from"       json:"from"`
-	To         string          `yaml:"to"         json:"to"`
-	Directed   bool            `yaml:"directed"   json:"directed"`
-	Properties []IRGraphProp   `yaml:"properties" json:"properties,omitempty"`
-}
-
-// IRGraphProp is a property on a node or edge.
-type IRGraphProp struct {
-	Name     string `yaml:"name"     json:"name"`
-	Type     string `yaml:"type"     json:"type"`
-	Required bool   `yaml:"required" json:"required"`
-	Indexed  bool   `yaml:"indexed"  json:"indexed"`
-	System   bool   `yaml:"system"   json:"system"`
+	Label      string   `yaml:"label"      json:"label"`
+	From       string   `yaml:"from"       json:"from"`
+	To         string   `yaml:"to"         json:"to"`
+	Directed   bool     `yaml:"directed"   json:"directed"`
+	Properties []string `yaml:"properties" json:"properties,omitempty"`
 }
 
 // IRGraphMutations configures what mutation operations are allowed.
@@ -501,6 +496,32 @@ func Validate(spec *IRSpec) []error {
 	if spec.Graph != nil {
 		if spec.Components["foundry-graph-age"] == "" && spec.Graph.Backend == "age" {
 			add("graph.backend=age requires foundry-graph-age in components")
+		}
+		// Collect declared node labels for edge cross-referencing.
+		nodeLabels := make(map[string]bool)
+		for i, n := range spec.Graph.NodeTypes {
+			if n.Label == "" {
+				add("graph.node_types[%d]: label is required", i)
+			} else {
+				nodeLabels[n.Label] = true
+			}
+		}
+		// Validate edge type labels and node references.
+		for i, e := range spec.Graph.EdgeTypes {
+			ep := fmt.Sprintf("graph.edge_types[%d](%s)", i, e.Label)
+			if e.Label == "" {
+				add("graph.edge_types[%d]: label is required", i)
+			}
+			if e.From == "" {
+				add("%s: from is required", ep)
+			} else if len(nodeLabels) > 0 && !nodeLabels[e.From] {
+				add("%s: from=%q is not a declared node_type label", ep, e.From)
+			}
+			if e.To == "" {
+				add("%s: to is required", ep)
+			} else if len(nodeLabels) > 0 && !nodeLabels[e.To] {
+				add("%s: to=%q is not a declared node_type label", ep, e.To)
+			}
 		}
 	}
 
