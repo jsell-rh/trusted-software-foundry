@@ -15,8 +15,8 @@ import (
 func diffCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "diff <old-spec.yaml> <new-spec.yaml>",
-		Short: "Show what changed between two TSC IR specs",
-		Long: `diff compares two TSC IR spec files and reports:
+		Short: "Show what changed between two Foundry IR specs",
+		Long: `diff compares two Foundry IR spec files and reports:
   + Added resources or fields
   - Removed resources or fields
   ~ Changed component versions, field types, operations, or config

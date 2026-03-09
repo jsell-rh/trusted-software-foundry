@@ -10,7 +10,7 @@ import (
 	"github.com/jsell-rh/trusted-software-foundry/foundry/compiler"
 )
 
-// TestE2E_DinosaurRegistry is the end-to-end integration test for the TSC compiler.
+// TestE2E_DinosaurRegistry is the end-to-end integration test for the Foundry compiler.
 // It compiles the canonical dinosaur-registry example spec and verifies that:
 //  1. Compilation succeeds without errors
 //  2. The output directory contains main.go, go.mod, and migrations/

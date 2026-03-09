@@ -13,7 +13,7 @@ import (
 	"github.com/jsell-rh/trusted-software-foundry/foundry/spec"
 )
 
-// Generator writes the wiring code for a compiled TSC application.
+// Generator writes the wiring code for a compiled Foundry application.
 // It generates ONLY:
 //   - main.go       (Application bootstrap using spec.Application API)
 //   - go.mod        (dependency-locked module with pinned component versions)
@@ -137,7 +137,7 @@ func (g *Generator) Generate(ir *spec.IRSpec, components []ResolvedComponent) er
 }
 
 // --------------------------------------------------------------------------
-// main.go — uses spec.Application API (frozen by TSC-Architect)
+// main.go — uses spec.Application API (frozen by TSF-Architect)
 // --------------------------------------------------------------------------
 
 var mainGoTemplate = template.Must(template.New("main").Funcs(template.FuncMap{

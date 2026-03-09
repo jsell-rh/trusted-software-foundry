@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 )
 
-// Compiler orchestrates the full TSC compilation pipeline.
+// Compiler orchestrates the full Foundry compilation pipeline.
 // It operates like a build tool (go build, cargo build) — not a code generator.
 //
 // Pipeline:
