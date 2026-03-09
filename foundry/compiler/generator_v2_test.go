@@ -456,7 +456,9 @@ func TestE2E_ComplexConfigInjection(t *testing.T) {
 }
 
 // TestE2E_HooksCodegen verifies that a spec with a hooks: block generates
-// foundry/types.go and hook_registry.go with the correct type-safe call sites.
+// hook_registry.go with the correct type-safe call sites.
+// Hook types (HookContext, DBOperation, etc.) are imported from the canonical
+// upstream package (foundry/spec/foundry) rather than being generated locally.
 func TestE2E_HooksCodegen(t *testing.T) {
 	specFile := filepath.Join(t.TempDir(), "app.foundry.yaml")
 	if err := os.WriteFile(specFile, []byte(hooksYAML), 0644); err != nil {
@@ -469,26 +471,9 @@ func TestE2E_HooksCodegen(t *testing.T) {
 		t.Fatalf("Compile() failed: %v", err)
 	}
 
-	// Assert: foundry/types.go generated with all required types
-	typesPath := filepath.Join(outDir, "foundry", "types.go")
-	types, err := os.ReadFile(typesPath)
-	if err != nil {
-		t.Fatalf("foundry/types.go not generated: %v", err)
-	}
-	typesStr := string(types)
-	for _, want := range []string{
-		"HookContext",
-		"PostHandlerRequest",
-		"DBOperation",
-		"DBResult",
-		"EventMessage",
-		"ConsumedEvent",
-		"Logger",
-		"Tracer",
-	} {
-		if !strings.Contains(typesStr, want) {
-			t.Errorf("foundry/types.go missing type %q", want)
-		}
+	// Assert: no local foundry/types.go — types come from upstream canonical package.
+	if _, err := os.Stat(filepath.Join(outDir, "foundry", "types.go")); err == nil {
+		t.Error("foundry/types.go should NOT be generated: types come from foundry/spec/foundry upstream package")
 	}
 
 	// Assert: hook_registry.go generated with correct call sites
@@ -500,6 +485,8 @@ func TestE2E_HooksCodegen(t *testing.T) {
 	regStr := string(reg)
 	for _, want := range []string{
 		"DO NOT EDIT",
+		// imports canonical upstream foundry types package
+		"foundry/spec/foundry",
 		// pre-handler: func(hctx *foundry.HookContext, w http.ResponseWriter, r *http.Request)
 		"AuditLogPreHandler",
 		"http.ResponseWriter",

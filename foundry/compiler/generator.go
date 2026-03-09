@@ -121,9 +121,6 @@ func (g *Generator) Generate(ir *spec.IRSpec, components []ResolvedComponent) er
 	if err := g.writeDockerCompose(ir); err != nil {
 		return fmt.Errorf("generating docker-compose.yaml: %w", err)
 	}
-	if err := g.writeFoundryTypes(ir); err != nil {
-		return fmt.Errorf("generating foundry/types.go: %w", err)
-	}
 	if err := g.writeHookRegistry(ir, appModule); err != nil {
 		return fmt.Errorf("generating hook_registry.go: %w", err)
 	}

@@ -445,7 +445,7 @@ package main
 import (
 	"net/http"
 
-	"github.com/jsell-rh/trusted-software-foundry/foundry"
+	"github.com/jsell-rh/trusted-software-foundry/foundry/spec/foundry"
 	"{{ .AppModule }}/hooks"
 )
 

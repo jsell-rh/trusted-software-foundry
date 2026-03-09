@@ -32,29 +32,6 @@ func makeReadOnly(t *testing.T, dir string) func() {
 }
 
 // --------------------------------------------------------------------------
-// writeFoundryTypes — MkdirAll error when output dir is read-only
-// --------------------------------------------------------------------------
-
-func TestWriteFoundryTypes_MkdirAllError(t *testing.T) {
-	ir := &spec.IRSpec{
-		Hooks: []spec.IRHook{
-			{Name: "audit", Point: "pre-db", Implementation: "hooks/audit.go"},
-		},
-	}
-	outDir := t.TempDir()
-	defer makeReadOnly(t, outDir)()
-
-	g := NewGenerator(outDir, "")
-	err := g.writeFoundryTypes(ir)
-	if err == nil {
-		t.Fatal("expected error when outDir is read-only, got nil")
-	}
-	if !strings.Contains(err.Error(), "creating foundry/ dir") {
-		t.Errorf("expected 'creating foundry/ dir' in error, got: %v", err)
-	}
-}
-
-// --------------------------------------------------------------------------
 // writeHookRegistry — WriteFile error when output dir is read-only
 // --------------------------------------------------------------------------
 
@@ -268,47 +245,6 @@ func TestGenerate_MigrationsError(t *testing.T) {
 	}
 }
 
-// TestGenerate_FoundryTypesError verifies that Generate returns an error
-// mentioning "generating foundry/types.go" when writeFoundryTypes fails.
-// A spec with hooks triggers writeFoundryTypes; pre-creating a file named
-// "foundry" prevents MkdirAll("outDir/foundry") from succeeding.
-func TestGenerate_FoundryTypesError(t *testing.T) {
-	// Build a minimal IR with hooks directly so we don't need to
-	// parse a spec file that requires hooks in the schema-validated form.
-	// Use the fleet-manager example which has hooks.
-	fleetSpec := "../../foundry/examples/fleet-manager/app.foundry.yaml"
-	if _, statErr := os.Stat(fleetSpec); os.IsNotExist(statErr) {
-		t.Skip("fleet-manager example not found")
-	}
-
-	ir, err := Parse(fleetSpec)
-	if err != nil {
-		t.Fatalf("Parse fleet-manager: %v", err)
-	}
-	resolver := NewResolver(NewStubRegistry(), "")
-	components, err := resolver.ResolveAll(ir.Components)
-	if err != nil {
-		t.Fatalf("ResolveAll: %v", err)
-	}
-	if len(ir.Hooks) == 0 {
-		t.Skip("fleet-manager spec has no hooks; test requires a spec with hooks")
-	}
-
-	outDir := t.TempDir()
-	// Pre-create a FILE named "foundry" — MkdirAll("outDir/foundry") will fail.
-	if err := os.WriteFile(filepath.Join(outDir, "foundry"), []byte("blocker"), 0644); err != nil {
-		t.Fatal(err)
-	}
-
-	genErr := NewGenerator(outDir, "").Generate(ir, components)
-	if genErr == nil {
-		t.Fatal("expected error from Generate when foundry/ is a file, got nil")
-	}
-	if !strings.Contains(genErr.Error(), "foundry") {
-		t.Errorf("expected 'foundry' in error, got: %v", genErr)
-	}
-}
-
 // TestGenerate_GoModError verifies that Generate returns an error mentioning
 // "generating go.mod" when writeGoMod fails. Pre-creating a DIRECTORY named
 // "go.mod" causes os.WriteFile to fail with EISDIR while writeMainGo (which
@@ -342,8 +278,7 @@ func TestGenerate_GoModError(t *testing.T) {
 // TestGenerate_HookRegistryError verifies that Generate returns an error
 // mentioning "generating hook_registry.go" when writeHookRegistry fails.
 // Pre-creating a DIRECTORY named "hook_registry.go" causes the WriteFile
-// to fail while all sub-functions before it (including writeFoundryTypes
-// which creates the foundry/ dir successfully) succeed.
+// to fail while all sub-functions before it succeed.
 func TestGenerate_HookRegistryError(t *testing.T) {
 	fleetSpec := "../../foundry/examples/fleet-manager/app.foundry.yaml"
 	if _, statErr := os.Stat(fleetSpec); os.IsNotExist(statErr) {

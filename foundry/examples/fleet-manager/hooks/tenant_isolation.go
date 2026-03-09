@@ -1,17 +1,16 @@
 package hooks
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 
 	"github.com/jsell-rh/trusted-software-foundry/foundry/spec/foundry"
 )
 
-// TenantIsolationCheck enforces that every request carries a valid org_id claim
+// TenantIsolationCheckPreHandler enforces that every request carries a valid org_id claim
 // and that the org_id in the JWT matches the X-Organization-Id header.
 // Point: pre-handler — called before any route handler runs.
-func TenantIsolationCheck(ctx context.Context, hctx *foundry.HookContext, w http.ResponseWriter, r *http.Request) error {
+func TenantIsolationCheckPreHandler(hctx *foundry.HookContext, w http.ResponseWriter, r *http.Request) error {
 	claimOrg, _ := hctx.Claims["org_id"].(string)
 	if claimOrg == "" {
 		http.Error(w, "missing org_id claim", http.StatusForbidden)

@@ -1,16 +1,15 @@
 package hooks
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/jsell-rh/trusted-software-foundry/foundry/spec/foundry"
 )
 
-// GraphSyncConsumer updates the Apache AGE graph topology whenever a cluster
+// GraphSyncConsumerPostConsume updates the Apache AGE graph topology whenever a cluster
 // lifecycle event arrives on fleet.cluster.lifecycle.
 // Point: post-consume — called after an event is consumed from the topic.
-func GraphSyncConsumer(ctx context.Context, hctx *foundry.HookContext, event *foundry.ConsumedEvent) error {
+func GraphSyncConsumerPostConsume(hctx *foundry.HookContext, event *foundry.ConsumedEvent) error {
 	if event.Topic != "fleet.cluster.lifecycle" {
 		return nil
 	}

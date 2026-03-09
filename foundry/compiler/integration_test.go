@@ -128,8 +128,7 @@ func TestE2E_DinosaurRegistry(t *testing.T) {
 //  2. 3 SQL migrations generated (Cluster, ClusterUpgrade, NodePool)
 //  3. 3 service main files generated (main_api_server.go, main_provisioner.go, main_graph_indexer.go)
 //  4. docker-compose.yaml generated
-//  5. foundry/types.go generated (hook types package)
-//  6. hook_registry.go generated with 5 hook call sites
+//  5. hook_registry.go generated with 5 hook call sites (imports canonical foundry/spec/foundry types)
 //  7. All generated Go files pass gofmt
 func TestE2E_FleetManager(t *testing.T) {
 	specPath := filepath.Join("..", "examples", "fleet-manager", "app.foundry.yaml")
@@ -173,10 +172,9 @@ func TestE2E_FleetManager(t *testing.T) {
 		t.Error("docker-compose.yaml not generated")
 	}
 
-	// Assert: foundry/types.go generated (because spec has hooks)
-	foundryTypesPath := filepath.Join(outDir, "foundry", "types.go")
-	if _, err := os.Stat(foundryTypesPath); err != nil {
-		t.Error("foundry/types.go not generated (required for hook implementations)")
+	// Assert: no local foundry/types.go — types are imported from upstream foundry/spec/foundry package.
+	if _, err := os.Stat(filepath.Join(outDir, "foundry", "types.go")); err == nil {
+		t.Error("foundry/types.go should NOT be generated: hook types come from canonical upstream package")
 	}
 
 	// Assert: hook_registry.go generated
