@@ -1,6 +1,11 @@
 package compiler
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"io"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -200,5 +205,168 @@ func TestParseRegistryEntry_InvalidYAML(t *testing.T) {
 	_, err := parseRegistryEntry(data)
 	if err == nil {
 		t.Fatal("expected error for invalid YAML")
+	}
+}
+
+// --------------------------------------------------------------------------
+// verifyAuditHash tests — covers the 0% branch that is the core security
+// mechanism of the Trusted Software Foundry.
+// --------------------------------------------------------------------------
+
+// computeTestHash walks dir and returns the SHA-256 of all file contents,
+// mirroring the algorithm used by verifyAuditHash.
+func computeTestHash(t *testing.T, dir string) string {
+	t.Helper()
+	h := sha256.New()
+	if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		f, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		if _, err := io.Copy(h, f); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("computing test hash: %v", err)
+	}
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// makeCustomRegistryAndSource creates:
+//   - A registry dir with one entry for "foundry-custom" at v1.0.0 using expectedHash
+//   - A source dir with the component source files that produce expectedHash
+//
+// Returns (registryDir, sourceDir).
+func makeCustomRegistryAndSource(t *testing.T, module, expectedHash string) (registryDir, sourceDir string) {
+	t.Helper()
+
+	// Registry dir
+	registryDir = t.TempDir()
+	compRegistryDir := filepath.Join(registryDir, "foundry-custom")
+	if err := os.MkdirAll(compRegistryDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	regYAML := fmt.Sprintf("name: foundry-custom\nversion: v1.0.0\nmodule: %s\naudit_hash: %s\n", module, expectedHash)
+	if err := os.WriteFile(filepath.Join(compRegistryDir, "v1.0.0.yaml"), []byte(regYAML), 0644); err != nil {
+		t.Fatal(err)
+	}
+	return registryDir, ""
+}
+
+func TestVerifyAuditHash_Match(t *testing.T) {
+	// Build a fake component source tree, compute its hash, register it, then
+	// verify that ResolveAll succeeds when the hash matches.
+	sourceBase := t.TempDir()
+	compDir := filepath.Join(sourceBase, "foundry-custom", "v1.0.0")
+	if err := os.MkdirAll(compDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(compDir, "component.go"), []byte("package custom\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(compDir, "register.go"), []byte("package custom\nfunc New() {}\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	correctHash := computeTestHash(t, compDir)
+
+	// Build registry with the correct hash
+	registryDir := t.TempDir()
+	regEntryDir := filepath.Join(registryDir, "foundry-custom")
+	if err := os.MkdirAll(regEntryDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	regYAML := fmt.Sprintf(
+		"name: foundry-custom\nversion: v1.0.0\nmodule: github.com/test/foundry-custom\naudit_hash: %s\n",
+		correctHash,
+	)
+	if err := os.WriteFile(filepath.Join(regEntryDir, "v1.0.0.yaml"), []byte(regYAML), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	reg := NewFileRegistry(registryDir)
+	resolver := NewResolver(reg, sourceBase)
+	components, err := resolver.ResolveAll(map[string]string{"foundry-custom": "v1.0.0"})
+	if err != nil {
+		t.Fatalf("ResolveAll failed with correct audit hash: %v", err)
+	}
+	if len(components) != 1 {
+		t.Fatalf("expected 1 resolved component, got %d", len(components))
+	}
+	if components[0].AuditHash != correctHash {
+		t.Errorf("component AuditHash = %q, want %q", components[0].AuditHash, correctHash)
+	}
+}
+
+func TestVerifyAuditHash_Mismatch(t *testing.T) {
+	// Build a fake component source tree, but register a WRONG hash.
+	// ResolveAll must return an error mentioning "hash mismatch".
+	sourceBase := t.TempDir()
+	compDir := filepath.Join(sourceBase, "foundry-custom", "v1.0.0")
+	if err := os.MkdirAll(compDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(compDir, "component.go"), []byte("package custom\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	wrongHash := "0000000000000000000000000000000000000000000000000000000000000000"
+
+	registryDir := t.TempDir()
+	regEntryDir := filepath.Join(registryDir, "foundry-custom")
+	if err := os.MkdirAll(regEntryDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	regYAML := fmt.Sprintf(
+		"name: foundry-custom\nversion: v1.0.0\nmodule: github.com/test/foundry-custom\naudit_hash: %s\n",
+		wrongHash,
+	)
+	if err := os.WriteFile(filepath.Join(regEntryDir, "v1.0.0.yaml"), []byte(regYAML), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	reg := NewFileRegistry(registryDir)
+	resolver := NewResolver(reg, sourceBase)
+	_, err := resolver.ResolveAll(map[string]string{"foundry-custom": "v1.0.0"})
+	if err == nil {
+		t.Fatal("expected error for audit hash mismatch, got nil")
+	}
+	if !strings.Contains(err.Error(), "hash mismatch") {
+		t.Errorf("expected error to mention 'hash mismatch', got: %v", err)
+	}
+}
+
+func TestVerifyAuditHash_MissingSourceDirectory(t *testing.T) {
+	// sourceDir is set but the component source directory does not exist.
+	// ResolveAll must return an error mentioning the walking failure.
+	sourceBase := t.TempDir()
+	// Note: do NOT create the compDir — it doesn't exist on disk.
+
+	registryDir := t.TempDir()
+	regEntryDir := filepath.Join(registryDir, "foundry-custom")
+	if err := os.MkdirAll(regEntryDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	regYAML := "name: foundry-custom\nversion: v1.0.0\nmodule: github.com/test/foundry-custom\naudit_hash: abc123\n"
+	if err := os.WriteFile(filepath.Join(regEntryDir, "v1.0.0.yaml"), []byte(regYAML), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	reg := NewFileRegistry(registryDir)
+	resolver := NewResolver(reg, sourceBase)
+	_, err := resolver.ResolveAll(map[string]string{"foundry-custom": "v1.0.0"})
+	if err == nil {
+		t.Fatal("expected error when component source directory is missing, got nil")
+	}
+	if !strings.Contains(err.Error(), "audit hash verification failed") {
+		t.Errorf("expected error to mention 'audit hash verification failed', got: %v", err)
 	}
 }
