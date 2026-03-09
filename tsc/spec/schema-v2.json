@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12",
-  "$id": "https://github.com/jsell-rh/trusted-software-components/tsc/spec/schema-v2.json",
+  "$id": "https://github.com/jsell-rh/trusted-software-foundry/tsc/spec/schema-v2.json",
   "title": "TSC Application IR Spec v2",
   "description": "Extended IR for complex applications: property graphs, multi-service, advanced events, SpiceDB authz, Redis state, bi-temporality, multi-tenancy, and custom code hooks.",
   "type": "object",

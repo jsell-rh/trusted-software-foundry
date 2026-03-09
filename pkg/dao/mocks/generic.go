@@ -3,7 +3,7 @@ package mocks
 import (
 	"context"
 
-	"github.com/jsell-rh/trusted-software-components/pkg/dao"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/dao"
 )
 
 var _ dao.GenericDao = &genericDaoMock{}

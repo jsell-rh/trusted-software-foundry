@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	"github.com/jsell-rh/trusted-software-components/pkg/util"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/util"
 )
 
 type Logger interface {

@@ -11,8 +11,8 @@ import (
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 
-	"github.com/jsell-rh/trusted-software-components/pkg/environments"
-	pkgserver "github.com/jsell-rh/trusted-software-components/pkg/server"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/environments"
+	pkgserver "github.com/jsell-rh/trusted-software-foundry/pkg/server"
 )
 
 func NewServeCommand(getSpecData func() ([]byte, error)) *cobra.Command {

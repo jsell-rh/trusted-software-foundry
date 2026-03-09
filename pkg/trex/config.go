@@ -3,10 +3,10 @@ package trex
 import (
 	"sync"
 
-	"github.com/jsell-rh/trusted-software-components/pkg/api/presenters"
-	"github.com/jsell-rh/trusted-software-components/pkg/config"
-	"github.com/jsell-rh/trusted-software-components/pkg/errors"
-	"github.com/jsell-rh/trusted-software-components/pkg/handlers"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/api/presenters"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/config"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/errors"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/handlers"
 )
 
 type Config struct {

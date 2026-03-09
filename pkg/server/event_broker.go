@@ -9,8 +9,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/segmentio/ksuid"
 
-	"github.com/jsell-rh/trusted-software-components/pkg/api"
-	"github.com/jsell-rh/trusted-software-components/pkg/services"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/api"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/services"
 )
 
 var ErrBrokerClosed = errors.New("event broker is closed")

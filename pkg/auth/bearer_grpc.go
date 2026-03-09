@@ -5,7 +5,7 @@ import (
 	"crypto/subtle"
 	"strings"
 
-	"github.com/jsell-rh/trusted-software-components/pkg/logger"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/logger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"

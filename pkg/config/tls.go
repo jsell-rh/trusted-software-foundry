@@ -8,7 +8,7 @@ import (
 
 	"github.com/spf13/pflag"
 	
-	tlsutil "github.com/jsell-rh/trusted-software-components/pkg/tls"
+	tlsutil "github.com/jsell-rh/trusted-software-foundry/pkg/tls"
 )
 
 // TLSConfig holds TLS configuration for servers and clients

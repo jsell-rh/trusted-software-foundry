@@ -18,7 +18,7 @@ import (
 
 	_ "github.com/lib/pq" // PostgreSQL driver
 
-	"github.com/jsell-rh/trusted-software-components/tsc/spec"
+	"github.com/jsell-rh/trusted-software-foundry/tsc/spec"
 )
 
 const (

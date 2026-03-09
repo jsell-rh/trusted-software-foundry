@@ -7,8 +7,8 @@ import (
 
 	"gorm.io/gorm/clause"
 
-	"github.com/jsell-rh/trusted-software-components/pkg/api"
-	"github.com/jsell-rh/trusted-software-components/pkg/db"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/api"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/db"
 )
 
 type EventDao interface {

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jsell-rh/trusted-software-components/tsc/spec"
+	"github.com/jsell-rh/trusted-software-foundry/tsc/spec"
 )
 
 // DescriptionEnricher is a custom HTTP middleware that annotates GET /dinosaurs

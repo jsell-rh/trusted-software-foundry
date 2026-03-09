@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/jsell-rh/trusted-software-components/tsc/components"
-	"github.com/jsell-rh/trusted-software-components/tsc/spec"
+	"github.com/jsell-rh/trusted-software-foundry/tsc/components"
+	"github.com/jsell-rh/trusted-software-foundry/tsc/spec"
 )
 
 // fakeComponent is a minimal spec.Component for testing.

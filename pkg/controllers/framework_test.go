@@ -5,10 +5,10 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
-	"github.com/jsell-rh/trusted-software-components/pkg/api"
-	"github.com/jsell-rh/trusted-software-components/pkg/dao/mocks"
-	dbmocks "github.com/jsell-rh/trusted-software-components/pkg/db/mocks"
-	"github.com/jsell-rh/trusted-software-components/pkg/services"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/api"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/dao/mocks"
+	dbmocks "github.com/jsell-rh/trusted-software-foundry/pkg/db/mocks"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/services"
 )
 
 func newExampleControllerConfig(ctrl *exampleController) *ControllerConfig {

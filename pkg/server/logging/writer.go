@@ -3,7 +3,7 @@ package logging
 import (
 	"net/http"
 
-	"github.com/jsell-rh/trusted-software-components/pkg/logger"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/logger"
 )
 
 func NewLoggingWriter(w http.ResponseWriter, r *http.Request, f LogFormatter) *LoggingWriter {

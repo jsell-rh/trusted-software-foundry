@@ -624,7 +624,7 @@ const file_rh_trex_v1_fossils_proto_rawDesc = "" +
 	"\fUpdateFossil\x12\x1f.rh_trex.v1.UpdateFossilRequest\x1a\x12.rh_trex.v1.Fossil\x12Q\n" +
 	"\fDeleteFossil\x12\x1f.rh_trex.v1.DeleteFossilRequest\x1a .rh_trex.v1.DeleteFossilResponse\x12N\n" +
 	"\vListFossils\x12\x1e.rh_trex.v1.ListFossilsRequest\x1a\x1f.rh_trex.v1.ListFossilsResponse\x12O\n" +
-	"\fWatchFossils\x12\x1f.rh_trex.v1.WatchFossilsRequest\x1a\x1c.rh_trex.v1.FossilWatchEvent0\x01BKZIgithub.com/jsell-rh/trusted-software-components/pkg/api/grpc/rh_trex/v1;rh_trex_v1b\x06proto3"
+	"\fWatchFossils\x12\x1f.rh_trex.v1.WatchFossilsRequest\x1a\x1c.rh_trex.v1.FossilWatchEvent0\x01BKZIgithub.com/jsell-rh/trusted-software-foundry/pkg/api/grpc/rh_trex/v1;rh_trex_v1b\x06proto3"
 
 var (
 	file_rh_trex_v1_fossils_proto_rawDescOnce sync.Once

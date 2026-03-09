@@ -7,7 +7,7 @@ import (
 	"github.com/jinzhu/inflection"
 	"gorm.io/gorm"
 
-	"github.com/jsell-rh/trusted-software-components/pkg/db"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/db"
 )
 
 type Where struct {

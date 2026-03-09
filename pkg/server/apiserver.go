@@ -11,9 +11,9 @@ import (
 	"github.com/golang/glog"
 	gorillahandlers "github.com/gorilla/handlers"
 
-	"github.com/jsell-rh/trusted-software-components/pkg/auth"
-	"github.com/jsell-rh/trusted-software-components/pkg/environments"
-	"github.com/jsell-rh/trusted-software-components/pkg/trex"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/auth"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/environments"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/trex"
 )
 
 type defaultAPIServer struct {

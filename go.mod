@@ -1,4 +1,4 @@
-module github.com/jsell-rh/trusted-software-components
+module github.com/jsell-rh/trusted-software-foundry
 
 go 1.24.0
 

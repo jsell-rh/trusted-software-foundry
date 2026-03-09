@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jsell-rh/trusted-software-components/tsc/compiler"
+	"github.com/jsell-rh/trusted-software-foundry/tsc/compiler"
 )
 
 // TestE2E_DinosaurRegistry is the end-to-end integration test for the TSC compiler.

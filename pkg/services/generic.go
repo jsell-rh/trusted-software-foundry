@@ -14,11 +14,11 @@ import (
 	"github.com/yaacov/tree-search-language/pkg/walkers/ident"
 	sqlFilter "github.com/yaacov/tree-search-language/pkg/walkers/sql"
 
-	"github.com/jsell-rh/trusted-software-components/pkg/api"
-	"github.com/jsell-rh/trusted-software-components/pkg/dao"
-	"github.com/jsell-rh/trusted-software-components/pkg/db"
-	"github.com/jsell-rh/trusted-software-components/pkg/errors"
-	"github.com/jsell-rh/trusted-software-components/pkg/logger"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/api"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/dao"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/db"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/errors"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/logger"
 )
 
 type GenericService interface {
