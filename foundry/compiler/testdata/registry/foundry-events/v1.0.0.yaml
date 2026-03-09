@@ -1,0 +1,4 @@
+name: foundry-events
+version: v1.0.0
+module: github.com/jsell-rh/trusted-software-foundry/foundry/components/events
+audit_hash: a7b8c9d0e1f2a7b8c9d0e1f2a7b8c9d0e1f2a7b8c9d0e1f2a7b8c9d0e1f2a7b8

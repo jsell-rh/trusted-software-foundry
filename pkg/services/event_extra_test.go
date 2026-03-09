@@ -85,7 +85,7 @@ func TestEventService_Get_NotFound(t *testing.T) {
 
 func TestEventService_Create_HappyPath(t *testing.T) {
 	svc := NewEventService(daomocks.NewEventDao())
-	evt := &api.Event{Source: "tsc", EventType: "create"}
+	evt := &api.Event{Source: "foundry", EventType: "create"}
 	evt.ID = "ev-2"
 	created, svcErr := svc.Create(context.Background(), evt)
 	if svcErr != nil {
@@ -102,7 +102,7 @@ func TestEventService_Create_HappyPath(t *testing.T) {
 
 func TestEventService_Replace_Error(t *testing.T) {
 	svc := NewEventService(daomocks.NewEventDao())
-	evt := &api.Event{Source: "tsc", EventType: "update"}
+	evt := &api.Event{Source: "foundry", EventType: "update"}
 	evt.ID = "ev-3"
 	_, svcErr := svc.Replace(context.Background(), evt)
 	if svcErr == nil {
@@ -116,7 +116,7 @@ func TestEventService_Replace_Error(t *testing.T) {
 
 func TestEventService_Delete_HappyPath(t *testing.T) {
 	svc := NewEventService(daomocks.NewEventDao())
-	evt := &api.Event{Source: "tsc", EventType: "create"}
+	evt := &api.Event{Source: "foundry", EventType: "create"}
 	evt.ID = "ev-4"
 	_, _ = svc.Create(context.Background(), evt)
 
@@ -186,11 +186,11 @@ func TestEventService_FindUnreconciled(t *testing.T) {
 
 func TestEventService_FindBySourceAndType(t *testing.T) {
 	svc := NewEventService(daomocks.NewEventDao())
-	evt := &api.Event{Source: "tsc", EventType: "create"}
+	evt := &api.Event{Source: "foundry", EventType: "create"}
 	evt.ID = "ev-src"
 	_, _ = svc.Create(context.Background(), evt)
 
-	results, svcErr := svc.FindBySourceAndType(context.Background(), "tsc", "create")
+	results, svcErr := svc.FindBySourceAndType(context.Background(), "foundry", "create")
 	if svcErr != nil {
 		t.Fatalf("FindBySourceAndType: %v", svcErr)
 	}
