@@ -255,6 +255,47 @@ func TestE2E_AuthzSchemaStub_NoOverwrite(t *testing.T) {
 	}
 }
 
+// TestE2E_HookFiles_CopiedRelativeToSpec verifies that hook implementation files
+// are found and copied even when forge compile runs from a different directory.
+// This tests the specDir-relative path resolution in copyHookFiles.
+func TestE2E_HookFiles_CopiedRelativeToSpec(t *testing.T) {
+	// Build a spec directory with a hook file inside it.
+	specDir := t.TempDir()
+	hooksDir := filepath.Join(specDir, "hooks")
+	if err := os.MkdirAll(hooksDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Write a minimal hook implementation file alongside the spec.
+	hookContent := "package hooks\n// minimal hook placeholder\n"
+	if err := os.WriteFile(filepath.Join(hooksDir, "audit_log.go"), []byte(hookContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Write the spec file (re-uses hooksYAML which declares hooks/audit_log.go).
+	specFile := filepath.Join(specDir, "app.foundry.yaml")
+	if err := os.WriteFile(specFile, []byte(hooksYAML), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	outDir := t.TempDir()
+	c := compiler.New(compiler.NewStubRegistry(), "", "")
+	if err := c.Compile(specFile, outDir); err != nil {
+		t.Fatalf("Compile() failed: %v", err)
+	}
+
+	// Assert: the hook file was copied to the output directory despite
+	// the spec being in a different directory from the CWD.
+	dest := filepath.Join(outDir, "hooks", "audit_log.go")
+	data, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatalf("hook file not copied to output: %v\nExpected: %s", err, dest)
+	}
+	if string(data) != hookContent {
+		t.Errorf("hook file content mismatch\ngot: %s\nwant: %s", string(data), hookContent)
+	}
+}
+
 // TestE2E_HooksCodegen verifies that a spec with a hooks: block generates
 // foundry/types.go and hook_registry.go with the correct type-safe call sites.
 func TestE2E_HooksCodegen(t *testing.T) {

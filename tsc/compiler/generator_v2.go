@@ -467,7 +467,10 @@ func (g *Generator) writeAuthzSchemaStub(ir *spec.IRSpec) error {
 // copyHookFiles copies all declared hooks/*.go source files into the generated project.
 // Hook files are human-written and must be copied unchanged — the compiler never modifies them.
 // If a hook file does not yet exist on disk, it is skipped gracefully (engineers write it later).
-func copyHookFiles(ir *spec.IRSpec, outputDir string) error {
+//
+// specDir is the directory that contains the spec file; hook implementation paths declared
+// in the spec are resolved relative to it. Pass an empty string to resolve from the CWD.
+func copyHookFiles(ir *spec.IRSpec, outputDir, specDir string) error {
 	if len(ir.Hooks) == 0 {
 		return nil
 	}
@@ -475,7 +478,12 @@ func copyHookFiles(ir *spec.IRSpec, outputDir string) error {
 		if h.Implementation == "" {
 			continue
 		}
-		data, err := os.ReadFile(h.Implementation)
+		// Resolve the source path relative to the spec file's directory.
+		srcPath := h.Implementation
+		if specDir != "" && !filepath.IsAbs(srcPath) {
+			srcPath = filepath.Join(specDir, srcPath)
+		}
+		data, err := os.ReadFile(srcPath)
 		if err != nil {
 			// Hook file not yet written by engineers — skip gracefully.
 			continue
