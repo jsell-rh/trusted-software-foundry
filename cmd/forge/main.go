@@ -39,6 +39,7 @@ All generated code is assembled from pre-audited, version-pinned trusted compone
 	cmd.AddCommand(lintCmd())
 	cmd.AddCommand(explainCmd())
 	cmd.AddCommand(diffCmd())
+	cmd.AddCommand(deployCmd())
 	return cmd
 }
 
