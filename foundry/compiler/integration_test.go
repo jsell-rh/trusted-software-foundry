@@ -225,3 +225,47 @@ func TestE2E_FleetManager(t *testing.T) {
 		}
 	}
 }
+
+// TestE2E_FleetManager_GoBuild is the gold standard integration test: it compiles
+// the fleet-manager spec to a real Go project and verifies that `go build` succeeds.
+// This test runs go mod tidy + go build, so it requires network access and a local
+// trusted-software-foundry checkout. It is skipped in short mode.
+func TestE2E_FleetManager_GoBuild(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping go build E2E in short mode")
+	}
+
+	// Locate the repo root (4 levels up from foundry/compiler/).
+	// The test binary runs in the package directory, so we use relative paths.
+	repoRoot, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatalf("cannot resolve repo root: %v", err)
+	}
+
+	fleetSpec := filepath.Join(repoRoot, "foundry", "examples", "fleet-manager", "app.foundry.yaml")
+	if _, err := os.Stat(fleetSpec); os.IsNotExist(err) {
+		t.Skipf("fleet-manager spec not found at %s", fleetSpec)
+	}
+
+	outDir := t.TempDir()
+	c := compiler.New(compiler.NewStubRegistry(), "", repoRoot)
+	if err := c.Compile(fleetSpec, outDir); err != nil {
+		t.Fatalf("Compile(fleet-manager) with rhtexAIPath failed: %v", err)
+	}
+
+	// Run go build — this is the definitive proof that the generated wiring is correct.
+	goBin, err := exec.LookPath("go")
+	if err != nil {
+		t.Skip("go not found in PATH")
+	}
+	cmd := exec.Command(goBin, "build", "-o", filepath.Join(outDir, "fleet-manager"), ".")
+	cmd.Dir = outDir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("go build failed on generated fleet-manager project:\n%s", out)
+	}
+
+	// Verify the binary was produced.
+	if _, err := os.Stat(filepath.Join(outDir, "fleet-manager")); err != nil {
+		t.Error("go build succeeded but binary not found")
+	}
+}
