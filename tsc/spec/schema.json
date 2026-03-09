@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12",
   "$id": "https://github.com/jsell-rh/trusted-software-foundry/tsc/spec/schema.json",
-  "title": "TSC Application IR Spec",
-  "description": "Intermediate Representation for a Trusted Software Components application. AI agents write this file; the TSC compiler assembles audited components to produce a working binary.",
+  "title": "Trusted Software Foundry — Application IR Spec",
+  "description": "Unified Intermediate Representation for a Foundry application. AI agents write this file; the forge compiler assembles audited components to produce a working binary. All blocks beyond metadata and components are optional — use only what your application needs.",
   "type": "object",
   "required": ["apiVersion", "kind", "metadata", "components"],
   "additionalProperties": false,
@@ -10,12 +10,12 @@
     "apiVersion": {
       "type": "string",
       "const": "foundry/v1",
-      "description": "API version of this spec. Must be 'foundry/v1'."
+      "description": "API version. Always 'foundry/v1'."
     },
     "kind": {
       "type": "string",
       "const": "Application",
-      "description": "Resource kind. Must be 'Application'."
+      "description": "Resource kind. Always 'Application'."
     },
     "metadata": {
       "type": "object",
@@ -30,7 +30,7 @@
         "version": {
           "type": "string",
           "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
-          "description": "Application version in semver (e.g. 1.0.0)."
+          "description": "Application version in semver without leading 'v', e.g. 1.0.0."
         },
         "description": {
           "type": "string",
@@ -40,153 +40,142 @@
     },
     "components": {
       "type": "object",
-      "description": "SBOM: pinned versions of all trusted components used by this application. Each key is a component name; value is a semver version string.",
+      "description": "SBOM: pinned versions of all trusted components used by this application. Each key is a registered component name; value is a semver version string prefixed with 'v'.",
       "propertyNames": {
         "enum": [
           "foundry-http",
           "foundry-postgres",
           "foundry-auth-jwt",
+          "foundry-auth-spicedb",
           "foundry-grpc",
           "foundry-health",
           "foundry-metrics",
-          "foundry-events"
+          "foundry-events",
+          "foundry-graph-age",
+          "foundry-kafka",
+          "foundry-nats",
+          "foundry-redis",
+          "foundry-redis-streams",
+          "foundry-temporal",
+          "foundry-tenancy",
+          "foundry-service-router"
         ]
       },
       "additionalProperties": {
         "type": "string",
         "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$",
-        "description": "Semver version string, e.g. v1.0.0."
+        "description": "Semver version string prefixed with 'v', e.g. v1.0.0."
       },
       "minProperties": 1
     },
     "resources": {
       "type": "array",
-      "description": "Data resources managed by this application.",
-      "items": {
-        "$ref": "#/$defs/resource"
-      }
+      "description": "Relational data resources managed by this application. Each resource maps to a database table with generated CRUD handlers.",
+      "items": { "$ref": "#/$defs/resource" }
     },
     "api": {
       "type": "object",
+      "description": "API surface configuration.",
       "additionalProperties": false,
       "properties": {
         "rest": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "base_path": {
-              "type": "string",
-              "pattern": "^/",
-              "default": "/api/v1",
-              "description": "Base URL path for the REST API."
-            },
-            "version_header": {
-              "type": "boolean",
-              "default": true,
-              "description": "Include X-API-Version header in responses."
-            }
+            "base_path":      { "type": "string", "pattern": "^/", "default": "/api/v1" },
+            "version_header": { "type": "boolean", "default": true, "description": "Include X-API-Version in responses." }
           }
         },
         "grpc": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "enabled": {
-              "type": "boolean",
-              "default": false
-            },
-            "port": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 65535,
-              "default": 9000
-            }
+            "enabled": { "type": "boolean", "default": false },
+            "port":    { "type": "integer", "minimum": 1, "maximum": 65535, "default": 9000 }
           }
         }
       }
     },
     "auth": {
       "type": "object",
-      "additionalProperties": false,
+      "description": "HTTP authentication configuration.",
       "required": ["type"],
+      "additionalProperties": false,
       "properties": {
-        "type": {
-          "type": "string",
-          "enum": ["jwt", "none"],
-          "description": "Authentication mechanism."
-        },
-        "jwk_url": {
-          "type": "string",
-          "description": "URL or env-var reference for JWK public key endpoint. Required when type=jwt."
-        },
-        "required": {
-          "type": "boolean",
-          "default": true,
-          "description": "When true, unauthenticated requests are rejected."
-        },
-        "allow_mock": {
-          "type": "string",
-          "description": "Env-var reference (e.g. '${OCM_MOCK_ENABLED}'). When true, accept mock tokens."
-        }
+        "type":       { "type": "string", "enum": ["jwt", "none"] },
+        "jwk_url":    { "type": "string", "description": "JWK endpoint URL or env-var reference. Required when type=jwt." },
+        "required":   { "type": "boolean", "default": true },
+        "allow_mock": { "type": "string", "description": "Env-var reference; when truthy, accept mock tokens (dev only)." }
       },
-      "if": { "properties": { "type": { "const": "jwt" } } },
+      "if":   { "properties": { "type": { "const": "jwt" } } },
       "then": { "required": ["jwk_url"] }
     },
     "database": {
       "type": "object",
-      "additionalProperties": false,
+      "description": "Relational database configuration. Required when resources[] is non-empty.",
       "required": ["type"],
+      "additionalProperties": false,
       "properties": {
-        "type": {
-          "type": "string",
-          "enum": ["postgres"],
-          "description": "Database type. Only 'postgres' is supported."
-        },
-        "migrations": {
-          "type": "string",
-          "enum": ["auto", "manual"],
-          "default": "auto",
-          "description": "Migration strategy. 'auto' means the compiler generates SQL migration files."
-        }
+        "type":       { "type": "string", "enum": ["postgres"] },
+        "migrations": { "type": "string", "enum": ["auto", "manual"], "default": "auto", "description": "'auto': compiler generates SQL migration files." }
       }
     },
     "observability": {
       "type": "object",
+      "description": "Health check and metrics endpoint configuration.",
       "additionalProperties": false,
       "properties": {
         "health_check": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "port": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 65535,
-              "default": 8083
-            },
-            "path": {
-              "type": "string",
-              "default": "/healthz"
-            }
+            "port": { "type": "integer", "minimum": 1, "maximum": 65535, "default": 8083 },
+            "path": { "type": "string", "default": "/healthz" }
           }
         },
         "metrics": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "port": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 65535,
-              "default": 8080
-            },
-            "path": {
-              "type": "string",
-              "default": "/metrics"
-            }
+            "port": { "type": "integer", "minimum": 1, "maximum": 65535, "default": 8080 },
+            "path": { "type": "string", "default": "/metrics" }
           }
         }
       }
+    },
+    "graph": {
+      "$ref": "#/$defs/graphConfig",
+      "description": "Property graph configuration. Requires foundry-graph-age in components."
+    },
+    "services": {
+      "type": "array",
+      "description": "Multi-service decomposition. Each entry compiles to a separate main_<name>.go entrypoint. Omit for single-service applications.",
+      "items": { "$ref": "#/$defs/service" }
+    },
+    "events": {
+      "$ref": "#/$defs/eventsConfig",
+      "description": "Event bus configuration (Kafka, NATS, Redis Streams, or pg-notify). Requires the corresponding foundry-* component."
+    },
+    "authz": {
+      "$ref": "#/$defs/authzConfig",
+      "description": "Fine-grained authorization (SpiceDB/OPA). Requires foundry-auth-spicedb in components."
+    },
+    "state": {
+      "$ref": "#/$defs/stateConfig",
+      "description": "External state backends (Redis cache, rate limiting, distributed locking). Requires foundry-redis in components."
+    },
+    "temporal": {
+      "$ref": "#/$defs/temporalConfig",
+      "description": "Bi-temporal (valid time + transaction time) tracking. Requires foundry-temporal in components."
+    },
+    "tenancy": {
+      "$ref": "#/$defs/tenancyConfig",
+      "description": "Multi-tenant data isolation. Requires foundry-tenancy in components."
+    },
+    "hooks": {
+      "type": "array",
+      "description": "Custom code injection points. The AI declares hook points; engineers implement the Go functions. The compiler copies hooks/*.go unchanged into the generated project and generates typed call sites at each declared lifecycle point.",
+      "items": { "$ref": "#/$defs/hook" }
     }
   },
   "$defs": {
@@ -195,34 +184,16 @@
       "required": ["name", "plural", "fields", "operations"],
       "additionalProperties": false,
       "properties": {
-        "name": {
-          "type": "string",
-          "pattern": "^[A-Z][a-zA-Z0-9]*$",
-          "description": "Singular resource name in PascalCase, e.g. 'Dinosaur'."
-        },
-        "plural": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9-]*$",
-          "description": "Plural name in lowercase-kebab used in API paths, e.g. 'dinosaurs'."
-        },
-        "fields": {
-          "type": "array",
-          "minItems": 1,
-          "items": { "$ref": "#/$defs/field" }
-        },
+        "name":       { "type": "string", "pattern": "^[A-Z][a-zA-Z0-9]*$", "description": "Singular PascalCase name, e.g. 'Dinosaur'." },
+        "plural":     { "type": "string", "pattern": "^[a-z][a-z0-9-]*$",   "description": "Plural lowercase-kebab used in API paths, e.g. 'dinosaurs'." },
+        "fields":     { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/field" } },
         "operations": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "string",
-            "enum": ["create", "read", "update", "delete", "list"]
-          },
-          "uniqueItems": true
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": { "type": "string", "enum": ["create", "read", "update", "delete", "list"] }
         },
         "events": {
-          "type": "boolean",
-          "default": false,
-          "description": "When true, emit PostgreSQL LISTEN/NOTIFY events on every mutation."
+          "type": "boolean", "default": false,
+          "description": "When true, emit PostgreSQL LISTEN/NOTIFY events on every mutation. Requires foundry-events in components."
         }
       }
     },
@@ -231,34 +202,320 @@
       "required": ["name", "type"],
       "additionalProperties": false,
       "properties": {
-        "name": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_]*$",
-          "description": "Field name in snake_case."
-        },
-        "type": {
-          "type": "string",
-          "enum": ["string", "int", "float", "bool", "timestamp", "uuid"],
-          "description": "Scalar field type."
-        },
-        "required": {
-          "type": "boolean",
-          "default": false
-        },
-        "max_length": {
-          "type": "integer",
-          "minimum": 1,
-          "description": "Maximum length for string fields. Omit for unlimited."
-        },
+        "name":        { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "description": "snake_case field name." },
+        "type":        { "type": "string", "enum": ["string", "int", "float", "bool", "timestamp", "uuid"] },
+        "required":    { "type": "boolean", "default": false },
+        "max_length":  { "type": "integer", "minimum": 1, "description": "Max length for string fields." },
         "auto": {
-          "type": "string",
-          "enum": ["created", "updated"],
-          "description": "Auto-populate strategy: 'created' sets on insert; 'updated' sets on insert and update."
+          "type": "string", "enum": ["created", "updated"],
+          "description": "'created': set on insert. 'updated': set on insert and update."
         },
         "soft_delete": {
-          "type": "boolean",
-          "default": false,
-          "description": "When true, this timestamp field is the soft-delete marker. List queries exclude soft-deleted records."
+          "type": "boolean", "default": false,
+          "description": "Marks this timestamp field as the soft-delete sentinel. List queries exclude soft-deleted records."
+        }
+      }
+    },
+    "graphConfig": {
+      "type": "object",
+      "required": ["backend"],
+      "additionalProperties": false,
+      "properties": {
+        "backend": { "type": "string", "enum": ["age"], "description": "Graph backend. 'age' = Apache AGE (PostgreSQL extension)." },
+        "node_types": { "type": "array", "items": { "$ref": "#/$defs/graphNodeType" } },
+        "edge_types":  { "type": "array", "items": { "$ref": "#/$defs/graphEdgeType" } },
+        "mutations":   { "$ref": "#/$defs/graphMutationsConfig" },
+        "queries":     { "$ref": "#/$defs/graphQueriesConfig" }
+      }
+    },
+    "graphNodeType": {
+      "type": "object",
+      "required": ["name", "labels"],
+      "additionalProperties": false,
+      "properties": {
+        "name":       { "type": "string", "pattern": "^[A-Z][a-zA-Z0-9]*$" },
+        "labels":     { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" } },
+        "properties": { "type": "array", "items": { "$ref": "#/$defs/graphProperty" } }
+      }
+    },
+    "graphEdgeType": {
+      "type": "object",
+      "required": ["name", "from", "to"],
+      "additionalProperties": false,
+      "properties": {
+        "name":       { "type": "string", "pattern": "^[A-Z][a-zA-Z0-9]*$" },
+        "from":       { "type": "string", "description": "Source node type name." },
+        "to":         { "type": "string", "description": "Target node type name." },
+        "directed":   { "type": "boolean", "default": true },
+        "properties": { "type": "array", "items": { "$ref": "#/$defs/graphProperty" } }
+      }
+    },
+    "graphProperty": {
+      "type": "object",
+      "required": ["name", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "name":     { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+        "type":     { "type": "string", "enum": ["string", "int", "float", "bool", "timestamp", "uuid"] },
+        "required": { "type": "boolean", "default": false },
+        "indexed":  { "type": "boolean", "default": false },
+        "system": {
+          "type": "boolean", "default": false,
+          "description": "System-managed; not user-editable. The compiler generates middleware to populate it."
+        }
+      }
+    },
+    "graphMutationsConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operations":      { "type": "array", "uniqueItems": true, "items": { "type": "string", "enum": ["DEFINE", "CREATE", "UPDATE", "DELETE"] } },
+        "bulk_loading":    { "type": "boolean", "default": false, "description": "Enable JSONL bulk mutation loading endpoint." },
+        "mutation_format": { "type": "string", "enum": ["jsonl", "json"], "default": "json" }
+      }
+    },
+    "graphQueriesConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "language":   { "type": "string", "enum": ["cypher"], "default": "cypher" },
+        "max_depth":  { "type": "integer", "minimum": 1, "maximum": 50, "default": 10 },
+        "expose_api": { "type": "boolean", "default": true, "description": "Generate REST+gRPC query endpoints." }
+      }
+    },
+    "service": {
+      "type": "object",
+      "required": ["name", "role"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "role": { "type": "string", "enum": ["rest-api", "grpc-api", "worker", "metrics", "scheduler"] },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "components": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Subset of top-level components active in this service."
+        },
+        "resources": {
+          "oneOf": [
+            { "type": "string", "const": "all" },
+            { "type": "array", "items": { "type": "string" } }
+          ]
+        },
+        "triggers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/serviceTrigger" }
+        }
+      }
+    },
+    "serviceTrigger": {
+      "type": "object",
+      "required": ["event", "handler"],
+      "additionalProperties": false,
+      "properties": {
+        "event":   { "type": "string" },
+        "handler": { "type": "string", "description": "Handler name dispatched to by the generated worker loop." }
+      }
+    },
+    "eventsConfig": {
+      "type": "object",
+      "required": ["backend"],
+      "additionalProperties": false,
+      "properties": {
+        "backend":         { "type": "string", "enum": ["kafka", "nats", "redis-streams", "pg-notify"] },
+        "broker":          { "$ref": "#/$defs/eventsBroker" },
+        "schema_registry": { "$ref": "#/$defs/eventsSchemaRegistry" },
+        "topics":          { "type": "array", "items": { "$ref": "#/$defs/eventTopic" } },
+        "producers":       { "type": "array", "items": { "$ref": "#/$defs/eventProducer" } },
+        "consumers":       { "type": "array", "items": { "$ref": "#/$defs/eventConsumer" } }
+      }
+    },
+    "eventsBroker": {
+      "type": "object",
+      "required": ["url"],
+      "additionalProperties": false,
+      "properties": { "url": { "type": "string" } }
+    },
+    "eventsSchemaRegistry": {
+      "type": "object",
+      "required": ["url", "format"],
+      "additionalProperties": false,
+      "properties": {
+        "url":    { "type": "string" },
+        "format": { "type": "string", "enum": ["avro", "json", "protobuf"] }
+      }
+    },
+    "eventTopic": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name":            { "type": "string", "pattern": "^[a-z][a-z0-9.-]*$" },
+        "partitions":      { "type": "integer", "minimum": 1, "default": 1 },
+        "replication":     { "type": "integer", "minimum": 1, "default": 1 },
+        "retention_hours": { "type": "integer", "minimum": 1 },
+        "schema":          { "type": "string" },
+        "role":            { "type": "string", "enum": ["standard", "dead-letter-queue"], "default": "standard" },
+        "source":          { "type": "string", "description": "Source topic name for DLQ topics." }
+      }
+    },
+    "eventProducer": {
+      "type": "object",
+      "required": ["service", "topics"],
+      "additionalProperties": false,
+      "properties": {
+        "service": { "type": "string" },
+        "topics":  { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "eventConsumer": {
+      "type": "object",
+      "required": ["service", "topics"],
+      "additionalProperties": false,
+      "properties": {
+        "service":     { "type": "string" },
+        "topics":      { "type": "array", "items": { "type": "string" } },
+        "group_id":    { "type": "string" },
+        "error_topic": { "type": "string" }
+      }
+    },
+    "authzConfig": {
+      "type": "object",
+      "required": ["backend"],
+      "additionalProperties": false,
+      "properties": {
+        "backend": { "type": "string", "enum": ["spicedb", "opa", "casbin"] },
+        "spicedb": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "endpoint": { "type": "string" },
+            "token":    { "type": "string" },
+            "tls":      { "type": "boolean", "default": true }
+          }
+        },
+        "schema_file":  { "type": "string", "description": "Path to human-written SpiceDB .zed or OPA .rego schema file. Not generated." },
+        "enforcement":  { "type": "object", "additionalProperties": false, "properties": { "default": { "type": "string", "enum": ["deny", "allow"], "default": "deny" } } },
+        "policies":     { "type": "array", "items": { "$ref": "#/$defs/authzPolicy" } }
+      }
+    },
+    "authzPolicy": {
+      "type": "object",
+      "required": ["resource", "operations"],
+      "additionalProperties": false,
+      "properties": {
+        "resource":     { "type": "string" },
+        "subject_type": { "type": "string", "default": "user" },
+        "object_type":  { "type": "string" },
+        "operations":   { "type": "object", "additionalProperties": { "type": "string" }, "description": "Maps CRUD operation names to authz permission strings." }
+      }
+    },
+    "stateConfig": {
+      "type": "object",
+      "required": ["backends"],
+      "additionalProperties": false,
+      "properties": {
+        "backends": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/stateBackend" } },
+        "uses":     { "type": "array", "items": { "$ref": "#/$defs/stateUse" } }
+      }
+    },
+    "stateBackend": {
+      "type": "object",
+      "required": ["name", "type", "url"],
+      "additionalProperties": false,
+      "properties": {
+        "name":        { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "type":        { "type": "string", "enum": ["redis"] },
+        "url":         { "type": "string" },
+        "default_ttl": { "type": "integer", "minimum": 1, "description": "Default TTL in seconds for cache entries." }
+      }
+    },
+    "stateUse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cache":              { "type": "string", "description": "Backend name for response caching." },
+        "rate_limit":         { "type": "string", "description": "Backend name for rate limiting." },
+        "distributed_lock":   { "type": "string", "description": "Backend name for distributed locking." },
+        "resources":          { "oneOf": [{ "type": "string", "const": "all" }, { "type": "array", "items": { "type": "string" } }] },
+        "routes":             { "type": "array", "items": { "type": "string" } },
+        "requests_per_second":{ "type": "integer", "minimum": 1 },
+        "burst":              { "type": "integer", "minimum": 1 },
+        "operations":         { "type": "array", "items": { "type": "string", "enum": ["create", "read", "update", "delete", "list"] } }
+      }
+    },
+    "temporalConfig": {
+      "type": "object",
+      "required": ["enabled"],
+      "additionalProperties": false,
+      "properties": {
+        "enabled":          { "type": "boolean" },
+        "valid_time":       { "type": "object", "additionalProperties": false, "properties": { "field": { "type": "string" } } },
+        "transaction_time": { "type": "object", "additionalProperties": false, "properties": { "auto": { "type": "boolean", "default": true } } },
+        "resources":        { "oneOf": [{ "type": "string", "const": "all" }, { "type": "array", "items": { "type": "string" } }] },
+        "query_api": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "as_of_param":   { "type": "string", "default": "as_of" },
+            "between_param": { "type": "string", "default": "between" }
+          }
+        }
+      }
+    },
+    "tenancyConfig": {
+      "type": "object",
+      "required": ["model"],
+      "additionalProperties": false,
+      "properties": {
+        "model": { "type": "string", "enum": ["schema", "row", "database"] },
+        "tenant_identifier": {
+          "type": "object",
+          "required": ["source"],
+          "additionalProperties": false,
+          "properties": {
+            "source": { "type": "string", "enum": ["jwt_claim", "header", "subdomain"] },
+            "claim":  { "type": "string" },
+            "header": { "type": "string" }
+          }
+        },
+        "resources":    { "oneOf": [{ "type": "string", "const": "all" }, { "type": "array", "items": { "type": "string" } }] },
+        "admin_bypass": { "type": "object", "additionalProperties": false, "properties": { "role": { "type": "string" } } }
+      }
+    },
+    "hook": {
+      "type": "object",
+      "required": ["name", "point", "implementation"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "description": "Unique hook name in kebab-case."
+        },
+        "point": {
+          "type": "string",
+          "enum": ["pre-handler", "post-handler", "pre-db", "post-db", "pre-publish", "post-consume"],
+          "description": "Lifecycle point for injection. See docs/HOOKS_CONTRACT.md for function signatures."
+        },
+        "service": { "type": "string", "description": "Service name (from services[]) this hook applies to. Omit for single-service apps." },
+        "routes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "HTTP route patterns (pre/post-handler only). Omit to apply to all routes."
+        },
+        "topic":  { "type": "string", "description": "Event topic name (pre-publish/post-consume only)." },
+        "resources": {
+          "oneOf": [
+            { "type": "string", "const": "all" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Resource names (pre-db/post-db only)."
+        },
+        "implementation": {
+          "type": "string",
+          "pattern": "^hooks/[a-z][a-z0-9_/]*\\.go$",
+          "description": "Path to the human-written Go file, relative to repo root. Must be under hooks/. The compiler copies this file unchanged and generates a typed call site."
         }
       }
     }
