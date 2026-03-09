@@ -177,3 +177,95 @@ func (r *Resolver) verifyAuditHash(name, version, expectedHex string) error {
 	}
 	return nil
 }
+
+// --------------------------------------------------------------------------
+// VerifyComponents — standalone integrity check (used by forge verify)
+// --------------------------------------------------------------------------
+
+// VerifyResult is the outcome of verifying a single component's audit hash.
+type VerifyResult struct {
+	Name    string
+	Version string
+	Hash    string // Computed SHA-256 hex (empty on error)
+	Error   error
+}
+
+// VerifyComponentMap checks each name→version entry against the registry and
+// computes the audit hash of the component source at sourceDir/name/version.
+// Results are returned in alphabetical order by component name.
+func VerifyComponentMap(components map[string]string, registry Registry, sourceDir string) []VerifyResult {
+	// Collect names for deterministic ordering.
+	names := make([]string, 0, len(components))
+	for name := range components {
+		names = append(names, name)
+	}
+	// Sort for deterministic output.
+	sortStrings(names)
+
+	results := make([]VerifyResult, 0, len(names))
+	for _, name := range names {
+		version := components[name]
+		r := VerifyResult{Name: name, Version: version}
+
+		// Step 1: Look up in registry.
+		entry, err := registry.Lookup(name, version)
+		if err != nil {
+			r.Error = fmt.Errorf("registry lookup: %w", err)
+			results = append(results, r)
+			continue
+		}
+
+		// Step 2: Compute hash of local source.
+		componentDir := filepath.Join(sourceDir, name, version)
+		actualHex, err := hashDir(componentDir)
+		if err != nil {
+			r.Error = fmt.Errorf("hashing source at %q: %w", componentDir, err)
+			results = append(results, r)
+			continue
+		}
+		r.Hash = actualHex
+
+		// Step 3: Compare.
+		if entry.AuditHash != "" && actualHex != entry.AuditHash {
+			r.Error = fmt.Errorf("hash mismatch: registry=%q actual=%q", entry.AuditHash, actualHex)
+		}
+
+		results = append(results, r)
+	}
+	return results
+}
+
+// hashDir computes a SHA-256 hash over all files in dir (recursive, sorted by path).
+func hashDir(dir string) (string, error) {
+	h := sha256.New()
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		f, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		if _, err := io.Copy(h, f); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// sortStrings sorts a string slice in-place (avoids importing sort in callers).
+func sortStrings(ss []string) {
+	for i := 1; i < len(ss); i++ {
+		for j := i; j > 0 && ss[j] < ss[j-1]; j-- {
+			ss[j], ss[j-1] = ss[j-1], ss[j]
+		}
+	}
+}

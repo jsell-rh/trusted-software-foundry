@@ -41,6 +41,7 @@ All generated code is assembled from pre-audited, version-pinned trusted compone
 	cmd.AddCommand(diffCmd())
 	cmd.AddCommand(deployCmd())
 	cmd.AddCommand(sbomCmd())
+	cmd.AddCommand(verifyCmd())
 	return cmd
 }
 
