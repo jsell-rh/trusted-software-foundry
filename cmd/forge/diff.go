@@ -113,7 +113,303 @@ func diffSpecs(old, new *spec.IRSpec) []string {
 		diffs = append(diffs, diffResource(name, oldR, newR)...)
 	}
 
+	// Tenancy
+	diffs = append(diffs, diffTenancy(old.Tenancy, new.Tenancy)...)
+
+	// Authz
+	diffs = append(diffs, diffAuthz(old.Authz, new.Authz)...)
+
+	// Graph
+	diffs = append(diffs, diffGraph(old.Graph, new.Graph)...)
+
+	// Services
+	diffs = append(diffs, diffServices(old.Services, new.Services)...)
+
+	// Events
+	diffs = append(diffs, diffEvents(old.Events, new.Events)...)
+
+	// State
+	diffs = append(diffs, diffState(old.State, new.State)...)
+
+	// Workflows
+	diffs = append(diffs, diffWorkflows(old.Workflows, new.Workflows)...)
+
+	// Hooks
+	diffs = append(diffs, diffHooks(old.Hooks, new.Hooks)...)
+
 	sort.Strings(diffs)
+	return diffs
+}
+
+func diffTenancy(old, new *spec.IRTenancyConfig) []string {
+	if old == nil && new == nil {
+		return nil
+	}
+	var diffs []string
+	if old == nil {
+		diffs = append(diffs, "+ tenancy: added (strategy="+new.Strategy+")")
+		return diffs
+	}
+	if new == nil {
+		diffs = append(diffs, "- tenancy: removed")
+		return diffs
+	}
+	if old.Strategy != new.Strategy {
+		diffs = append(diffs, fmt.Sprintf("~ tenancy.strategy: %s → %s", old.Strategy, new.Strategy))
+	}
+	if old.Field != new.Field {
+		diffs = append(diffs, fmt.Sprintf("~ tenancy.field: %s → %s", old.Field, new.Field))
+	}
+	return diffs
+}
+
+func diffAuthz(old, new *spec.IRAuthzConfig) []string {
+	if old == nil && new == nil {
+		return nil
+	}
+	var diffs []string
+	if old == nil {
+		diffs = append(diffs, "+ authz: added (backend="+new.Backend+")")
+		return diffs
+	}
+	if new == nil {
+		diffs = append(diffs, "- authz: removed")
+		return diffs
+	}
+	if old.Backend != new.Backend {
+		diffs = append(diffs, fmt.Sprintf("~ authz.backend: %s → %s", old.Backend, new.Backend))
+	}
+	// Relations
+	oldRels := map[string]bool{}
+	for _, r := range old.Relations {
+		oldRels[r.Resource+"."+r.Relation+"→"+r.Subject] = true
+	}
+	for _, r := range new.Relations {
+		key := r.Resource + "." + r.Relation + "→" + r.Subject
+		if !oldRels[key] {
+			diffs = append(diffs, fmt.Sprintf("+ authz.relation: %s.%s → %s", r.Resource, r.Relation, r.Subject))
+		}
+	}
+	newRels := map[string]bool{}
+	for _, r := range new.Relations {
+		newRels[r.Resource+"."+r.Relation+"→"+r.Subject] = true
+	}
+	for _, r := range old.Relations {
+		key := r.Resource + "." + r.Relation + "→" + r.Subject
+		if !newRels[key] {
+			diffs = append(diffs, fmt.Sprintf("- authz.relation: %s.%s → %s", r.Resource, r.Relation, r.Subject))
+		}
+	}
+	return diffs
+}
+
+func diffGraph(old, new *spec.IRGraphConfig) []string {
+	if old == nil && new == nil {
+		return nil
+	}
+	var diffs []string
+	if old == nil {
+		diffs = append(diffs, "+ graph: added (backend="+new.Backend+")")
+		return diffs
+	}
+	if new == nil {
+		diffs = append(diffs, "- graph: removed")
+		return diffs
+	}
+	if old.Backend != new.Backend {
+		diffs = append(diffs, fmt.Sprintf("~ graph.backend: %s → %s", old.Backend, new.Backend))
+	}
+	// Node types
+	oldNodes := map[string]bool{}
+	for _, n := range old.NodeTypes {
+		oldNodes[n.Label] = true
+	}
+	for _, n := range new.NodeTypes {
+		if !oldNodes[n.Label] {
+			diffs = append(diffs, fmt.Sprintf("+ graph.node: %s (added)", n.Label))
+		}
+	}
+	newNodes := map[string]bool{}
+	for _, n := range new.NodeTypes {
+		newNodes[n.Label] = true
+	}
+	for _, n := range old.NodeTypes {
+		if !newNodes[n.Label] {
+			diffs = append(diffs, fmt.Sprintf("- graph.node: %s (removed)", n.Label))
+		}
+	}
+	return diffs
+}
+
+func diffServices(old, new []spec.IRService) []string {
+	var diffs []string
+	oldMap := map[string]spec.IRService{}
+	for _, s := range old {
+		oldMap[s.Name] = s
+	}
+	newMap := map[string]spec.IRService{}
+	for _, s := range new {
+		newMap[s.Name] = s
+	}
+	for name := range oldMap {
+		if _, ok := newMap[name]; !ok {
+			diffs = append(diffs, fmt.Sprintf("- service: %s (removed)", name))
+		}
+	}
+	for name, s := range newMap {
+		if _, ok := oldMap[name]; !ok {
+			diffs = append(diffs, fmt.Sprintf("+ service: %s role:%s port:%d (added)", name, s.Role, s.Port))
+		}
+	}
+	for name, os := range oldMap {
+		ns, ok := newMap[name]
+		if !ok {
+			continue
+		}
+		if os.Role != ns.Role {
+			diffs = append(diffs, fmt.Sprintf("~ service %s role: %s → %s", name, os.Role, ns.Role))
+		}
+		if os.Port != ns.Port {
+			diffs = append(diffs, fmt.Sprintf("~ service %s port: %d → %d", name, os.Port, ns.Port))
+		}
+	}
+	return diffs
+}
+
+func diffEvents(old, new *spec.IREventsConfig) []string {
+	if old == nil && new == nil {
+		return nil
+	}
+	var diffs []string
+	if old == nil {
+		diffs = append(diffs, "+ events: added (backend="+new.Backend+")")
+		return diffs
+	}
+	if new == nil {
+		diffs = append(diffs, "- events: removed")
+		return diffs
+	}
+	oldTopics := map[string]bool{}
+	for _, t := range old.Topics {
+		oldTopics[t.Name] = true
+	}
+	for _, t := range new.Topics {
+		if !oldTopics[t.Name] {
+			diffs = append(diffs, fmt.Sprintf("+ events.topic: %s (added)", t.Name))
+		}
+	}
+	newTopics := map[string]bool{}
+	for _, t := range new.Topics {
+		newTopics[t.Name] = true
+	}
+	for _, t := range old.Topics {
+		if !newTopics[t.Name] {
+			diffs = append(diffs, fmt.Sprintf("- events.topic: %s (removed)", t.Name))
+		}
+	}
+	return diffs
+}
+
+func diffState(old, new *spec.IRStateConfig) []string {
+	if old == nil && new == nil {
+		return nil
+	}
+	var diffs []string
+	if old == nil {
+		diffs = append(diffs, "+ state: added (backend="+new.Backend+")")
+		return diffs
+	}
+	if new == nil {
+		diffs = append(diffs, "- state: removed")
+		return diffs
+	}
+	oldKeys := map[string]bool{}
+	for _, k := range old.Keys {
+		oldKeys[k.Name] = true
+	}
+	for _, k := range new.Keys {
+		if !oldKeys[k.Name] {
+			diffs = append(diffs, fmt.Sprintf("+ state.key: %s (added, strategy=%s)", k.Name, k.Strategy))
+		}
+	}
+	newKeys := map[string]bool{}
+	for _, k := range new.Keys {
+		newKeys[k.Name] = true
+	}
+	for _, k := range old.Keys {
+		if !newKeys[k.Name] {
+			diffs = append(diffs, fmt.Sprintf("- state.key: %s (removed)", k.Name))
+		}
+	}
+	return diffs
+}
+
+func diffWorkflows(old, new *spec.IRWorkflowsConfig) []string {
+	if old == nil && new == nil {
+		return nil
+	}
+	var diffs []string
+	if old == nil {
+		diffs = append(diffs, "+ workflows: added (namespace="+new.Namespace+")")
+		return diffs
+	}
+	if new == nil {
+		diffs = append(diffs, "- workflows: removed")
+		return diffs
+	}
+	if old.Namespace != new.Namespace {
+		diffs = append(diffs, fmt.Sprintf("~ workflows.namespace: %s → %s", old.Namespace, new.Namespace))
+	}
+	oldWFs := map[string]bool{}
+	for _, w := range old.Workflows {
+		oldWFs[w.Name] = true
+	}
+	for _, w := range new.Workflows {
+		if !oldWFs[w.Name] {
+			diffs = append(diffs, fmt.Sprintf("+ workflow: %s (added)", w.Name))
+		}
+	}
+	newWFs := map[string]bool{}
+	for _, w := range new.Workflows {
+		newWFs[w.Name] = true
+	}
+	for _, w := range old.Workflows {
+		if !newWFs[w.Name] {
+			diffs = append(diffs, fmt.Sprintf("- workflow: %s (removed)", w.Name))
+		}
+	}
+	return diffs
+}
+
+func diffHooks(old, new []spec.IRHook) []string {
+	var diffs []string
+	oldMap := map[string]spec.IRHook{}
+	for _, h := range old {
+		oldMap[h.Name] = h
+	}
+	newMap := map[string]spec.IRHook{}
+	for _, h := range new {
+		newMap[h.Name] = h
+	}
+	for name := range oldMap {
+		if _, ok := newMap[name]; !ok {
+			diffs = append(diffs, fmt.Sprintf("- hook: %s (removed)", name))
+		}
+	}
+	for name, h := range newMap {
+		if _, ok := oldMap[name]; !ok {
+			diffs = append(diffs, fmt.Sprintf("+ hook: %s point:%s (added)", name, h.Point))
+		}
+	}
+	for name, oh := range oldMap {
+		nh, ok := newMap[name]
+		if !ok {
+			continue
+		}
+		if oh.Point != nh.Point {
+			diffs = append(diffs, fmt.Sprintf("~ hook %s point: %s → %s", name, oh.Point, nh.Point))
+		}
+	}
 	return diffs
 }
 

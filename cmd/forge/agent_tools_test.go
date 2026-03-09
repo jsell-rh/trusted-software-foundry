@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/jsell-rh/trusted-software-foundry/tsc/compiler"
 )
 
 // TestScaffold_Basic verifies that scaffold generates a valid spec with the requested resources.
@@ -192,6 +194,218 @@ func TestExplain_FleetManager(t *testing.T) {
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("explain output missing %q\nOutput:\n%s", want, out)
+		}
+	}
+}
+
+// TestDiffSpecs_AdvancedBlocks verifies that diffSpecs detects changes in
+// tenancy, authz, graph, services, events, state, workflows, and hooks.
+func TestDiffSpecs_AdvancedBlocks(t *testing.T) {
+	const baseYAML = `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: diff-test-app
+  version: 1.0.0
+components:
+  foundry-http:           v1.0.0
+  foundry-postgres:       v1.0.0
+  foundry-auth-spicedb:   v1.0.0
+  foundry-graph-age:      v1.0.0
+  foundry-kafka:          v1.0.0
+  foundry-temporal:       v1.0.0
+  foundry-tenancy:        v1.0.0
+  foundry-redis:          v1.0.0
+resources:
+  - name: Item
+    plural: items
+    fields:
+      - name: id
+        type: uuid
+        required: true
+    operations: [create, read]
+    events: false
+database:
+  type: postgres
+  migrations: auto
+tenancy:
+  field: org_id
+  strategy: row
+authz:
+  backend: spicedb
+  relations:
+    - resource: Item
+      relation: owner
+      subject: User
+graph:
+  backend: age
+  graph_name: app_graph
+  node_types:
+    - label: Item
+      id_field: id
+      properties: [name]
+  edge_types: []
+services:
+  - name: api
+    role: gateway
+    port: 8080
+events:
+  backend: kafka
+  topics:
+    - name: app.items
+      partitions: 3
+state:
+  backend: redis
+  keys:
+    - name: item_lock
+      strategy: distributed_lock
+      ttl_seconds: 60
+workflows:
+  namespace: app-ns
+  worker_queue: app-queue
+  workflows:
+    - name: ProcessItem
+      trigger: create
+hooks:
+  - name: audit
+    point: pre-db
+    implementation: hooks/audit.go
+`
+
+	const changedYAML = `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: diff-test-app
+  version: 1.1.0
+components:
+  foundry-http:           v1.0.0
+  foundry-postgres:       v1.0.0
+  foundry-auth-spicedb:   v1.0.0
+  foundry-graph-age:      v1.0.0
+  foundry-kafka:          v1.0.0
+  foundry-temporal:       v1.0.0
+  foundry-tenancy:        v1.0.0
+  foundry-redis:          v1.0.0
+resources:
+  - name: Item
+    plural: items
+    fields:
+      - name: id
+        type: uuid
+        required: true
+    operations: [create, read]
+    events: false
+database:
+  type: postgres
+  migrations: auto
+tenancy:
+  field: tenant_id
+  strategy: row
+authz:
+  backend: spicedb
+  relations:
+    - resource: Item
+      relation: owner
+      subject: User
+    - resource: Item
+      relation: viewer
+      subject: Organization
+graph:
+  backend: age
+  graph_name: app_graph
+  node_types:
+    - label: Item
+      id_field: id
+      properties: [name]
+    - label: Tag
+      id_field: id
+      properties: [label]
+  edge_types: []
+services:
+  - name: api
+    role: gateway
+    port: 8080
+  - name: worker
+    role: worker
+    port: 8081
+events:
+  backend: kafka
+  topics:
+    - name: app.items
+      partitions: 3
+    - name: app.tags
+      partitions: 1
+state:
+  backend: redis
+  keys:
+    - name: item_lock
+      strategy: distributed_lock
+      ttl_seconds: 60
+    - name: tag_cache
+      strategy: cache
+      ttl_seconds: 30
+workflows:
+  namespace: app-ns-v2
+  worker_queue: app-queue
+  workflows:
+    - name: ProcessItem
+      trigger: create
+    - name: ProcessTag
+      trigger: create
+hooks:
+  - name: audit
+    point: pre-db
+    implementation: hooks/audit.go
+  - name: notify
+    point: post-db
+    implementation: hooks/notify.go
+`
+
+	dir := t.TempDir()
+	basePath := filepath.Join(dir, "base.yaml")
+	changedPath := filepath.Join(dir, "changed.yaml")
+	if err := os.WriteFile(basePath, []byte(baseYAML), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(changedPath, []byte(changedYAML), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	baseIR, err := compiler.Parse(basePath)
+	if err != nil {
+		t.Fatalf("parsing base spec: %v", err)
+	}
+	changedIR, err := compiler.Parse(changedPath)
+	if err != nil {
+		t.Fatalf("parsing changed spec: %v", err)
+	}
+
+	diffs := diffSpecs(baseIR, changedIR)
+	diffStr := strings.Join(diffs, "\n")
+
+	for _, want := range []string{
+		// version bump
+		"~ version: 1.0.0 → 1.1.0",
+		// tenancy field change
+		"~ tenancy.field: org_id → tenant_id",
+		// new authz relation
+		"+ authz.relation: Item.viewer → Organization",
+		// new graph node
+		"+ graph.node: Tag (added)",
+		// new service
+		"+ service: worker",
+		// new event topic
+		"+ events.topic: app.tags (added)",
+		// new state key
+		"+ state.key: tag_cache (added",
+		// workflow namespace change
+		"~ workflows.namespace: app-ns → app-ns-v2",
+		// new workflow
+		"+ workflow: ProcessTag (added)",
+		// new hook
+		"+ hook: notify",
+	} {
+		if !strings.Contains(diffStr, want) {
+			t.Errorf("diffSpecs missing %q\nFull diff:\n%s", want, diffStr)
 		}
 	}
 }

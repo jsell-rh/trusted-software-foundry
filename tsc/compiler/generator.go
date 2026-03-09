@@ -24,6 +24,7 @@ import (
 type Generator struct {
 	outputDir   string
 	rhtexAIPath string // local filesystem path to trusted-software-foundry checkout (for go.mod replace)
+	specDir     string // directory containing the spec file; used to resolve relative hook paths
 }
 
 // NewGenerator creates a Generator that writes into outputDir.
@@ -32,6 +33,12 @@ type Generator struct {
 // Pass an empty string to omit the replace directive (for published modules).
 func NewGenerator(outputDir, rhtexAIPath string) *Generator {
 	return &Generator{outputDir: outputDir, rhtexAIPath: rhtexAIPath}
+}
+
+// newGeneratorWithSpecDir is like NewGenerator but also records the directory
+// that contains the spec file so that relative hook paths can be resolved correctly.
+func newGeneratorWithSpecDir(outputDir, rhtexAIPath, specDir string) *Generator {
+	return &Generator{outputDir: outputDir, rhtexAIPath: rhtexAIPath, specDir: specDir}
 }
 
 // componentPriority defines the registration order for trusted components.
@@ -102,7 +109,7 @@ func (g *Generator) Generate(ir *spec.IRSpec, components []ResolvedComponent) er
 	if err := g.writeHookRegistry(ir, appModule); err != nil {
 		return fmt.Errorf("generating hook_registry.go: %w", err)
 	}
-	if err := copyHookFiles(ir, g.outputDir); err != nil {
+	if err := copyHookFiles(ir, g.outputDir, g.specDir); err != nil {
 		return fmt.Errorf("copying hook files: %w", err)
 	}
 	if err := g.writeAuthzSchemaStub(ir); err != nil {
