@@ -296,6 +296,165 @@ func TestE2E_HookFiles_CopiedRelativeToSpec(t *testing.T) {
 	}
 }
 
+// complexSpecYAML is a fleet-manager-like spec exercising all complex IR blocks:
+// workflows, events (kafka), state (redis), graph (age), and tenancy.
+const complexSpecYAML = `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: complex-app
+  version: 1.0.0
+components:
+  foundry-http:       v1.0.0
+  foundry-postgres:   v1.0.0
+  foundry-temporal:   v1.0.0
+  foundry-kafka:      v1.0.0
+  foundry-redis:      v1.0.0
+  foundry-graph-age:  v1.0.0
+  foundry-tenancy:    v1.0.0
+  foundry-health:     v1.0.0
+  foundry-events:     v1.0.0
+resources:
+  - name: Job
+    plural: jobs
+    fields:
+      - name: id
+        type: uuid
+        required: true
+      - name: name
+        type: string
+        required: true
+    operations: [create, read, list]
+    events: true
+database:
+  type: postgres
+  migrations: auto
+tenancy:
+  field: org_id
+  strategy: row
+  header: X-Organization-Id
+workflows:
+  namespace: complex-app
+  worker_queue: job-queue
+  workflows:
+    - name: RunJob
+      resource: Job
+      trigger: create
+      activities: [PrepareJob, ExecuteJob, FinalizeJob]
+events:
+  backend: kafka
+  broker_url: ${KAFKA_BROKER_URL}
+  topics:
+    - name: complex.job.events
+      resource: Job
+      operations: [create, update]
+      partitions: 6
+      retention_hours: 168
+state:
+  backend: redis
+  url: ${REDIS_URL}
+  keys:
+    - name: job_lock
+      resource: Job
+      strategy: distributed_lock
+      ttl_seconds: 1800
+graph:
+  backend: age
+  graph_name: job_graph
+  node_types:
+    - label: Job
+      id_field: id
+      properties: [name]
+    - label: Worker
+      id_field: id
+      properties: [name]
+  edge_types:
+    - label: ASSIGNED_TO
+      from: Job
+      to: Worker
+services:
+  - name: api
+    role: gateway
+    components: [foundry-http, foundry-postgres, foundry-tenancy, foundry-health]
+    port: 8000
+  - name: worker
+    role: worker
+    components: [foundry-postgres, foundry-temporal, foundry-kafka, foundry-redis, foundry-health]
+    port: 8001
+  - name: indexer
+    role: worker
+    components: [foundry-postgres, foundry-graph-age, foundry-health]
+    port: 8002
+`
+
+// TestE2E_ComplexConfigInjection verifies that complex IR blocks (workflows, events,
+// state, graph, tenancy) generate component configs in each service main file.
+func TestE2E_ComplexConfigInjection(t *testing.T) {
+	specFile := filepath.Join(t.TempDir(), "app.foundry.yaml")
+	if err := os.WriteFile(specFile, []byte(complexSpecYAML), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	outDir := t.TempDir()
+	c := compiler.New(compiler.NewStubRegistry(), "", "")
+	if err := c.Compile(specFile, outDir); err != nil {
+		t.Fatalf("Compile() failed: %v", err)
+	}
+
+	// api service: has tenancy config only (no temporal/kafka/redis/graph)
+	apiMain, err := os.ReadFile(filepath.Join(outDir, "main_api.go"))
+	if err != nil {
+		t.Fatalf("main_api.go not generated: %v", err)
+	}
+	apiStr := string(apiMain)
+	if !strings.Contains(apiStr, `configs["foundry-tenancy"]`) {
+		t.Error(`main_api.go missing configs["foundry-tenancy"]`)
+	}
+	if strings.Contains(apiStr, `configs["foundry-temporal"]`) {
+		t.Error(`main_api.go must NOT contain configs["foundry-temporal"] (not in api service)`)
+	}
+
+	// worker service: has temporal, kafka, redis configs
+	workerMain, err := os.ReadFile(filepath.Join(outDir, "main_worker.go"))
+	if err != nil {
+		t.Fatalf("main_worker.go not generated: %v", err)
+	}
+	workerStr := string(workerMain)
+	for _, want := range []string{
+		`configs["foundry-temporal"]`,
+		`"namespace": "complex-app"`,
+		`"worker_queue": "job-queue"`,
+		`"RunJob"`,
+		`configs["foundry-kafka"]`,
+		`os.Getenv("KAFKA_BROKER_URL")`,
+		`"complex.job.events"`,
+		`configs["foundry-redis"]`,
+		`os.Getenv("REDIS_URL")`,
+		`"job_lock"`,
+	} {
+		if !strings.Contains(workerStr, want) {
+			t.Errorf("main_worker.go missing %q\nContent:\n%s", want, workerStr)
+		}
+	}
+
+	// indexer service: has graph-age config
+	indexerMain, err := os.ReadFile(filepath.Join(outDir, "main_indexer.go"))
+	if err != nil {
+		t.Fatalf("main_indexer.go not generated: %v", err)
+	}
+	indexerStr := string(indexerMain)
+	for _, want := range []string{
+		`configs["foundry-graph-age"]`,
+		`"graph_name": "job_graph"`,
+		`"Job"`,
+		`"Worker"`,
+		`"ASSIGNED_TO"`,
+	} {
+		if !strings.Contains(indexerStr, want) {
+			t.Errorf("main_indexer.go missing %q\nContent:\n%s", want, indexerStr)
+		}
+	}
+}
+
 // TestE2E_HooksCodegen verifies that a spec with a hooks: block generates
 // foundry/types.go and hook_registry.go with the correct type-safe call sites.
 func TestE2E_HooksCodegen(t *testing.T) {
