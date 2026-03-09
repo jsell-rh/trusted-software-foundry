@@ -412,6 +412,109 @@ hooks:
 	}
 }
 
+// --------------------------------------------------------------------------
+// Scaffold round-trip tests
+// --------------------------------------------------------------------------
+
+// TestScaffold_ParsesCleanly verifies that every scaffold variant produces
+// a spec that parses and validates without errors. This is the key regression
+// guard against renderScaffold drifting out of sync with the validator.
+func TestScaffold_ParsesCleanly(t *testing.T) {
+	cases := []struct {
+		name      string
+		appName   string
+		version   string
+		resources []string
+	}{
+		{"default-item", "my-service", "1.0.0", nil},
+		{"single-resource", "invoice-api", "2.3.4", []string{"Invoice"}},
+		{"multi-resource", "shop-api", "1.0.0", []string{"Product", "Order", "Customer"}},
+		{"resource-with-numbers", "v2-api", "1.0.0", []string{"Widget"}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			spec := renderScaffold(tc.appName, tc.version, tc.resources)
+			tmp := filepath.Join(t.TempDir(), "app.foundry.yaml")
+			if err := os.WriteFile(tmp, []byte(spec), 0644); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := compiler.Parse(tmp); err != nil {
+				t.Errorf("renderScaffold(%q, %q, %v) produced a spec that fails validation:\n%v\nSpec:\n%s",
+					tc.appName, tc.version, tc.resources, err, spec)
+			}
+		})
+	}
+}
+
+// TestScaffold_CompileSucceeds verifies that the scaffolded spec compiles
+// end-to-end with the StubRegistry (no component resolution errors, valid
+// main.go and migrations generated). This is the full pipeline smoke test.
+func TestScaffold_CompileSucceeds(t *testing.T) {
+	spec := renderScaffold("compiled-app", "1.0.0", []string{"Widget", "Report"})
+	specFile := filepath.Join(t.TempDir(), "app.foundry.yaml")
+	if err := os.WriteFile(specFile, []byte(spec), 0644); err != nil {
+		t.Fatal(err)
+	}
+	outDir := t.TempDir()
+	c := compiler.New(compiler.NewStubRegistry(), "", "")
+	if err := c.Compile(specFile, outDir); err != nil {
+		t.Fatalf("Compile(scaffolded spec) failed: %v\nSpec:\n%s", err, spec)
+	}
+
+	// Assert the generated main.go exists and references the two resources.
+	mainGo, err := os.ReadFile(filepath.Join(outDir, "main.go"))
+	if err != nil {
+		t.Fatalf("main.go not generated: %v", err)
+	}
+	for _, res := range []string{"Widget", "Report"} {
+		if !strings.Contains(string(mainGo), `"`+res+`"`) {
+			t.Errorf("main.go missing resource %q", res)
+		}
+	}
+
+	// Assert migrations were generated — one per resource.
+	entries, err := os.ReadDir(filepath.Join(outDir, "migrations"))
+	if err != nil {
+		t.Fatalf("migrations/ not generated: %v", err)
+	}
+	if len(entries) != 2 {
+		t.Errorf("expected 2 migration files (Widget + Report), got %d", len(entries))
+	}
+}
+
+// TestDiffSpecs_IdenticalScaffolds verifies that diffSpecs returns no changes
+// when comparing two specs produced from the same scaffold arguments.
+func TestDiffSpecs_IdenticalScaffolds(t *testing.T) {
+	args := []string{"Alpha", "Beta"}
+	yaml1 := renderScaffold("my-app", "1.0.0", args)
+	yaml2 := renderScaffold("my-app", "1.0.0", args)
+
+	dir := t.TempDir()
+	p1 := filepath.Join(dir, "v1.yaml")
+	p2 := filepath.Join(dir, "v2.yaml")
+	if err := os.WriteFile(p1, []byte(yaml1), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(p2, []byte(yaml2), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	ir1, err := compiler.Parse(p1)
+	if err != nil {
+		t.Fatalf("Parse(v1): %v", err)
+	}
+	ir2, err := compiler.Parse(p2)
+	if err != nil {
+		t.Fatalf("Parse(v2): %v", err)
+	}
+
+	diffs := diffSpecs(ir1, ir2)
+	if len(diffs) != 0 {
+		t.Errorf("expected zero diffs for identical scaffolds, got:\n%s", strings.Join(diffs, "\n"))
+	}
+}
+
 // TestDiffSpecs_ResourceAdded verifies that a new resource is detected.
 func TestDiffSpecs_ResourceAdded(t *testing.T) {
 	// Write two minimal valid specs to temp files and compare.
