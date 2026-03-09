@@ -148,6 +148,113 @@ hooks:
     implementation: hooks/enrich_response.go
 `
 
+const authzYAML = `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: authz-app
+  version: 1.0.0
+components:
+  foundry-http:           v1.0.0
+  foundry-postgres:       v1.0.0
+  foundry-auth-spicedb:   v1.0.0
+resources:
+  - name: Document
+    plural: documents
+    fields:
+      - name: id
+        type: uuid
+        required: true
+    operations: [create, read, list]
+    events: false
+database:
+  type: postgres
+  migrations: auto
+authz:
+  backend: spicedb
+  schema_file: authz/schema.zed
+  relations:
+    - resource: Document
+      relation: owner
+      subject: User
+    - resource: Document
+      relation: viewer
+      subject: Organization
+`
+
+// TestE2E_AuthzSchemaStub verifies that a spec with an authz block generates
+// an authz/schema.zed stub file with the correct structure.
+func TestE2E_AuthzSchemaStub(t *testing.T) {
+	specFile := filepath.Join(t.TempDir(), "app.foundry.yaml")
+	if err := os.WriteFile(specFile, []byte(authzYAML), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	outDir := t.TempDir()
+	c := compiler.New(compiler.NewStubRegistry(), "", "")
+	if err := c.Compile(specFile, outDir); err != nil {
+		t.Fatalf("Compile() failed: %v", err)
+	}
+
+	// Assert: authz/schema.zed generated
+	zedPath := filepath.Join(outDir, "authz", "schema.zed")
+	zed, err := os.ReadFile(zedPath)
+	if err != nil {
+		t.Fatalf("authz/schema.zed not generated: %v", err)
+	}
+	zedStr := string(zed)
+
+	for _, want := range []string{
+		"generated stub",
+		"authz-app",
+		"definition document",
+		"definition user",
+		"definition organization",
+		"Document.owner",
+		"Document.viewer",
+	} {
+		if !strings.Contains(zedStr, want) {
+			t.Errorf("authz/schema.zed missing %q\nContent:\n%s", want, zedStr)
+		}
+	}
+}
+
+// TestE2E_AuthzSchemaStub_NoOverwrite verifies that an existing authz/schema.zed
+// is not overwritten when forge compile runs again.
+func TestE2E_AuthzSchemaStub_NoOverwrite(t *testing.T) {
+	specFile := filepath.Join(t.TempDir(), "app.foundry.yaml")
+	if err := os.WriteFile(specFile, []byte(authzYAML), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	outDir := t.TempDir()
+	c := compiler.New(compiler.NewStubRegistry(), "", "")
+
+	// First compile — generates the stub.
+	if err := c.Compile(specFile, outDir); err != nil {
+		t.Fatalf("first Compile() failed: %v", err)
+	}
+
+	// Overwrite the stub with custom content.
+	zedPath := filepath.Join(outDir, "authz", "schema.zed")
+	customContent := "// hand-written schema by an engineer\ndefinition document { relation owner: user }\n"
+	if err := os.WriteFile(zedPath, []byte(customContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Second compile — must NOT overwrite custom content.
+	if err := c.Compile(specFile, outDir); err != nil {
+		t.Fatalf("second Compile() failed: %v", err)
+	}
+
+	data, err := os.ReadFile(zedPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != customContent {
+		t.Errorf("authz/schema.zed was overwritten by second compile\ngot: %s", string(data))
+	}
+}
+
 // TestE2E_HooksCodegen verifies that a spec with a hooks: block generates
 // foundry/types.go and hook_registry.go with the correct type-safe call sites.
 func TestE2E_HooksCodegen(t *testing.T) {

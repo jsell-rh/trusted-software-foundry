@@ -105,6 +105,9 @@ func (g *Generator) Generate(ir *spec.IRSpec, components []ResolvedComponent) er
 	if err := copyHookFiles(ir, g.outputDir); err != nil {
 		return fmt.Errorf("copying hook files: %w", err)
 	}
+	if err := g.writeAuthzSchemaStub(ir); err != nil {
+		return fmt.Errorf("generating authz schema stub: %w", err)
+	}
 	return nil
 }
 

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -75,6 +77,122 @@ func TestDiffSpecs_NoChange(t *testing.T) {
 	out := renderScaffold("dino", "1.0.0", []string{"Dino"})
 	if out == "" {
 		t.Error("renderScaffold returned empty string")
+	}
+}
+
+// captureExplain runs the explainCmd against specPath and returns stdout as a string.
+func captureExplain(t *testing.T, specPath string) string {
+	t.Helper()
+
+	// Capture os.Stdout by replacing it with a pipe.
+	origStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe: %v", err)
+	}
+	os.Stdout = w
+
+	cmd := explainCmd()
+	cmd.SetArgs([]string{specPath})
+	runErr := cmd.Execute()
+
+	// Restore stdout and read captured bytes.
+	w.Close()
+	os.Stdout = origStdout
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	r.Close()
+
+	if runErr != nil {
+		t.Fatalf("explainCmd failed: %v", runErr)
+	}
+	return buf.String()
+}
+
+// TestExplain_DinosaurRegistry verifies that explain produces core sections
+// for the simple dinosaur-registry spec.
+func TestExplain_DinosaurRegistry(t *testing.T) {
+	specPath := filepath.Join("..", "..", "tsc", "examples", "dinosaur-registry", "app.foundry.yaml")
+	if _, err := os.Stat(specPath); os.IsNotExist(err) {
+		t.Skip("dinosaur-registry spec not found")
+	}
+
+	out := captureExplain(t, specPath)
+
+	for _, want := range []string{
+		"Application:",
+		"Components",
+		"Resources",
+		"API:",
+		"Auth:",
+		"Database:",
+		"Health:",
+		"Metrics:",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("explain output missing %q\nOutput:\n%s", want, out)
+		}
+	}
+}
+
+// TestExplain_FleetManager verifies that explain surfaces all 8 advanced IR blocks
+// for the comprehensive fleet-manager reference spec.
+func TestExplain_FleetManager(t *testing.T) {
+	specPath := filepath.Join("..", "..", "tsc", "examples", "fleet-manager", "app.foundry.yaml")
+	if _, err := os.Stat(specPath); os.IsNotExist(err) {
+		t.Skip("fleet-manager spec not found")
+	}
+
+	out := captureExplain(t, specPath)
+
+	for _, want := range []string{
+		// Core blocks
+		"Application: fleet-manager",
+		"Components (16)",
+		"Resources (3)",
+		// Tenancy
+		"Tenancy:",
+		"strategy=row",
+		// Authz
+		"Authz: backend=spicedb",
+		"schema=authz/schema.zed",
+		"Relations (4)",
+		"Cluster.owner",
+		// Graph
+		"Graph: backend=age",
+		"graph=fleet_topology",
+		"Nodes (3)",
+		"Edges (3)",
+		"HAS_NODE_POOL(Cluster→NodePool)",
+		// Services
+		"Services (3)",
+		"api-server",
+		"role:gateway",
+		"provisioner",
+		"graph-indexer",
+		// Events
+		"Events: backend=kafka",
+		"fleet.cluster.lifecycle",
+		"fleet.upgrade.state",
+		// State
+		"State: backend=redis",
+		"cluster_provision_lock",
+		"strategy:distributed_lock",
+		// Workflows
+		"Workflows: namespace=fleet-manager",
+		"queue=fleet-provisioning",
+		"ProvisionCluster",
+		"DeprovisionCluster",
+		// Hooks
+		"Hooks (5)",
+		"audit-logger",
+		"point:pre-db",
+		"graph-sync-consumer",
+		"topic:fleet.cluster.lifecycle",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("explain output missing %q\nOutput:\n%s", want, out)
+		}
 	}
 }
 
