@@ -308,3 +308,74 @@ func TestGenerate_FoundryTypesError(t *testing.T) {
 		t.Errorf("expected 'foundry' in error, got: %v", genErr)
 	}
 }
+
+// TestGenerate_GoModError verifies that Generate returns an error mentioning
+// "generating go.mod" when writeGoMod fails. Pre-creating a DIRECTORY named
+// "go.mod" causes os.WriteFile to fail with EISDIR while writeMainGo (which
+// writes "main.go", not "go.mod") succeeds first.
+func TestGenerate_GoModError(t *testing.T) {
+	ir, err := Parse(exampleSpecPath)
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	resolver := NewResolver(NewStubRegistry(), "")
+	components, err := resolver.ResolveAll(ir.Components)
+	if err != nil {
+		t.Fatalf("ResolveAll: %v", err)
+	}
+
+	outDir := t.TempDir()
+	// Pre-create a DIRECTORY named "go.mod" — WriteFile("go.mod") will fail (EISDIR).
+	if err := os.MkdirAll(filepath.Join(outDir, "go.mod"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	genErr := NewGenerator(outDir, "").Generate(ir, components)
+	if genErr == nil {
+		t.Fatal("expected error from Generate when go.mod is a dir, got nil")
+	}
+	if !strings.Contains(genErr.Error(), "generating go.mod") {
+		t.Errorf("expected 'generating go.mod' in error, got: %v", genErr)
+	}
+}
+
+// TestGenerate_HookRegistryError verifies that Generate returns an error
+// mentioning "generating hook_registry.go" when writeHookRegistry fails.
+// Pre-creating a DIRECTORY named "hook_registry.go" causes the WriteFile
+// to fail while all sub-functions before it (including writeFoundryTypes
+// which creates the foundry/ dir successfully) succeed.
+func TestGenerate_HookRegistryError(t *testing.T) {
+	fleetSpec := "../../tsc/examples/fleet-manager/app.foundry.yaml"
+	if _, statErr := os.Stat(fleetSpec); os.IsNotExist(statErr) {
+		t.Skip("fleet-manager example not found")
+	}
+
+	ir, err := Parse(fleetSpec)
+	if err != nil {
+		t.Fatalf("Parse fleet-manager: %v", err)
+	}
+	if len(ir.Hooks) == 0 {
+		t.Skip("fleet-manager has no hooks; test requires hooks")
+	}
+	resolver := NewResolver(NewStubRegistry(), "")
+	components, err := resolver.ResolveAll(ir.Components)
+	if err != nil {
+		t.Fatalf("ResolveAll: %v", err)
+	}
+
+	outDir := t.TempDir()
+	// Pre-create a DIRECTORY named "hook_registry.go" — WriteFile fails (EISDIR).
+	// writeFoundryTypes creates outDir/foundry/ first (succeeds); then
+	// writeHookRegistry tries to write outDir/hook_registry.go which is a dir.
+	if err := os.MkdirAll(filepath.Join(outDir, "hook_registry.go"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	genErr := NewGenerator(outDir, "").Generate(ir, components)
+	if genErr == nil {
+		t.Fatal("expected error from Generate when hook_registry.go is a dir, got nil")
+	}
+	if !strings.Contains(genErr.Error(), "hook_registry.go") {
+		t.Errorf("expected 'hook_registry.go' in error, got: %v", genErr)
+	}
+}
