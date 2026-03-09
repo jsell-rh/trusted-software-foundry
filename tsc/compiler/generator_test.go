@@ -170,6 +170,82 @@ func TestGenerateMainGo_PostgresBeforeOtherComponents(t *testing.T) {
 	}
 }
 
+func TestSortComponents_AllComponentsHavePriority(t *testing.T) {
+	// Every component in the trusted catalog must be listed in componentPriority.
+	// If a component is missing, it silently gets the same priority as all other
+	// unknowns and the ordering becomes non-deterministic between Go test runs.
+	// This test catches any future components added to the stub registry that
+	// were not also given an explicit priority.
+	allKnown := []string{
+		"foundry-postgres",
+		"foundry-auth-jwt",
+		"foundry-auth-spicedb",
+		"foundry-tenancy",
+		"foundry-http",
+		"foundry-grpc",
+		"foundry-health",
+		"foundry-metrics",
+		"foundry-events",
+		"foundry-kafka",
+		"foundry-nats",
+		"foundry-redis",
+		"foundry-redis-streams",
+		"foundry-temporal",
+		"foundry-graph-age",
+		"foundry-service-router",
+	}
+	for _, name := range allKnown {
+		if _, ok := componentPriority[name]; !ok {
+			t.Errorf("component %q is not listed in componentPriority — add it with an appropriate priority", name)
+		}
+	}
+}
+
+func TestSortComponents_AuthBeforeHTTP(t *testing.T) {
+	// Auth providers and tenancy must be registered before HTTP so that
+	// middleware is installed before the HTTP server wires routes.
+	input := []ResolvedComponent{
+		{Name: "foundry-http"},
+		{Name: "foundry-auth-spicedb"},
+		{Name: "foundry-auth-jwt"},
+		{Name: "foundry-tenancy"},
+		{Name: "foundry-postgres"},
+	}
+	sorted := sortComponents(input)
+
+	posOf := func(name string) int {
+		for i, c := range sorted {
+			if c.Name == name {
+				return i
+			}
+		}
+		return -1
+	}
+
+	httpPos := posOf("foundry-http")
+	for _, name := range []string{"foundry-postgres", "foundry-auth-jwt", "foundry-auth-spicedb", "foundry-tenancy"} {
+		if pos := posOf(name); pos > httpPos {
+			t.Errorf("%s (pos %d) must appear before foundry-http (pos %d)", name, pos, httpPos)
+		}
+	}
+}
+
+func TestSortComponents_ServiceRouterLast(t *testing.T) {
+	// foundry-service-router must be last — it routes to already-registered services.
+	input := []ResolvedComponent{
+		{Name: "foundry-service-router"},
+		{Name: "foundry-http"},
+		{Name: "foundry-postgres"},
+		{Name: "foundry-nats"},
+		{Name: "foundry-kafka"},
+	}
+	sorted := sortComponents(input)
+	last := sorted[len(sorted)-1].Name
+	if last != "foundry-service-router" {
+		t.Errorf("foundry-service-router should be last, got %q", last)
+	}
+}
+
 // ---- migrations generation tests ----
 
 func TestGenerateMigrations_OneFilePerResource(t *testing.T) {
