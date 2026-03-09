@@ -19,6 +19,15 @@ var allComponents = []struct {
 	{"foundry-health", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/tsc/components/health"},
 	{"foundry-metrics", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/tsc/components/metrics"},
 	{"foundry-events", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/tsc/components/events"},
+	{"foundry-auth-spicedb", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/tsc/components/spicedb"},
+	{"foundry-graph-age", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/tsc/components/graph/age"},
+	{"foundry-kafka", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/tsc/components/kafka"},
+	{"foundry-nats", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/tsc/components/nats"},
+	{"foundry-redis", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/tsc/components/redis"},
+	{"foundry-redis-streams", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/tsc/components/redis-streams"},
+	{"foundry-temporal", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/tsc/components/temporal"},
+	{"foundry-tenancy", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/tsc/components/tenancy"},
+	{"foundry-service-router", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/tsc/components/service-router"},
 }
 
 func testdataRegistryDir(t *testing.T) string {

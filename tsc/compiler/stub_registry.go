@@ -48,6 +48,60 @@ var knownComponents = map[string]*RegistryEntry{
 		Module:    "github.com/jsell-rh/trusted-software-foundry/tsc/components/events",
 		AuditHash: "stub-not-verified",
 	},
+	"foundry-auth-spicedb": {
+		Name:      "foundry-auth-spicedb",
+		Version:   "v1.0.0",
+		Module:    "github.com/jsell-rh/trusted-software-foundry/tsc/components/spicedb",
+		AuditHash: "stub-not-verified",
+	},
+	"foundry-graph-age": {
+		Name:      "foundry-graph-age",
+		Version:   "v1.0.0",
+		Module:    "github.com/jsell-rh/trusted-software-foundry/tsc/components/graph/age",
+		AuditHash: "stub-not-verified",
+	},
+	"foundry-kafka": {
+		Name:      "foundry-kafka",
+		Version:   "v1.0.0",
+		Module:    "github.com/jsell-rh/trusted-software-foundry/tsc/components/kafka",
+		AuditHash: "stub-not-verified",
+	},
+	"foundry-nats": {
+		Name:      "foundry-nats",
+		Version:   "v1.0.0",
+		Module:    "github.com/jsell-rh/trusted-software-foundry/tsc/components/nats",
+		AuditHash: "stub-not-verified",
+	},
+	"foundry-redis": {
+		Name:      "foundry-redis",
+		Version:   "v1.0.0",
+		Module:    "github.com/jsell-rh/trusted-software-foundry/tsc/components/redis",
+		AuditHash: "stub-not-verified",
+	},
+	"foundry-redis-streams": {
+		Name:      "foundry-redis-streams",
+		Version:   "v1.0.0",
+		Module:    "github.com/jsell-rh/trusted-software-foundry/tsc/components/redis-streams",
+		AuditHash: "stub-not-verified",
+	},
+	"foundry-temporal": {
+		Name:      "foundry-temporal",
+		Version:   "v1.0.0",
+		Module:    "github.com/jsell-rh/trusted-software-foundry/tsc/components/temporal",
+		AuditHash: "stub-not-verified",
+	},
+	"foundry-tenancy": {
+		Name:      "foundry-tenancy",
+		Version:   "v1.0.0",
+		Module:    "github.com/jsell-rh/trusted-software-foundry/tsc/components/tenancy",
+		AuditHash: "stub-not-verified",
+	},
+	"foundry-service-router": {
+		Name:      "foundry-service-router",
+		Version:   "v1.0.0",
+		Module:    "github.com/jsell-rh/trusted-software-foundry/tsc/components/service-router",
+		AuditHash: "stub-not-verified",
+	},
 }
 
 // StubRegistry is an in-memory registry for development and testing.
@@ -64,7 +118,11 @@ func NewStubRegistry() *StubRegistry {
 func (s *StubRegistry) Lookup(name, version string) (*RegistryEntry, error) {
 	entry, ok := knownComponents[name]
 	if !ok {
-		return nil, fmt.Errorf("unknown component %q — not in stub registry (known: foundry-http, foundry-postgres, foundry-auth-jwt, foundry-grpc, foundry-health, foundry-metrics, foundry-events)", name)
+		known := make([]string, 0, len(knownComponents))
+	for k := range knownComponents {
+		known = append(known, k)
+	}
+	return nil, fmt.Errorf("unknown component %q — not in stub registry (known: %v)", name, known)
 	}
 	if entry.Version != version {
 		return nil, fmt.Errorf("component %q: requested version %q but stub registry only has %q", name, version, entry.Version)
