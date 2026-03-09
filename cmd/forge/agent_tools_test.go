@@ -43,7 +43,9 @@ func TestScaffold_DefaultResource(t *testing.T) {
 	}
 }
 
-// TestScaffold_AllComponents verifies all 7 trusted components are present.
+// TestScaffold_AllComponents verifies all 7 core trusted components are present.
+// Scaffold intentionally includes only core components; advanced components
+// (spicedb, kafka, etc.) are added by the developer as needed.
 func TestScaffold_AllComponents(t *testing.T) {
 	spec := renderScaffold("app", "1.0.0", nil)
 	for _, comp := range []string{
