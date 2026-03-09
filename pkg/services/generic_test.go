@@ -36,11 +36,11 @@ func TestSQLTranslation(t *testing.T) {
 	tests := []map[string]interface{}{
 		{
 			"search": "garbage",
-			"error":  "rh-trex-ai-21: Failed to parse search query: garbage",
+			"error":  "trusted-software-foundry-21: Failed to parse search query: garbage",
 		},
 		{
 			"search": "id in ('123')",
-			"error":  "rh-trex-ai-21: dinosaurs.id is not a valid field name",
+			"error":  "trusted-software-foundry-21: dinosaurs.id is not a valid field name",
 		},
 	}
 	for _, test := range tests {

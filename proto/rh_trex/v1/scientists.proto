@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package rh_trex.v1;
 
-option go_package = "github.com/openshift-online/rh-trex-ai/pkg/api/grpc/rh_trex/v1;rh_trex_v1";
+option go_package = "github.com/jsell-rh/trusted-software-foundry/pkg/api/grpc/rh_trex/v1;rh_trex_v1";
 
 import "rh_trex/v1/common.proto";
 

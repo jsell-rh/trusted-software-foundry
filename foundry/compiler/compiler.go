@@ -17,18 +17,18 @@ import (
 type Compiler struct {
 	registry    Registry
 	sourceDir   string // optional; enables audit hash verification
-	rhtexAIPath string // optional; local path to rh-trex-ai for go.mod replace directive
+	foundryPath string // optional; local path to trusted-software-foundry for go.mod replace directive
 }
 
 // New creates a Compiler backed by the given registry.
 // sourceDir: non-empty enables audit hash verification against local component source.
-// rhtexAIPath: non-empty adds a replace directive to the generated go.mod pointing to
-// the local rh-trex-ai checkout, enabling the generated project to `go build` immediately.
-func New(registry Registry, sourceDir, rhtexAIPath string) *Compiler {
+// foundryPath: non-empty adds a replace directive to the generated go.mod pointing to
+// the local trusted-software-foundry checkout, enabling the generated project to `go build` immediately.
+func New(registry Registry, sourceDir, foundryPath string) *Compiler {
 	return &Compiler{
 		registry:    registry,
 		sourceDir:   sourceDir,
-		rhtexAIPath: rhtexAIPath,
+		foundryPath: foundryPath,
 	}
 }
 
@@ -51,14 +51,14 @@ func (c *Compiler) Compile(specPath, outputDir string) error {
 	// Pass the spec directory so hook implementation paths (relative to the spec)
 	// are resolved correctly regardless of the caller's working directory.
 	specDir := filepath.Dir(specPath)
-	gen := newGeneratorWithSpecDir(outputDir, c.rhtexAIPath, specDir)
+	gen := newGeneratorWithSpecDir(outputDir, c.foundryPath, specDir)
 	if err := gen.Generate(ir, components); err != nil {
 		return fmt.Errorf("generate: %w", err)
 	}
 
 	// Step 5: Run go mod tidy on the generated project so go.sum is populated
 	// and the project is immediately buildable with `go build`.
-	if c.rhtexAIPath != "" {
+	if c.foundryPath != "" {
 		cmd := exec.Command("go", "mod", "tidy")
 		cmd.Dir = outputDir
 		if out, err := cmd.CombinedOutput(); err != nil {

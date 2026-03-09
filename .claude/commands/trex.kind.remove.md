@@ -55,7 +55,7 @@ rm -f pkg/api/openapi/docs/{Kind}*.md
 
 Remove the blank import line:
 ```go
-_ "github.com/openshift-online/rh-trex-ai/plugins/{kindLowerPlural}"
+_ "github.com/jsell-rh/trusted-software-foundry/plugins/{kindLowerPlural}"
 ```
 
 #### 4.2 `pkg/db/migrations/migration_structs.go`

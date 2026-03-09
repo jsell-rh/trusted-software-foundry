@@ -25,7 +25,7 @@ import (
 	"github.com/jsell-rh/trusted-software-foundry/pkg/api"
 )
 
-var metadataID = "rh-trex-ai"
+var metadataID = "trusted-software-foundry"
 
 func SetMetadataID(id string) { metadataID = id }
 

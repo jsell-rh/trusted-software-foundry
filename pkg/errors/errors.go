@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	errorCodePrefix = "rh-trex-ai"
-	errorHref       = "/api/rh-trex-ai/v1/errors/"
+	errorCodePrefix = "trusted-software-foundry"
+	errorHref       = "/api/trusted-software-foundry/v1/errors/"
 )
 
 func ErrorCodePrefix() string { return errorCodePrefix }

@@ -34,11 +34,11 @@ func TestInit_WithDefaults(t *testing.T) {
 		t.Error("IsInitialized() should be true after Init()")
 	}
 	cfg := GetConfig()
-	if cfg.ServiceName != "rh-trex-ai" {
-		t.Errorf("ServiceName = %q, want rh-trex-ai", cfg.ServiceName)
+	if cfg.ServiceName != "trusted-software-foundry" {
+		t.Errorf("ServiceName = %q, want trusted-software-foundry", cfg.ServiceName)
 	}
-	if cfg.BasePath != "/api/rh-trex-ai/v1" {
-		t.Errorf("BasePath = %q, want /api/rh-trex-ai/v1", cfg.BasePath)
+	if cfg.BasePath != "/api/trusted-software-foundry/v1" {
+		t.Errorf("BasePath = %q, want /api/trusted-software-foundry/v1", cfg.BasePath)
 	}
 }
 
