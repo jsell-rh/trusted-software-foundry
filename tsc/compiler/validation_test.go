@@ -1341,3 +1341,120 @@ auth:
 		t.Fatalf("expected valid auth config to parse without error, got: %v", err)
 	}
 }
+
+// --------------------------------------------------------------------------
+// Schema type-mismatch validation (exercises checkJSONType error branches)
+// --------------------------------------------------------------------------
+
+func TestParse_ResourceEventsWrongType(t *testing.T) {
+	// events field expects a boolean; passing a string "yes" triggers a
+	// JSON Schema type-mismatch error in the schema validator.
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-postgres: v1.0.0
+  foundry-http:     v1.0.0
+database:
+  type: postgres
+  migrations: auto
+resources:
+  - name: Widget
+    plural: widgets
+    fields:
+      - name: id
+        type: uuid
+        required: true
+    operations: [create]
+    events: "yes"
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for non-boolean events value, got nil")
+	}
+	// Schema validator reports type mismatch
+	if !strings.Contains(err.Error(), "events") {
+		t.Errorf("expected error to mention 'events', got: %v", err)
+	}
+}
+
+func TestParse_BiTemporalEnabledWrongType(t *testing.T) {
+	// bi_temporal.enabled expects boolean; passing an integer triggers type error.
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-temporal: v1.0.0
+  foundry-postgres: v1.0.0
+  foundry-http:     v1.0.0
+database:
+  type: postgres
+  migrations: auto
+resources:
+  - name: Widget
+    plural: widgets
+    fields:
+      - name: id
+        type: uuid
+    operations: [create]
+    events: false
+bi_temporal:
+  enabled: 1
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for integer-typed bi_temporal.enabled, got nil")
+	}
+	if !strings.Contains(err.Error(), "enabled") && !strings.Contains(err.Error(), "bi_temporal") {
+		t.Errorf("expected error to mention 'enabled' or 'bi_temporal', got: %v", err)
+	}
+}
+
+func TestParse_APIVersionWrongType(t *testing.T) {
+	// apiVersion expects a specific string; passing an integer value → type mismatch.
+	// YAML parses bare integers as integers, so this exercises the string type check.
+	spec := writeTempSpec(t, `apiVersion: 1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http: v1.0.0
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for integer apiVersion, got nil")
+	}
+	if !strings.Contains(err.Error(), "apiVersion") {
+		t.Errorf("expected error to mention 'apiVersion', got: %v", err)
+	}
+}
+
+func TestParse_PortNotInteger(t *testing.T) {
+	// Port fields expect integer; passing a float (1.5) triggers the
+	// "expected integer, got float" branch in checkJSONType.
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http:   v1.0.0
+  foundry-health: v1.0.0
+observability:
+  health_check:
+    port: 1.5
+    path: /healthz
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for float-typed port, got nil")
+	}
+	if !strings.Contains(err.Error(), "port") && !strings.Contains(err.Error(), "integer") {
+		t.Errorf("expected error to mention 'port' or 'integer', got: %v", err)
+	}
+}
