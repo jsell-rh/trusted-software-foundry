@@ -497,3 +497,16 @@ func TestLoop_NotifyChannelClosed_Exits(t *testing.T) {
 		t.Fatal("loop did not exit after Notify channel was closed")
 	}
 }
+
+func TestStop_CancelSetButNoListener(t *testing.T) {
+	// Cover the "return nil" path in Stop when listener is nil after cancel runs.
+	c := New()
+	// Set cancel to a no-op so the "if c.cancel != nil" branch is taken.
+	c.cancel = func() {}
+	// Pre-close done so <-c.done unblocks immediately.
+	close(c.done)
+	// c.listener is nil — Stop should return nil via the final "return nil".
+	if err := c.Stop(context.Background()); err != nil {
+		t.Errorf("Stop with nil listener: %v", err)
+	}
+}
