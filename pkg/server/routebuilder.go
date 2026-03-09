@@ -8,14 +8,14 @@ import (
 	gorillahandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 
-	"github.com/jsell-rh/trusted-software-components/pkg/api"
-	"github.com/jsell-rh/trusted-software-components/pkg/auth"
-	"github.com/jsell-rh/trusted-software-components/pkg/db"
-	"github.com/jsell-rh/trusted-software-components/pkg/environments"
-	"github.com/jsell-rh/trusted-software-components/pkg/handlers"
-	"github.com/jsell-rh/trusted-software-components/pkg/logger"
-	"github.com/jsell-rh/trusted-software-components/pkg/server/logging"
-	"github.com/jsell-rh/trusted-software-components/pkg/trex"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/api"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/auth"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/db"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/environments"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/handlers"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/logger"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/server/logging"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/trex"
 )
 
 func BuildDefaultRoutes(env *environments.Env, specData []byte) *mux.Router {

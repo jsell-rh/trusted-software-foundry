@@ -3,8 +3,8 @@ package server
 import (
 	"github.com/gorilla/mux"
 
-	"github.com/jsell-rh/trusted-software-components/pkg/auth"
-	"github.com/jsell-rh/trusted-software-components/pkg/environments"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/auth"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/environments"
 )
 
 type ServicesInterface interface {

@@ -13,7 +13,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/jsell-rh/trusted-software-components/pkg/client/apiclient"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/client/apiclient"
 )
 
 type AuthorizationMiddleware interface {

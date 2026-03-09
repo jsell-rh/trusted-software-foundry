@@ -12,13 +12,13 @@ var allComponents = []struct {
 	version string
 	module  string
 }{
-	{"foundry-http", "v1.0.0", "github.com/jsell-rh/trusted-software-components/tsc/components/http"},
-	{"foundry-postgres", "v1.0.0", "github.com/jsell-rh/trusted-software-components/tsc/components/postgres"},
-	{"foundry-auth-jwt", "v1.0.0", "github.com/jsell-rh/trusted-software-components/tsc/components/auth/jwt"},
-	{"foundry-grpc", "v1.0.0", "github.com/jsell-rh/trusted-software-components/tsc/components/grpc"},
-	{"foundry-health", "v1.0.0", "github.com/jsell-rh/trusted-software-components/tsc/components/health"},
-	{"foundry-metrics", "v1.0.0", "github.com/jsell-rh/trusted-software-components/tsc/components/metrics"},
-	{"foundry-events", "v1.0.0", "github.com/jsell-rh/trusted-software-components/tsc/components/events"},
+	{"foundry-http", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/tsc/components/http"},
+	{"foundry-postgres", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/tsc/components/postgres"},
+	{"foundry-auth-jwt", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/tsc/components/auth/jwt"},
+	{"foundry-grpc", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/tsc/components/grpc"},
+	{"foundry-health", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/tsc/components/health"},
+	{"foundry-metrics", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/tsc/components/metrics"},
+	{"foundry-events", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/tsc/components/events"},
 }
 
 func testdataRegistryDir(t *testing.T) string {

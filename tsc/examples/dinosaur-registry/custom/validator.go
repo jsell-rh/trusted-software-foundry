@@ -27,7 +27,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/jsell-rh/trusted-software-components/tsc/spec"
+	"github.com/jsell-rh/trusted-software-foundry/tsc/spec"
 )
 
 // handlerFunc is a local adapter that lets a plain function satisfy spec.HTTPHandler.

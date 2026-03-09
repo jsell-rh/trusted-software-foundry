@@ -7,9 +7,9 @@ import (
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 
-	"github.com/jsell-rh/trusted-software-components/pkg/config"
-	"github.com/jsell-rh/trusted-software-components/pkg/db"
-	"github.com/jsell-rh/trusted-software-components/pkg/db/db_session"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/config"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/db"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/db/db_session"
 )
 
 func NewMigrateCommand(serviceName string) *cobra.Command {

@@ -14,11 +14,11 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	"github.com/jsell-rh/trusted-software-components/pkg/auth"
-	"github.com/jsell-rh/trusted-software-components/pkg/db"
-	"github.com/jsell-rh/trusted-software-components/pkg/environments"
-	"github.com/jsell-rh/trusted-software-components/pkg/logger"
-	"github.com/jsell-rh/trusted-software-components/pkg/server/grpcutil"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/auth"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/db"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/environments"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/logger"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/server/grpcutil"
 )
 
 var (

@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/jsell-rh/trusted-software-components/pkg/errors"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/errors"
 )
 
 func ValidateNotEmpty(i interface{}, fieldName string, field string) Validate {

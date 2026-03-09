@@ -3,7 +3,7 @@ package mocks
 import (
 	"context"
 
-	"github.com/jsell-rh/trusted-software-components/pkg/client/apiclient"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/client/apiclient"
 )
 
 var _ apiclient.Authorization = &AuthzValidatorMock{}

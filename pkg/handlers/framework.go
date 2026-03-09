@@ -6,8 +6,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/jsell-rh/trusted-software-components/pkg/errors"
-	"github.com/jsell-rh/trusted-software-components/pkg/logger"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/errors"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/logger"
 )
 
 // handlerConfig defines the common things each REST controller must do.

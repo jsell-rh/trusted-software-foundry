@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jsell-rh/trusted-software-components/pkg/trex"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/trex"
 )
 
 func RequestLoggingMiddleware(handler http.Handler) http.Handler {

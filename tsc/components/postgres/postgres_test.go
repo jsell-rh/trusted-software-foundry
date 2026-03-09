@@ -3,7 +3,7 @@ package postgres
 import (
 	"testing"
 
-	"github.com/jsell-rh/trusted-software-components/tsc/spec"
+	"github.com/jsell-rh/trusted-software-foundry/tsc/spec"
 )
 
 func TestComponentMetadata(t *testing.T) {

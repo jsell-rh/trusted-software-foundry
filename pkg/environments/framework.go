@@ -8,10 +8,10 @@ import (
 	"github.com/golang/glog"
 	"github.com/spf13/pflag"
 
-	"github.com/jsell-rh/trusted-software-components/pkg/client/apiclient"
-	"github.com/jsell-rh/trusted-software-components/pkg/config"
-	"github.com/jsell-rh/trusted-software-components/pkg/errors"
-	"github.com/jsell-rh/trusted-software-components/pkg/registry"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/client/apiclient"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/config"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/errors"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/registry"
 )
 
 var (

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jsell-rh/trusted-software-components/pkg/errors"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/errors"
 )
 
 type ProjectionList struct {

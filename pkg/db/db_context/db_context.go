@@ -5,7 +5,7 @@ package db_context
 import (
 	"context"
 
-	"github.com/jsell-rh/trusted-software-components/pkg/db/transaction"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/db/transaction"
 )
 
 type contextKey int

@@ -532,7 +532,7 @@ const file_rh_trex_v1_dinosaurs_proto_rawDesc = "" +
 	"\x0eUpdateDinosaur\x12!.rh_trex.v1.UpdateDinosaurRequest\x1a\x14.rh_trex.v1.Dinosaur\x12W\n" +
 	"\x0eDeleteDinosaur\x12!.rh_trex.v1.DeleteDinosaurRequest\x1a\".rh_trex.v1.DeleteDinosaurResponse\x12T\n" +
 	"\rListDinosaurs\x12 .rh_trex.v1.ListDinosaursRequest\x1a!.rh_trex.v1.ListDinosaursResponse\x12U\n" +
-	"\x0eWatchDinosaurs\x12!.rh_trex.v1.WatchDinosaursRequest\x1a\x1e.rh_trex.v1.DinosaurWatchEvent0\x01BKZIgithub.com/jsell-rh/trusted-software-components/pkg/api/grpc/rh_trex/v1;rh_trex_v1b\x06proto3"
+	"\x0eWatchDinosaurs\x12!.rh_trex.v1.WatchDinosaursRequest\x1a\x1e.rh_trex.v1.DinosaurWatchEvent0\x01BKZIgithub.com/jsell-rh/trusted-software-foundry/pkg/api/grpc/rh_trex/v1;rh_trex_v1b\x06proto3"
 
 var (
 	file_rh_trex_v1_dinosaurs_proto_rawDescOnce sync.Once

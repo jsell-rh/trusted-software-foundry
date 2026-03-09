@@ -4,15 +4,15 @@ import (
 	"context"
 	"testing"
 
-	"github.com/jsell-rh/trusted-software-components/pkg/dao"
-	"github.com/jsell-rh/trusted-software-components/pkg/db"
-	dbmocks "github.com/jsell-rh/trusted-software-components/pkg/db/mocks"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/dao"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/db"
+	dbmocks "github.com/jsell-rh/trusted-software-foundry/pkg/db/mocks"
 
 	"github.com/onsi/gomega/types"
 	"github.com/yaacov/tree-search-language/pkg/tsl"
 
-	"github.com/jsell-rh/trusted-software-components/pkg/api"
-	"github.com/jsell-rh/trusted-software-components/pkg/errors"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/api"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/errors"
 
 	. "github.com/onsi/gomega"
 )

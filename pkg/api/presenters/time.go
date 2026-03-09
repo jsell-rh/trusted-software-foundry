@@ -3,7 +3,7 @@ package presenters
 import (
 	"time"
 
-	"github.com/jsell-rh/trusted-software-components/pkg/util"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/util"
 )
 
 func PresentTime(t time.Time) *time.Time {

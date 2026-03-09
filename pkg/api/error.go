@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
-	"github.com/jsell-rh/trusted-software-components/pkg/errors"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/errors"
 )
 
 // SendNotFound sends a 404 response with some details about the non existing resource.

@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/jsell-rh/trusted-software-components/pkg/api"
-	"github.com/jsell-rh/trusted-software-components/pkg/dao"
-	"github.com/jsell-rh/trusted-software-components/pkg/errors"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/api"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/dao"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/errors"
 )
 
 type EventServiceLocator func() EventService

@@ -3,7 +3,7 @@ package db
 import (
 	"context"
 
-	"github.com/jsell-rh/trusted-software-components/pkg/db/transaction"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/db/transaction"
 )
 
 // By default do no roll back transaction.

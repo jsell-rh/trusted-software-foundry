@@ -15,7 +15,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/jsell-rh/trusted-software-components/tsc/compiler"
+	"github.com/jsell-rh/trusted-software-foundry/tsc/compiler"
 )
 
 func main() {

@@ -6,11 +6,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jsell-rh/trusted-software-components/pkg/controllers"
-	"github.com/jsell-rh/trusted-software-components/pkg/db"
-	"github.com/jsell-rh/trusted-software-components/pkg/environments"
-	"github.com/jsell-rh/trusted-software-components/pkg/logger"
-	"github.com/jsell-rh/trusted-software-components/pkg/services"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/controllers"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/db"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/environments"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/logger"
+	"github.com/jsell-rh/trusted-software-foundry/pkg/services"
 )
 
 type ControllersServer struct {
