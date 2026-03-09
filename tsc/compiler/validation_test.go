@@ -1578,3 +1578,177 @@ observability:
 		t.Errorf("expected error to mention 'port' or 'integer', got: %v", err)
 	}
 }
+
+// --------------------------------------------------------------------------
+// validateObject — minProperties, propertyNames enum, pattern mismatch
+// --------------------------------------------------------------------------
+
+// TestParse_ComponentsMapEmpty verifies that an empty components map is rejected.
+// The schema declares minProperties: 1 on the components object; this test
+// exercises the minProperties violation branch in validateObject (line ~140).
+func TestParse_ComponentsMapEmpty(t *testing.T) {
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components: {}
+resources:
+  - name: Item
+    plural: items
+    fields:
+      - name: id
+        type: uuid
+        required: true
+    operations: [create]
+    events: false
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for empty components map, got nil")
+	}
+	if !strings.Contains(err.Error(), "component") && !strings.Contains(err.Error(), "properties") {
+		t.Errorf("expected error to mention 'component' or 'properties', got: %v", err)
+	}
+}
+
+// TestParse_UnknownComponentName verifies that a component name not in the
+// trusted catalog is rejected at schema validation time. The schema's
+// propertyNames.enum constraint on the components object fires the
+// "unknown property name" branch in validateObject (line ~164).
+func TestParse_UnknownComponentName(t *testing.T) {
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  not-a-real-component: v1.0.0
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for unknown component name, got nil")
+	}
+	if !strings.Contains(err.Error(), "not-a-real-component") && !strings.Contains(err.Error(), "property") {
+		t.Errorf("expected error to mention the unknown component or 'property', got: %v", err)
+	}
+}
+
+// TestParse_AppNamePatternViolation verifies that an app name failing the
+// pattern constraint (^[a-z][a-z0-9-]*$) is rejected. This exercises the
+// pattern mismatch error path in validateNode (line ~88).
+func TestParse_AppNamePatternViolation(t *testing.T) {
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: "My App"
+  version: 1.0.0
+components:
+  foundry-http: v1.0.0
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for app name violating pattern, got nil")
+	}
+	if !strings.Contains(err.Error(), "name") && !strings.Contains(err.Error(), "pattern") {
+		t.Errorf("expected error to mention 'name' or 'pattern', got: %v", err)
+	}
+}
+
+// TestParse_PortBelowMinimum verifies that a port value of 0 (below the
+// schema minimum of 1) is rejected. This exercises the `num < min` branch
+// in validateNode (the numeric minimum check).
+func TestParse_PortBelowMinimum(t *testing.T) {
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http:   v1.0.0
+  foundry-health: v1.0.0
+observability:
+  health_check:
+    port: 0
+    path: /healthz
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for port below minimum, got nil")
+	}
+	if !strings.Contains(err.Error(), "port") && !strings.Contains(err.Error(), "minimum") {
+		t.Errorf("expected error to mention 'port' or 'minimum', got: %v", err)
+	}
+}
+
+// TestParse_PortAboveMaximum verifies that a port value above 65535 is
+// rejected. This exercises the `num > max` branch in validateNode (numeric
+// maximum check).
+func TestParse_PortAboveMaximum(t *testing.T) {
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http:   v1.0.0
+  foundry-health: v1.0.0
+observability:
+  health_check:
+    port: 99999
+    path: /healthz
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for port above maximum, got nil")
+	}
+	if !strings.Contains(err.Error(), "port") && !strings.Contains(err.Error(), "maximum") {
+		t.Errorf("expected error to mention 'port' or 'maximum', got: %v", err)
+	}
+}
+
+// TestParse_PortAsString verifies that a quoted string port value is rejected
+// as a non-integer type. When YAML parses `port: "8080"` as a string, the
+// schema's integer type check fires the non-float64 else branch in
+// checkJSONType (line ~273).
+func TestParse_PortAsString(t *testing.T) {
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http:   v1.0.0
+  foundry-health: v1.0.0
+observability:
+  health_check:
+    port: "8080"
+    path: /healthz
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for string-typed port, got nil")
+	}
+	if !strings.Contains(err.Error(), "port") && !strings.Contains(err.Error(), "integer") {
+		t.Errorf("expected error to mention 'port' or 'integer', got: %v", err)
+	}
+}
+
+// TestParseWithSchema_InvalidYAMLSyntax verifies that validateAgainstSchema
+// returns an error when the YAML is syntactically invalid (YAMLToJSON fails).
+// This covers the first error return in validateAgainstSchema (line ~76).
+func TestParseWithSchema_InvalidYAMLSyntax(t *testing.T) {
+	// Write YAML that cannot be converted to JSON (invalid syntax).
+	tmp := filepath.Join(t.TempDir(), "broken.yaml")
+	if err := os.WriteFile(tmp, []byte("{unclosed: [bracket\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := ParseWithSchema(tmp, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for invalid YAML, got nil")
+	}
+	// The error should mention YAML or JSON conversion.
+	if !strings.Contains(err.Error(), "YAML") && !strings.Contains(err.Error(), "JSON") && !strings.Contains(err.Error(), "schema") {
+		t.Errorf("expected conversion error in output, got: %v", err)
+	}
+}

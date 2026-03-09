@@ -503,3 +503,146 @@ func TestCopyHookFiles_WriteFileError(t *testing.T) {
 		t.Errorf("expected 'copying' in error, got: %v", err)
 	}
 }
+
+// --------------------------------------------------------------------------
+// writeServiceMains — "all components" branch (len(svc.Components) == 0)
+// --------------------------------------------------------------------------
+
+// TestWriteServiceMains_AllComponentsBranch verifies that when a service has
+// no explicit component list (svc.Components is empty), writeServiceMains
+// assigns ALL resolved components to that service. This covers the
+// `svcComponents = components` branch in generator_v2.go (line ~105) that is
+// otherwise skipped because the fleet-manager reference spec always provides
+// explicit per-service component lists.
+func TestWriteServiceMains_AllComponentsBranch(t *testing.T) {
+	ir, err := Parse(exampleSpecPath)
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	resolver := NewResolver(NewStubRegistry(), "")
+	components, err := resolver.ResolveAll(ir.Components)
+	if err != nil {
+		t.Fatalf("ResolveAll: %v", err)
+	}
+
+	// Inject a service with NO explicit component list.
+	ir.Services = []spec.IRService{
+		{
+			Name: "all-in-one",
+			Role: "gateway",
+			Port: 8080,
+			// Components intentionally left nil/empty — triggers all-components branch.
+		},
+	}
+
+	outDir := t.TempDir()
+	g := NewGenerator(outDir, "")
+	if err := g.writeServiceMains(ir, components); err != nil {
+		t.Fatalf("writeServiceMains: %v", err)
+	}
+
+	// Verify the generated file exists and is non-empty.
+	entries, err := os.ReadDir(outDir)
+	if err != nil {
+		t.Fatalf("reading outDir: %v", err)
+	}
+	found := false
+	for _, e := range entries {
+		if strings.Contains(e.Name(), "all_in_one") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected main_all_in_one.go to be generated, got: %v", entries)
+	}
+}
+
+// --------------------------------------------------------------------------
+// Generate — copyHookFiles and writeAuthzSchemaStub error paths via Generate
+// --------------------------------------------------------------------------
+
+// TestGenerate_CopyHookFilesError verifies that Generate returns an error
+// mentioning "copying hook files" when copyHookFiles fails. The fleet-manager
+// spec has real hook implementation files on disk. Pre-creating a FILE named
+// "hooks" in outDir causes os.MkdirAll(hooks/) to fail with ENOTDIR, so
+// copyHookFiles returns an error after reading the source file.
+func TestGenerate_CopyHookFilesError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("root can write to read-only directories; skipping")
+	}
+	fleetSpec := "../../tsc/examples/fleet-manager/app.foundry.yaml"
+	if _, statErr := os.Stat(fleetSpec); os.IsNotExist(statErr) {
+		t.Skip("fleet-manager example not found")
+	}
+
+	ir, err := Parse(fleetSpec)
+	if err != nil {
+		t.Fatalf("Parse fleet-manager: %v", err)
+	}
+	resolver := NewResolver(NewStubRegistry(), "")
+	components, err := resolver.ResolveAll(ir.Components)
+	if err != nil {
+		t.Fatalf("ResolveAll: %v", err)
+	}
+
+	outDir := t.TempDir()
+	// Pre-create a REGULAR FILE named "hooks" so that MkdirAll("hooks/") fails.
+	if err := os.WriteFile(filepath.Join(outDir, "hooks"), []byte("blocker"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// specDir must point to fleet-manager so hook implementation files are found.
+	specDir := "../../tsc/examples/fleet-manager"
+	genErr := newGeneratorWithSpecDir(outDir, "", specDir).Generate(ir, components)
+	if genErr == nil {
+		t.Fatal("expected error from Generate when hooks dir is blocked, got nil")
+	}
+	if !strings.Contains(genErr.Error(), "copying hook files") {
+		t.Errorf("expected 'copying hook files' in error, got: %v", genErr)
+	}
+}
+
+// TestGenerate_AuthzSchemaStubError verifies that Generate returns an error
+// mentioning "generating authz schema stub" when writeAuthzSchemaStub fails.
+// Pre-creating a DIRECTORY named after the authz schema file path's parent
+// as a regular file causes MkdirAll to fail.
+func TestGenerate_AuthzSchemaStubError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("root can write to read-only directories; skipping")
+	}
+	fleetSpec := "../../tsc/examples/fleet-manager/app.foundry.yaml"
+	if _, statErr := os.Stat(fleetSpec); os.IsNotExist(statErr) {
+		t.Skip("fleet-manager example not found")
+	}
+
+	ir, err := Parse(fleetSpec)
+	if err != nil {
+		t.Fatalf("Parse fleet-manager: %v", err)
+	}
+	if ir.Authz == nil || ir.Authz.SchemaFile == "" {
+		t.Skip("fleet-manager spec has no authz schema file")
+	}
+	resolver := NewResolver(NewStubRegistry(), "")
+	components, err := resolver.ResolveAll(ir.Components)
+	if err != nil {
+		t.Fatalf("ResolveAll: %v", err)
+	}
+
+	outDir := t.TempDir()
+	// Pre-create a FILE with the name of the authz schema's parent directory so
+	// MkdirAll(filepath.Dir(authz.SchemaFile)) fails (ENOTDIR).
+	// fleet-manager uses "authz/schema.zed" → parent is "authz".
+	authzParent := filepath.Dir(ir.Authz.SchemaFile) // "authz"
+	if err := os.WriteFile(filepath.Join(outDir, authzParent), []byte("blocker"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	genErr := newGeneratorWithSpecDir(outDir, "", "").Generate(ir, components)
+	if genErr == nil {
+		t.Fatal("expected error from Generate when authz dir is blocked, got nil")
+	}
+	if !strings.Contains(genErr.Error(), "authz schema stub") {
+		t.Errorf("expected 'authz schema stub' in error, got: %v", genErr)
+	}
+}

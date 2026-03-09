@@ -397,3 +397,41 @@ func TestFileRegistry_MalformedYAMLEntry(t *testing.T) {
 		t.Errorf("expected 'parsing registry entry' in error, got: %v", err)
 	}
 }
+
+// TestFileRegistry_UnreadableEntry verifies that FileRegistry.Lookup returns
+// a wrapped error (not an "not found" error) when the registry YAML file exists
+// but is unreadable (permission denied). This covers the non-os.IsNotExist
+// branch at resolver.go:58.
+func TestFileRegistry_UnreadableEntry(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("root can read any file; skip")
+	}
+	registryDir := t.TempDir()
+	entryDir := filepath.Join(registryDir, "foundry-locked")
+	if err := os.MkdirAll(entryDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	entryPath := filepath.Join(entryDir, "v1.0.0.yaml")
+	if err := os.WriteFile(entryPath, []byte("name: foundry-locked\nversion: v1.0.0\nmodule: github.com/test/foundry-locked\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	// Make the file unreadable.
+	if err := os.Chmod(entryPath, 0000); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chmod(entryPath, 0644) // restore so TempDir cleanup works
+
+	reg := NewFileRegistry(registryDir)
+	_, err := reg.Lookup("foundry-locked", "v1.0.0")
+	if err == nil {
+		t.Fatal("expected error for unreadable registry entry, got nil")
+	}
+	// Must NOT be the "not found" message — it's a permission error.
+	if strings.Contains(err.Error(), "not found in registry") {
+		t.Errorf("expected a read error, not a 'not found' error; got: %v", err)
+	}
+	// Should mention reading the entry.
+	if !strings.Contains(err.Error(), "reading registry entry") {
+		t.Errorf("expected 'reading registry entry' in error, got: %v", err)
+	}
+}
