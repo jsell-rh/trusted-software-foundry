@@ -10,6 +10,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/jsell-rh/trusted-software-foundry/tsc/spec"
 )
 
 var allComponents = []struct {
@@ -368,5 +370,136 @@ func TestVerifyAuditHash_MissingSourceDirectory(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "audit hash verification failed") {
 		t.Errorf("expected error to mention 'audit hash verification failed', got: %v", err)
+	}
+}
+
+// TestFileRegistry_MalformedYAMLEntry verifies that FileRegistry.Lookup returns
+// a wrapped error mentioning "parsing registry entry" when the on-disk YAML file
+// exists but contains fields that fail parseRegistryEntry validation (missing module).
+// This covers the resolver.go:63 error path that is not triggered by the
+// "not found" tests (which exercise the os.IsNotExist path instead).
+func TestFileRegistry_MalformedYAMLEntry(t *testing.T) {
+	registryDir := t.TempDir()
+	entryDir := filepath.Join(registryDir, "foundry-broken")
+	if err := os.MkdirAll(entryDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	// Missing required 'module' field — parseRegistryEntry will return an error.
+	malformedYAML := "name: foundry-broken\nversion: v1.0.0\naudit_hash: abc123\n"
+	if err := os.WriteFile(filepath.Join(entryDir, "v1.0.0.yaml"), []byte(malformedYAML), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	reg := NewFileRegistry(registryDir)
+	_, err := reg.Lookup("foundry-broken", "v1.0.0")
+	if err == nil {
+		t.Fatal("expected error for malformed registry entry, got nil")
+	}
+	if !strings.Contains(err.Error(), "parsing registry entry") {
+		t.Errorf("expected 'parsing registry entry' in error, got: %v", err)
+	}
+}
+
+// TestFileRegistry_UnreadableEntry verifies that FileRegistry.Lookup returns
+// a wrapped error (not an "not found" error) when the registry YAML file exists
+// but is unreadable (permission denied). This covers the non-os.IsNotExist
+// branch at resolver.go:58.
+func TestFileRegistry_UnreadableEntry(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("root can read any file; skip")
+	}
+	registryDir := t.TempDir()
+	entryDir := filepath.Join(registryDir, "foundry-locked")
+	if err := os.MkdirAll(entryDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	entryPath := filepath.Join(entryDir, "v1.0.0.yaml")
+	if err := os.WriteFile(entryPath, []byte("name: foundry-locked\nversion: v1.0.0\nmodule: github.com/test/foundry-locked\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	// Make the file unreadable.
+	if err := os.Chmod(entryPath, 0000); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chmod(entryPath, 0644) // restore so TempDir cleanup works
+
+	reg := NewFileRegistry(registryDir)
+	_, err := reg.Lookup("foundry-locked", "v1.0.0")
+	if err == nil {
+		t.Fatal("expected error for unreadable registry entry, got nil")
+	}
+	// Must NOT be the "not found" message — it's a permission error.
+	if strings.Contains(err.Error(), "not found in registry") {
+		t.Errorf("expected a read error, not a 'not found' error; got: %v", err)
+	}
+	// Should mention reading the entry.
+	if !strings.Contains(err.Error(), "reading registry entry") {
+		t.Errorf("expected 'reading registry entry' in error, got: %v", err)
+	}
+}
+
+// TestVerifyAuditHash_UnreadableFile verifies that verifyAuditHash returns an
+// error when a file inside the component directory exists (walkable) but is
+// not readable. This covers the os.Open error branch inside the Walk callback
+// (resolver.go:160-162). The test skips on root since root can open any file.
+func TestVerifyAuditHash_UnreadableFile(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("root can open any file; skip")
+	}
+
+	sourceBase := t.TempDir()
+	compDir := filepath.Join(sourceBase, "foundry-custom", "v1.0.0")
+	if err := os.MkdirAll(compDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	// Create a file then make it unreadable (mode 0000).
+	secretFile := filepath.Join(compDir, "secret.go")
+	if err := os.WriteFile(secretFile, []byte("package custom\n"), 0000); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chmod(secretFile, 0644) // restore so TempDir cleanup works
+
+	registryDir := t.TempDir()
+	regEntryDir := filepath.Join(registryDir, "foundry-custom")
+	if err := os.MkdirAll(regEntryDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(regEntryDir, "v1.0.0.yaml"),
+		[]byte("name: foundry-custom\nversion: v1.0.0\nmodule: github.com/test/foundry-custom\naudit_hash: abc123\n"),
+		0644); err != nil {
+		t.Fatal(err)
+	}
+
+	reg := NewFileRegistry(registryDir)
+	resolver := NewResolver(reg, sourceBase)
+	_, err := resolver.ResolveAll(map[string]string{"foundry-custom": "v1.0.0"})
+	if err == nil {
+		t.Fatal("expected error for unreadable component file, got nil")
+	}
+	if !strings.Contains(err.Error(), "audit hash verification failed") {
+		t.Errorf("expected 'audit hash verification failed' in error, got: %v", err)
+	}
+}
+
+// TestCopyHookFiles_EmptyImplementation verifies that a hook with an empty
+// Implementation field is silently skipped by copyHookFiles. This covers the
+// `if h.Implementation == ""` continue branch (generator_v2.go:478-480).
+func TestCopyHookFiles_EmptyImplementation(t *testing.T) {
+	ir := &spec.IRSpec{
+		Hooks: []spec.IRHook{
+			{Name: "no-impl", Point: "pre-db", Implementation: ""},
+			{Name: "with-impl", Point: "pre-db", Implementation: "hooks/real.go"},
+		},
+	}
+	// No source files exist → both hooks skipped (empty-impl via continue,
+	// with-impl via ReadFile error graceful skip).
+	outDir := t.TempDir()
+	if err := copyHookFiles(ir, outDir, ""); err != nil {
+		t.Fatalf("copyHookFiles: %v", err)
+	}
+	// Output directory should be empty — no files copied.
+	entries, _ := os.ReadDir(outDir)
+	if len(entries) != 0 {
+		t.Errorf("expected empty output dir, got: %v", entries)
 	}
 }
