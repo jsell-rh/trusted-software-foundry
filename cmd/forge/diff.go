@@ -8,8 +8,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/jsell-rh/trusted-software-foundry/tsc/compiler"
-	"github.com/jsell-rh/trusted-software-foundry/tsc/spec"
+	"github.com/jsell-rh/trusted-software-foundry/foundry/compiler"
+	"github.com/jsell-rh/trusted-software-foundry/foundry/spec"
 )
 
 func diffCmd() *cobra.Command {

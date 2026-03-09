@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/jsell-rh/trusted-software-foundry/tsc/compiler"
+	"github.com/jsell-rh/trusted-software-foundry/foundry/compiler"
 )
 
 func lintCmd() *cobra.Command {
@@ -36,7 +36,7 @@ Exit code 0 = valid; exit code 1 = validation errors found.`,
 		},
 	}
 
-	cmd.Flags().StringVar(&schemaPath, "schema", "", "Path to JSON Schema file (default: built-in tsc/spec/schema.json)")
+	cmd.Flags().StringVar(&schemaPath, "schema", "", "Path to JSON Schema file (default: built-in foundry/spec/schema.json)")
 
 	return cmd
 }

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jsell-rh/trusted-software-foundry/tsc/spec"
+	"github.com/jsell-rh/trusted-software-foundry/foundry/spec"
 )
 
 // --------------------------------------------------------------------------
