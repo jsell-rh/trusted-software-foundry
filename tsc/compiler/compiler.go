@@ -3,6 +3,7 @@ package compiler
 import (
 	"fmt"
 	"os/exec"
+	"path/filepath"
 )
 
 // Compiler orchestrates the full TSC compilation pipeline.
@@ -46,8 +47,11 @@ func (c *Compiler) Compile(specPath, outputDir string) error {
 		return fmt.Errorf("resolve: %w", err)
 	}
 
-	// Step 4: Generate wiring code
-	gen := NewGenerator(outputDir, c.rhtexAIPath)
+	// Step 4: Generate wiring code.
+	// Pass the spec directory so hook implementation paths (relative to the spec)
+	// are resolved correctly regardless of the caller's working directory.
+	specDir := filepath.Dir(specPath)
+	gen := newGeneratorWithSpecDir(outputDir, c.rhtexAIPath, specDir)
 	if err := gen.Generate(ir, components); err != nil {
 		return fmt.Errorf("generate: %w", err)
 	}
