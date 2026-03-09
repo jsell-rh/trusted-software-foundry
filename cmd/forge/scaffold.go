@@ -19,9 +19,10 @@ func scaffoldCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "scaffold",
 		Short: "Generate a starter app.foundry.yaml for a new application",
-		Long: `scaffold generates a valid app.foundry.yaml with all 7 trusted components pinned
-and placeholder resource definitions. AI agents use this as a starting point
-when creating a new application — edit the YAML, then run forge compile.`,
+		Long: `scaffold generates a valid app.foundry.yaml with the 7 core trusted components
+pinned and placeholder resource definitions. AI agents use this as a starting
+point when creating a new application — edit the YAML, then run forge compile.
+Add advanced components (foundry-auth-spicedb, foundry-kafka, etc.) as needed.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if appName == "" {
 				return fmt.Errorf("--name is required")
