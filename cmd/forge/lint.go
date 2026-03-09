@@ -14,8 +14,8 @@ func lintCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "lint <spec.yaml>",
-		Short: "Validate a TSC IR spec and report all errors",
-		Long: `lint validates a TSC IR spec file in two passes:
+		Short: "Validate a Foundry IR spec and report all errors",
+		Long: `lint validates a Foundry IR spec file in two passes:
   1. JSON Schema structural validation (schema.json)
   2. Semantic validation (cross-field rules, registry checks)
 

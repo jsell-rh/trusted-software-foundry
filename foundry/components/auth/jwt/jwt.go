@@ -35,7 +35,7 @@ import (
 )
 
 // auditHash is the SHA-256 of the source tree at the time this version was audited.
-// The TSC compiler verifies this value against the component registry before
+// The Foundry compiler verifies this value against the component registry before
 // generating wiring code.
 const auditHash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 

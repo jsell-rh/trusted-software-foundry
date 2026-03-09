@@ -20,8 +20,8 @@ type ResolvedComponent struct {
 }
 
 // Registry is the interface that a trusted component registry must satisfy.
-// TSC-Architect will define the canonical interface; this skeleton is forward-compatible.
-// Once TSC-Architect publishes foundry/spec/component.go, we will import and embed it here.
+// TSF-Architect will define the canonical interface; this skeleton is forward-compatible.
+// Once TSF-Architect publishes foundry/spec/component.go, we will import and embed it here.
 type Registry interface {
 	// Lookup returns the registry entry for a component at the given version.
 	Lookup(name, version string) (*RegistryEntry, error)

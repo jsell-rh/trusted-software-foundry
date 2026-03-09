@@ -1,9 +1,9 @@
 // Package custom demonstrates how to integrate custom business logic with a
-// TSC-compiled application without modifying trusted component source code.
+// Foundry-compiled application without modifying trusted component source code.
 //
 // # The Custom Code Pattern
 //
-// The TSC compiler generates main.go (DO NOT EDIT). Custom code lives in
+// The Foundry compiler generates main.go (DO NOT EDIT). Custom code lives in
 // separate .go files in the same package (or an imported package) and hooks
 // into the application via the spec.Application API — the same API the compiler
 // uses. Custom code is NOT audited as a trusted component; it is regular Go

@@ -13,15 +13,15 @@ This is the **Trusted Software Foundry** — an IR-first application platform wh
 ```
 foundry/spec/           Core interfaces: Component, Application, Registrar, JSON Schema
 foundry/components/     Trusted component library (7 components)
-foundry/compiler/       TSC compiler: parse → resolve → generate
+foundry/compiler/       Foundry compiler: parse → resolve → generate
 foundry/examples/       Reference applications
 cmd/forge/            forge CLI entrypoint
-TSC-ARCHITECTURE.md Full architecture reference
+FOUNDRY-ARCHITECTURE.md Full architecture reference
 ```
 
 ## Development Commands
 
-### Build the TSC compiler
+### Build the Foundry compiler
 
 ```bash
 go build -o /tmp/forge ./cmd/forge
