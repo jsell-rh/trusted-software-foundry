@@ -61,7 +61,7 @@ func main{{ pascal .Service.Name }}() {
 	app := spec.NewApplication(resources)
 {{ range .Components }}	app.AddComponent({{ cleanAlias .Name }}.New())
 {{ end }}
-	configs := map[string]spec.ComponentConfig{}
+	{{ .ConfigsCode }}
 	if err := app.Configure(configs); err != nil {
 		fmt.Fprintf(os.Stderr, "configure: %v\n", err)
 		os.Exit(1)
@@ -82,9 +82,138 @@ func main{{ pascal .Service.Name }}() {
 `))
 
 type serviceMainData struct {
-	IR         *spec.IRSpec
-	Service    spec.IRService
-	Components []ResolvedComponent
+	IR          *spec.IRSpec
+	Service     spec.IRService
+	Components  []ResolvedComponent
+	ConfigsCode string
+}
+
+// envGoRef converts a spec value that may contain an env var reference to a Go expression.
+// "${KAFKA_BROKER_URL}" → `os.Getenv("KAFKA_BROKER_URL")`
+// "literal-value"      → `"literal-value"`
+func envGoRef(val string) string {
+	if strings.HasPrefix(val, "${") && strings.HasSuffix(val, "}") {
+		return fmt.Sprintf(`os.Getenv(%q)`, val[2:len(val)-1])
+	}
+	return fmt.Sprintf("%q", val)
+}
+
+// svcHasComponent reports whether svc includes the named component.
+// If the service has no explicit components list, all are included.
+func svcHasComponent(svc spec.IRService, name string) bool {
+	if len(svc.Components) == 0 {
+		return true
+	}
+	for _, c := range svc.Components {
+		if c == name {
+			return true
+		}
+	}
+	return false
+}
+
+// buildServiceConfigsCode generates Go source code that initialises the configs
+// map from the IR's complex block configuration (workflows, events, state, graph, tenancy).
+// The returned string is embedded verbatim into the service main template and
+// formatted later by go/format, so it may contain raw Go expressions like os.Getenv().
+func buildServiceConfigsCode(ir *spec.IRSpec, svc spec.IRService) string {
+	var lines []string
+	lines = append(lines, "configs := map[string]spec.ComponentConfig{}")
+
+	// Temporal (foundry-temporal) — from workflows: block
+	if ir.Workflows != nil && svcHasComponent(svc, "foundry-temporal") {
+		wfNames := make([]string, len(ir.Workflows.Workflows))
+		for i, wf := range ir.Workflows.Workflows {
+			wfNames[i] = fmt.Sprintf("%q", wf.Name)
+		}
+		host := ir.Workflows.Host
+		if host == "" {
+			host = "${TEMPORAL_HOST}"
+		}
+		lines = append(lines, fmt.Sprintf(
+			`configs["foundry-temporal"] = spec.ComponentConfig{"namespace": %q, "worker_queue": %q, "host": %s, "workflows": []string{%s}}`,
+			ir.Workflows.Namespace,
+			ir.Workflows.WorkerQueue,
+			envGoRef(host),
+			strings.Join(wfNames, ", "),
+		))
+	}
+
+	// Kafka (foundry-kafka) — from events: block
+	if ir.Events != nil && ir.Events.Backend == "kafka" && svcHasComponent(svc, "foundry-kafka") {
+		brokerURL := ir.Events.BrokerURL
+		if brokerURL == "" && ir.Events.Broker != nil {
+			brokerURL = ir.Events.Broker.URL
+		}
+		topicNames := make([]string, len(ir.Events.Topics))
+		for i, t := range ir.Events.Topics {
+			topicNames[i] = fmt.Sprintf("%q", t.Name)
+		}
+		lines = append(lines, fmt.Sprintf(
+			`configs["foundry-kafka"] = spec.ComponentConfig{"broker_url": %s, "topics": []string{%s}}`,
+			envGoRef(brokerURL),
+			strings.Join(topicNames, ", "),
+		))
+	}
+
+	// NATS (foundry-nats) — from events: block when backend is nats
+	if ir.Events != nil && ir.Events.Backend == "nats" && svcHasComponent(svc, "foundry-nats") {
+		brokerURL := ir.Events.BrokerURL
+		if brokerURL == "" && ir.Events.Broker != nil {
+			brokerURL = ir.Events.Broker.URL
+		}
+		lines = append(lines, fmt.Sprintf(
+			`configs["foundry-nats"] = spec.ComponentConfig{"url": %s}`,
+			envGoRef(brokerURL),
+		))
+	}
+
+	// Redis (foundry-redis) — from state: block
+	if ir.State != nil && svcHasComponent(svc, "foundry-redis") {
+		url := ir.State.URL
+		if url == "" && len(ir.State.Backends) > 0 {
+			url = ir.State.Backends[0].URL
+		}
+		keyNames := make([]string, len(ir.State.Keys))
+		for i, k := range ir.State.Keys {
+			keyNames[i] = fmt.Sprintf("%q", k.Name)
+		}
+		lines = append(lines, fmt.Sprintf(
+			`configs["foundry-redis"] = spec.ComponentConfig{"url": %s, "keys": []string{%s}}`,
+			envGoRef(url),
+			strings.Join(keyNames, ", "),
+		))
+	}
+
+	// Apache AGE graph (foundry-graph-age) — from graph: block
+	if ir.Graph != nil && ir.Graph.Backend == "age" && svcHasComponent(svc, "foundry-graph-age") {
+		nodeLabels := make([]string, len(ir.Graph.NodeTypes))
+		for i, n := range ir.Graph.NodeTypes {
+			nodeLabels[i] = fmt.Sprintf("%q", n.Label)
+		}
+		edgeLabels := make([]string, len(ir.Graph.EdgeTypes))
+		for i, e := range ir.Graph.EdgeTypes {
+			edgeLabels[i] = fmt.Sprintf("%q", e.Label)
+		}
+		lines = append(lines, fmt.Sprintf(
+			`configs["foundry-graph-age"] = spec.ComponentConfig{"graph_name": %q, "node_types": []string{%s}, "edge_types": []string{%s}}`,
+			ir.Graph.GraphName,
+			strings.Join(nodeLabels, ", "),
+			strings.Join(edgeLabels, ", "),
+		))
+	}
+
+	// Tenancy (foundry-tenancy) — from tenancy: block
+	if ir.Tenancy != nil && svcHasComponent(svc, "foundry-tenancy") {
+		lines = append(lines, fmt.Sprintf(
+			`configs["foundry-tenancy"] = spec.ComponentConfig{"field": %q, "strategy": %q, "header": %q}`,
+			ir.Tenancy.Field,
+			ir.Tenancy.Strategy,
+			ir.Tenancy.Header,
+		))
+	}
+
+	return strings.Join(lines, "\n\t")
 }
 
 func (g *Generator) writeServiceMains(ir *spec.IRSpec, components []ResolvedComponent) error {
@@ -113,9 +242,10 @@ func (g *Generator) writeServiceMains(ir *spec.IRSpec, components []ResolvedComp
 		svcComponents = sortComponents(svcComponents)
 
 		data := serviceMainData{
-			IR:         ir,
-			Service:    svc,
-			Components: svcComponents,
+			IR:          ir,
+			Service:     svc,
+			Components:  svcComponents,
+			ConfigsCode: buildServiceConfigsCode(ir, svc),
 		}
 
 		var buf bytes.Buffer
