@@ -12,12 +12,12 @@ func TestScaffold_Basic(t *testing.T) {
 	spec := renderScaffold("test-app", "1.2.3", []string{"Widget", "Gadget"})
 
 	for _, want := range []string{
-		"apiVersion: tsc/v1",
+		"apiVersion: foundry/v1",
 		"kind: Application",
 		"name: test-app",
 		"version: 1.2.3",
-		"tsc-http:     v1.0.0",
-		"tsc-postgres: v1.0.0",
+		"foundry-http:     v1.0.0",
+		"foundry-postgres: v1.0.0",
 		"name: Widget",
 		"plural: widgets",
 		"name: Gadget",
@@ -43,8 +43,8 @@ func TestScaffold_DefaultResource(t *testing.T) {
 func TestScaffold_AllComponents(t *testing.T) {
 	spec := renderScaffold("app", "1.0.0", nil)
 	for _, comp := range []string{
-		"tsc-http", "tsc-postgres", "tsc-auth-jwt",
-		"tsc-grpc", "tsc-health", "tsc-metrics", "tsc-events",
+		"foundry-http", "foundry-postgres", "foundry-auth-jwt",
+		"foundry-grpc", "foundry-health", "foundry-metrics", "foundry-events",
 	} {
 		if !strings.Contains(spec, comp) {
 			t.Errorf("scaffold missing component %q", comp)

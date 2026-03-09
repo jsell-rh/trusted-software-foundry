@@ -54,7 +54,7 @@ when creating a new application — edit the YAML, then run forge compile.`,
 func renderScaffold(name, version string, resourceNames []string) string {
 	var sb strings.Builder
 
-	sb.WriteString("apiVersion: tsc/v1\n")
+	sb.WriteString("apiVersion: foundry/v1\n")
 	sb.WriteString("kind: Application\n\n")
 	sb.WriteString("metadata:\n")
 	sb.WriteString("  name: " + name + "\n")
@@ -64,13 +64,13 @@ func renderScaffold(name, version string, resourceNames []string) string {
 
 	sb.WriteString("# Trusted component versions (pinned). This block is the application SBOM.\n")
 	sb.WriteString("components:\n")
-	sb.WriteString("  tsc-http:     v1.0.0\n")
-	sb.WriteString("  tsc-postgres: v1.0.0\n")
-	sb.WriteString("  tsc-auth-jwt: v1.0.0\n")
-	sb.WriteString("  tsc-grpc:     v1.0.0\n")
-	sb.WriteString("  tsc-health:   v1.0.0\n")
-	sb.WriteString("  tsc-metrics:  v1.0.0\n")
-	sb.WriteString("  tsc-events:   v1.0.0\n\n")
+	sb.WriteString("  foundry-http:     v1.0.0\n")
+	sb.WriteString("  foundry-postgres: v1.0.0\n")
+	sb.WriteString("  foundry-auth-jwt: v1.0.0\n")
+	sb.WriteString("  foundry-grpc:     v1.0.0\n")
+	sb.WriteString("  foundry-health:   v1.0.0\n")
+	sb.WriteString("  foundry-metrics:  v1.0.0\n")
+	sb.WriteString("  foundry-events:   v1.0.0\n\n")
 
 	sb.WriteString("# Data resources — what the application stores and manages.\n")
 	sb.WriteString("resources:\n")
