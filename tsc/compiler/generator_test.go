@@ -353,3 +353,79 @@ func TestIRTypeToSQL_AllTypes(t *testing.T) {
 		})
 	}
 }
+
+// --------------------------------------------------------------------------
+// sortComponents — alphabetical tiebreaker for unknown components
+// --------------------------------------------------------------------------
+
+// TestSortComponents_TwoUnknownTiebreakByName exercises the alphabetical
+// tiebreaker inside sortComponents (line: `return sorted[i].Name < sorted[j].Name`).
+// This branch fires when two components both lack a priority entry and must be
+// ordered by name to guarantee deterministic output across Go test runs.
+func TestSortComponents_TwoUnknownTiebreakByName(t *testing.T) {
+	input := []ResolvedComponent{
+		{Name: "zeta-service"},
+		{Name: "alpha-service"},
+		{Name: "foundry-postgres"}, // known, must come first
+	}
+	sorted := sortComponents(input)
+
+	if sorted[0].Name != "foundry-postgres" {
+		t.Errorf("foundry-postgres must be first, got %q", sorted[0].Name)
+	}
+	alphaIdx, zetaIdx := -1, -1
+	for i, c := range sorted {
+		switch c.Name {
+		case "alpha-service":
+			alphaIdx = i
+		case "zeta-service":
+			zetaIdx = i
+		}
+	}
+	if alphaIdx == -1 || zetaIdx == -1 {
+		t.Fatal("one or both unknown components missing from sorted output")
+	}
+	if alphaIdx > zetaIdx {
+		t.Errorf("alpha-service (pos %d) should appear before zeta-service (pos %d) via alphabetical tiebreak", alphaIdx, zetaIdx)
+	}
+}
+
+// --------------------------------------------------------------------------
+// Generate — write error path when output dir is read-only
+// --------------------------------------------------------------------------
+
+// TestGenerate_WriteError verifies that Generate returns a wrapped error
+// mentioning "generating main.go" when the output directory exists but is
+// read-only (so WriteFile for main.go fails). This covers the first error
+// path in the Generate sub-function call chain.
+func TestGenerate_WriteError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("root can write to read-only directories; skip")
+	}
+
+	ir, err := Parse(exampleSpecPath)
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	resolver := NewResolver(NewStubRegistry(), "")
+	components, err := resolver.ResolveAll(ir.Components)
+	if err != nil {
+		t.Fatalf("ResolveAll: %v", err)
+	}
+
+	// Create the output dir then make it read-only.
+	// os.MkdirAll will succeed (dir exists), but subsequent WriteFile will fail.
+	outDir := t.TempDir()
+	if err := os.Chmod(outDir, 0555); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	defer os.Chmod(outDir, 0755) // restore so TempDir cleanup works
+
+	genErr := NewGenerator(outDir, "").Generate(ir, components)
+	if genErr == nil {
+		t.Fatal("expected error for read-only output dir, got nil")
+	}
+	if !strings.Contains(genErr.Error(), "generating main.go") {
+		t.Errorf("expected 'generating main.go' in error, got: %v", genErr)
+	}
+}

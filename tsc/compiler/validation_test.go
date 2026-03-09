@@ -10,6 +10,8 @@ package compiler
 //   - Graph edge cross-reference against declared node_type labels
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -1339,5 +1341,124 @@ auth:
 	_, err := ParseWithSchema(spec, schemaPathForTest())
 	if err != nil {
 		t.Fatalf("expected valid auth config to parse without error, got: %v", err)
+	}
+}
+
+// --------------------------------------------------------------------------
+// validateAgainstSchema error path tests
+// --------------------------------------------------------------------------
+
+// TestParseWithSchema_MissingSchemaFile verifies that ParseWithSchema returns
+// an error wrapping "reading schema file" when the schema path does not exist.
+// This covers the os.ReadFile error branch in validateAgainstSchema.
+func TestParseWithSchema_MissingSchemaFile(t *testing.T) {
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http: v1.0.0
+`)
+	_, err := ParseWithSchema(spec, "/nonexistent/path/schema.json")
+	if err == nil {
+		t.Fatal("expected error for missing schema file, got nil")
+	}
+	if !strings.Contains(err.Error(), "reading schema") {
+		t.Errorf("expected 'reading schema' in error, got: %v", err)
+	}
+}
+
+// TestParseWithSchema_InvalidSchemaJSON verifies that ParseWithSchema returns
+// an error mentioning "loading schema" when the schema file contains invalid
+// JSON. This covers the newSchemaValidator error branch in validateAgainstSchema.
+func TestParseWithSchema_InvalidSchemaJSON(t *testing.T) {
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http: v1.0.0
+`)
+	// Write a schema file containing invalid JSON.
+	schemaFile := filepath.Join(t.TempDir(), "bad-schema.json")
+	if err := os.WriteFile(schemaFile, []byte(`{invalid json`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := ParseWithSchema(spec, schemaFile)
+	if err == nil {
+		t.Fatal("expected error for invalid schema JSON, got nil")
+	}
+	if !strings.Contains(err.Error(), "loading schema") {
+		t.Errorf("expected 'loading schema' in error, got: %v", err)
+	}
+}
+
+// --------------------------------------------------------------------------
+// checkJSONType — array and object type-mismatch errors
+// --------------------------------------------------------------------------
+
+// TestParse_OperationsNotArray verifies that a scalar string in the operations
+// field (which must be a JSON array) triggers the checkJSONType array error.
+func TestParse_OperationsNotArray(t *testing.T) {
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http:     v1.0.0
+  foundry-postgres: v1.0.0
+database:
+  type: postgres
+  migrations: auto
+resources:
+  - name: Widget
+    plural: widgets
+    fields:
+      - name: id
+        type: uuid
+        required: true
+    operations: "create"
+    events: false
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for non-array operations value, got nil")
+	}
+	if !strings.Contains(err.Error(), "operations") {
+		t.Errorf("expected error to mention 'operations', got: %v", err)
+	}
+}
+
+// TestParse_DatabaseNotObject verifies that a scalar value for the database
+// block (which must be a JSON object) triggers the checkJSONType object error.
+func TestParse_DatabaseNotObject(t *testing.T) {
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http:     v1.0.0
+  foundry-postgres: v1.0.0
+database: "postgres"
+resources:
+  - name: Widget
+    plural: widgets
+    fields:
+      - name: id
+        type: uuid
+        required: true
+    operations: [create, read]
+    events: false
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for non-object database value, got nil")
+	}
+	if !strings.Contains(err.Error(), "database") {
+		t.Errorf("expected error to mention 'database', got: %v", err)
 	}
 }

@@ -370,3 +370,30 @@ func TestVerifyAuditHash_MissingSourceDirectory(t *testing.T) {
 		t.Errorf("expected error to mention 'audit hash verification failed', got: %v", err)
 	}
 }
+
+// TestFileRegistry_MalformedYAMLEntry verifies that FileRegistry.Lookup returns
+// a wrapped error mentioning "parsing registry entry" when the on-disk YAML file
+// exists but contains fields that fail parseRegistryEntry validation (missing module).
+// This covers the resolver.go:63 error path that is not triggered by the
+// "not found" tests (which exercise the os.IsNotExist path instead).
+func TestFileRegistry_MalformedYAMLEntry(t *testing.T) {
+	registryDir := t.TempDir()
+	entryDir := filepath.Join(registryDir, "foundry-broken")
+	if err := os.MkdirAll(entryDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	// Missing required 'module' field — parseRegistryEntry will return an error.
+	malformedYAML := "name: foundry-broken\nversion: v1.0.0\naudit_hash: abc123\n"
+	if err := os.WriteFile(filepath.Join(entryDir, "v1.0.0.yaml"), []byte(malformedYAML), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	reg := NewFileRegistry(registryDir)
+	_, err := reg.Lookup("foundry-broken", "v1.0.0")
+	if err == nil {
+		t.Fatal("expected error for malformed registry entry, got nil")
+	}
+	if !strings.Contains(err.Error(), "parsing registry entry") {
+		t.Errorf("expected 'parsing registry entry' in error, got: %v", err)
+	}
+}
