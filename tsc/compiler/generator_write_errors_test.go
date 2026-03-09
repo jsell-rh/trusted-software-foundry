@@ -379,3 +379,127 @@ func TestGenerate_HookRegistryError(t *testing.T) {
 		t.Errorf("expected 'hook_registry.go' in error, got: %v", genErr)
 	}
 }
+
+// TestGenerate_ServiceMainsError verifies that Generate returns an error
+// mentioning "generating service mains" when writeServiceMains fails. Pre-creating
+// a DIRECTORY with the expected service main filename causes WriteFile to fail (EISDIR).
+func TestGenerate_ServiceMainsError(t *testing.T) {
+	fleetSpec := "../../tsc/examples/fleet-manager/app.foundry.yaml"
+	if _, statErr := os.Stat(fleetSpec); os.IsNotExist(statErr) {
+		t.Skip("fleet-manager example not found")
+	}
+
+	ir, err := Parse(fleetSpec)
+	if err != nil {
+		t.Fatalf("Parse fleet-manager: %v", err)
+	}
+	if len(ir.Services) == 0 {
+		t.Skip("fleet-manager has no services; test requires services")
+	}
+	resolver := NewResolver(NewStubRegistry(), "")
+	components, err := resolver.ResolveAll(ir.Components)
+	if err != nil {
+		t.Fatalf("ResolveAll: %v", err)
+	}
+
+	outDir := t.TempDir()
+	// Determine the first service main filename and pre-create it as a DIR.
+	firstSvc := ir.Services[0].Name
+	svcMainFile := "main_" + strings.ReplaceAll(firstSvc, "-", "_") + ".go"
+	if err := os.MkdirAll(filepath.Join(outDir, svcMainFile), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	genErr := NewGenerator(outDir, "").Generate(ir, components)
+	if genErr == nil {
+		t.Fatal("expected error from Generate when service main file is a dir, got nil")
+	}
+	if !strings.Contains(genErr.Error(), "generating service mains") {
+		t.Errorf("expected 'generating service mains' in error, got: %v", genErr)
+	}
+}
+
+// TestGenerate_DockerComposeError verifies that Generate returns an error
+// mentioning "generating docker-compose.yaml" when writeDockerCompose fails.
+// Pre-creating a DIRECTORY named "docker-compose.yaml" causes WriteFile to fail.
+func TestGenerate_DockerComposeError(t *testing.T) {
+	fleetSpec := "../../tsc/examples/fleet-manager/app.foundry.yaml"
+	if _, statErr := os.Stat(fleetSpec); os.IsNotExist(statErr) {
+		t.Skip("fleet-manager example not found")
+	}
+
+	ir, err := Parse(fleetSpec)
+	if err != nil {
+		t.Fatalf("Parse fleet-manager: %v", err)
+	}
+	if len(ir.Services) == 0 {
+		t.Skip("fleet-manager has no services; test requires services")
+	}
+	resolver := NewResolver(NewStubRegistry(), "")
+	components, err := resolver.ResolveAll(ir.Components)
+	if err != nil {
+		t.Fatalf("ResolveAll: %v", err)
+	}
+
+	outDir := t.TempDir()
+	// Pre-create a DIRECTORY named "docker-compose.yaml" — WriteFile fails (EISDIR).
+	// writeServiceMains runs first (writes main_*.go files, which succeed).
+	if err := os.MkdirAll(filepath.Join(outDir, "docker-compose.yaml"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	genErr := NewGenerator(outDir, "").Generate(ir, components)
+	if genErr == nil {
+		t.Fatal("expected error from Generate when docker-compose.yaml is a dir, got nil")
+	}
+	if !strings.Contains(genErr.Error(), "generating docker-compose.yaml") {
+		t.Errorf("expected 'generating docker-compose.yaml' in error, got: %v", genErr)
+	}
+}
+
+// --------------------------------------------------------------------------
+// copyHookFiles — WriteFile error when hooks/ dir is read-only
+// --------------------------------------------------------------------------
+
+// TestCopyHookFiles_WriteFileError verifies that copyHookFiles returns an
+// error mentioning "copying" when MkdirAll succeeds but WriteFile fails.
+// This is achieved by pre-creating an empty hooks/ dir and making it read-only.
+func TestCopyHookFiles_WriteFileError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("root can write to read-only directories; skipping")
+	}
+	specDir := t.TempDir()
+	hooksDir := filepath.Join(specDir, "hooks")
+	if err := os.MkdirAll(hooksDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(hooksDir, "audit.go"), []byte("package hooks\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	ir := &spec.IRSpec{
+		Hooks: []spec.IRHook{
+			{Name: "audit", Point: "pre-db", Implementation: "hooks/audit.go"},
+		},
+	}
+	outDir := t.TempDir()
+
+	// Pre-create the destination hooks/ dir and make it read-only so
+	// MkdirAll (of the existing dir) succeeds but WriteFile inside it fails.
+	destHooksDir := filepath.Join(outDir, "hooks")
+	if err := os.MkdirAll(destHooksDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(destHooksDir, 0555); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chmod(destHooksDir, 0755)
+
+	err := copyHookFiles(ir, outDir, specDir)
+	if err == nil {
+		t.Fatal("expected error when hooks/ dir is read-only, got nil")
+	}
+	if !strings.Contains(err.Error(), "copying") {
+		t.Errorf("expected 'copying' in error, got: %v", err)
+	}
+}
