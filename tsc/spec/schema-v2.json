@@ -9,8 +9,8 @@
   "properties": {
     "apiVersion": {
       "type": "string",
-      "enum": ["foundry/v1", "tsc/v2"],
-      "description": "API version. 'foundry/v1' for simple CRUD apps; 'tsc/v2' for complex apps with graph/events/authz extensions."
+      "enum": ["foundry/v1", "foundry/v2"],
+      "description": "API version. 'foundry/v1' for simple CRUD apps; 'foundry/v2' for complex apps with graph/events/authz extensions."
     },
     "kind": {
       "type": "string",
@@ -34,19 +34,19 @@
           "foundry-http",
           "foundry-postgres",
           "foundry-auth-jwt",
-          "tsc-auth-spicedb",
+          "foundry-auth-spicedb",
           "foundry-grpc",
           "foundry-health",
           "foundry-metrics",
           "foundry-events",
-          "tsc-graph-age",
-          "tsc-kafka",
-          "tsc-nats",
-          "tsc-redis",
-          "tsc-redis-streams",
-          "tsc-temporal",
-          "tsc-tenancy",
-          "tsc-service-router"
+          "foundry-graph-age",
+          "foundry-kafka",
+          "foundry-nats",
+          "foundry-redis",
+          "foundry-redis-streams",
+          "foundry-temporal",
+          "foundry-tenancy",
+          "foundry-service-router"
         ]
       },
       "additionalProperties": {
