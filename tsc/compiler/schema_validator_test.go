@@ -86,3 +86,37 @@ func TestNewSchemaValidator_NoDefs(t *testing.T) {
 		t.Errorf("resolveRef with nil defs must return nil, got: %v", result)
 	}
 }
+
+// --------------------------------------------------------------------------
+// validateNode — unresolved $ref error path
+// --------------------------------------------------------------------------
+
+// TestValidateNode_UnresolvedRef verifies that validateNode returns an error
+// when the schema contains a $ref that resolveRef cannot resolve (returns nil).
+// This covers the "unresolved $ref" error return in validateNode (line ~46).
+func TestValidateNode_UnresolvedRef(t *testing.T) {
+	sv := &schemaValidator{
+		defs: map[string]interface{}{
+			// "Widget" exists but the schema below references "Missing"
+			"Widget": map[string]interface{}{"type": "object"},
+		},
+	}
+	// A schema that references a non-existent $defs entry.
+	schema := map[string]interface{}{
+		"$ref": "#/$defs/Missing",
+	}
+	errs := sv.validateNode(map[string]interface{}{"key": "val"}, schema, "root")
+	if len(errs) == 0 {
+		t.Fatal("expected error for unresolved $ref, got none")
+	}
+	found := false
+	for _, e := range errs {
+		if e != nil {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected non-nil error in errs slice for unresolved $ref")
+	}
+}

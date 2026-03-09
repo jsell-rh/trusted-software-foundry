@@ -1752,3 +1752,80 @@ func TestParseWithSchema_InvalidYAMLSyntax(t *testing.T) {
 		t.Errorf("expected conversion error in output, got: %v", err)
 	}
 }
+
+// TestParse_AuthJWTMissingJWKURL verifies that auth.type=jwt without a jwk_url
+// is rejected. The schema has an if/then constraint: if auth.type == "jwt" then
+// jwk_url is required. This exercises the if/then branch in validateObject
+// (line ~198) when the if condition holds and the then constraint fires.
+func TestParse_AuthJWTMissingJWKURL(t *testing.T) {
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http:     v1.0.0
+  foundry-auth-jwt: v1.0.0
+auth:
+  type: jwt
+  required: true
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for jwt auth without jwk_url, got nil")
+	}
+	if !strings.Contains(err.Error(), "jwk_url") && !strings.Contains(err.Error(), "jwt") {
+		t.Errorf("expected error to mention 'jwk_url' or 'jwt', got: %v", err)
+	}
+}
+
+// TestParseWithSchema_YAMLRootScalar verifies that validateAgainstSchema returns
+// an error when YAML is syntactically valid but converts to a JSON non-object
+// (e.g. a scalar), causing json.Unmarshal into map[string]interface{} to fail.
+// This covers the json.Unmarshal error path in validateAgainstSchema (line ~91).
+func TestParseWithSchema_YAMLRootScalar(t *testing.T) {
+	// A YAML scalar converts to a JSON string, which cannot unmarshal into
+	// map[string]interface{}; this is distinct from the YAMLToJSON error path.
+	tmp := filepath.Join(t.TempDir(), "scalar.yaml")
+	if err := os.WriteFile(tmp, []byte("just a scalar string\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := ParseWithSchema(tmp, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for YAML root scalar, got nil")
+	}
+}
+
+// TestParseWithSchema_MissingSpecFile verifies that ParseWithSchema returns a
+// "reading spec file" error when the spec path does not exist. This covers
+// the os.ReadFile error branch in ParseWithSchema (line ~38).
+func TestParseWithSchema_MissingSpecFile(t *testing.T) {
+	_, err := ParseWithSchema("/nonexistent/spec/file.yaml", schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for missing spec file, got nil")
+	}
+	if !strings.Contains(err.Error(), "reading spec file") {
+		t.Errorf("expected 'reading spec file' in error, got: %v", err)
+	}
+}
+
+// TestParseWithSchema_GoyamlUnmarshalError verifies that ParseWithSchema returns
+// a "parsing YAML" error when goyaml.Unmarshal fails. Calling with an empty
+// schemaPath skips JSON Schema validation so the invalid YAML reaches the
+// goyaml.Unmarshal call. This covers the Unmarshal error path (parser.go:55).
+func TestParseWithSchema_GoyamlUnmarshalError(t *testing.T) {
+	// Write YAML that is syntactically invalid for go-yaml v3 Unmarshal.
+	// An unclosed flow sequence triggers a parse error in go-yaml.
+	tmp := filepath.Join(t.TempDir(), "invalid.yaml")
+	if err := os.WriteFile(tmp, []byte("{key: [unclosed_bracket\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	// Empty schemaPath skips JSON Schema validation; the invalid YAML reaches goyaml.Unmarshal.
+	_, err := ParseWithSchema(tmp, "")
+	if err == nil {
+		t.Fatal("expected error for invalid YAML in goyaml.Unmarshal, got nil")
+	}
+	if !strings.Contains(err.Error(), "parsing YAML") {
+		t.Errorf("expected 'parsing YAML' in error, got: %v", err)
+	}
+}

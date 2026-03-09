@@ -10,6 +10,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/jsell-rh/trusted-software-foundry/tsc/spec"
 )
 
 var allComponents = []struct {
@@ -433,5 +435,71 @@ func TestFileRegistry_UnreadableEntry(t *testing.T) {
 	// Should mention reading the entry.
 	if !strings.Contains(err.Error(), "reading registry entry") {
 		t.Errorf("expected 'reading registry entry' in error, got: %v", err)
+	}
+}
+
+// TestVerifyAuditHash_UnreadableFile verifies that verifyAuditHash returns an
+// error when a file inside the component directory exists (walkable) but is
+// not readable. This covers the os.Open error branch inside the Walk callback
+// (resolver.go:160-162). The test skips on root since root can open any file.
+func TestVerifyAuditHash_UnreadableFile(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("root can open any file; skip")
+	}
+
+	sourceBase := t.TempDir()
+	compDir := filepath.Join(sourceBase, "foundry-custom", "v1.0.0")
+	if err := os.MkdirAll(compDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	// Create a file then make it unreadable (mode 0000).
+	secretFile := filepath.Join(compDir, "secret.go")
+	if err := os.WriteFile(secretFile, []byte("package custom\n"), 0000); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chmod(secretFile, 0644) // restore so TempDir cleanup works
+
+	registryDir := t.TempDir()
+	regEntryDir := filepath.Join(registryDir, "foundry-custom")
+	if err := os.MkdirAll(regEntryDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(regEntryDir, "v1.0.0.yaml"),
+		[]byte("name: foundry-custom\nversion: v1.0.0\nmodule: github.com/test/foundry-custom\naudit_hash: abc123\n"),
+		0644); err != nil {
+		t.Fatal(err)
+	}
+
+	reg := NewFileRegistry(registryDir)
+	resolver := NewResolver(reg, sourceBase)
+	_, err := resolver.ResolveAll(map[string]string{"foundry-custom": "v1.0.0"})
+	if err == nil {
+		t.Fatal("expected error for unreadable component file, got nil")
+	}
+	if !strings.Contains(err.Error(), "audit hash verification failed") {
+		t.Errorf("expected 'audit hash verification failed' in error, got: %v", err)
+	}
+}
+
+// TestCopyHookFiles_EmptyImplementation verifies that a hook with an empty
+// Implementation field is silently skipped by copyHookFiles. This covers the
+// `if h.Implementation == ""` continue branch (generator_v2.go:478-480).
+func TestCopyHookFiles_EmptyImplementation(t *testing.T) {
+	ir := &spec.IRSpec{
+		Hooks: []spec.IRHook{
+			{Name: "no-impl", Point: "pre-db", Implementation: ""},
+			{Name: "with-impl", Point: "pre-db", Implementation: "hooks/real.go"},
+		},
+	}
+	// No source files exist → both hooks skipped (empty-impl via continue,
+	// with-impl via ReadFile error graceful skip).
+	outDir := t.TempDir()
+	if err := copyHookFiles(ir, outDir, ""); err != nil {
+		t.Fatalf("copyHookFiles: %v", err)
+	}
+	// Output directory should be empty — no files copied.
+	entries, _ := os.ReadDir(outDir)
+	if len(entries) != 0 {
+		t.Errorf("expected empty output dir, got: %v", entries)
 	}
 }
