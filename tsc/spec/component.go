@@ -13,7 +13,7 @@ type ComponentConfig map[string]any
 // Component is implemented by every trusted component in the TSC registry.
 // All methods must be safe for concurrent use.
 type Component interface {
-	// Name returns the registry name, e.g. "tsc-http".
+	// Name returns the registry name, e.g. "foundry-http".
 	Name() string
 
 	// Version returns the semver string, e.g. "v1.0.0".
@@ -44,7 +44,7 @@ type Component interface {
 }
 
 // ResourceDefinition describes a data resource declared in the IR spec.
-// The compiler passes these to components (e.g. tsc-postgres) that need
+// The compiler passes these to components (e.g. foundry-postgres) that need
 // to generate migrations and CRUD handlers.
 type ResourceDefinition struct {
 	// Name is the singular resource name, e.g. "Dinosaur".
@@ -101,7 +101,7 @@ type Registrar interface {
 	AddGRPCService(desc GRPCServiceDesc, impl any)
 
 	// SetDB provides a database connection pool to any component that needs it.
-	// Only tsc-postgres calls this; other components receive it via DB().
+	// Only foundry-postgres calls this; other components receive it via DB().
 	SetDB(db DB)
 
 	// DB returns the shared database connection pool, or nil if not yet set.
@@ -139,7 +139,7 @@ type Request struct {
 type GRPCServiceDesc any
 
 // DB is a minimal interface over a SQL connection pool.
-// tsc-postgres implements this; other components depend on it.
+// foundry-postgres implements this; other components depend on it.
 type DB interface {
 	ExecContext(ctx context.Context, query string, args ...any) error
 	QueryContext(ctx context.Context, query string, args ...any) (Rows, error)

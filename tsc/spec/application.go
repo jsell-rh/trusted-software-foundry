@@ -21,14 +21,14 @@ type Application struct {
 }
 
 // HTTPHandlerEntry holds a registered HTTP handler and its URL pattern.
-// Exported so tsc-http can iterate handlers from outside the spec package.
+// Exported so foundry-http can iterate handlers from outside the spec package.
 type HTTPHandlerEntry struct {
 	Pattern string
 	Handler HTTPHandler
 }
 
 // GRPCServiceEntry holds a registered gRPC service descriptor and implementation.
-// Exported so tsc-grpc can iterate services from outside the spec package.
+// Exported so foundry-grpc can iterate services from outside the spec package.
 type GRPCServiceEntry struct {
 	Desc GRPCServiceDesc
 	Impl any
@@ -42,7 +42,7 @@ func NewApplication(resources []ResourceDefinition) *Application {
 
 // AddComponent registers a component with the application.
 // Components are configured and registered in the order they are added.
-// tsc-postgres must be added before components that depend on DB.
+// foundry-postgres must be added before components that depend on DB.
 func (a *Application) AddComponent(c Component) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -144,21 +144,21 @@ func (a *Application) Resources() []ResourceDefinition {
 	return a.resources
 }
 
-// HTTPHandlers returns the registered HTTP handlers (used by tsc-http).
+// HTTPHandlers returns the registered HTTP handlers (used by foundry-http).
 func (a *Application) HTTPHandlers() []HTTPHandlerEntry {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	return a.httpHandlers
 }
 
-// Middlewares returns the registered middleware chain (used by tsc-http).
+// Middlewares returns the registered middleware chain (used by foundry-http).
 func (a *Application) Middlewares() []HTTPMiddleware {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	return a.middlewares
 }
 
-// GRPCServices returns the registered gRPC services (used by tsc-grpc).
+// GRPCServices returns the registered gRPC services (used by foundry-grpc).
 func (a *Application) GRPCServices() []GRPCServiceEntry {
 	a.mu.RLock()
 	defer a.mu.RUnlock()

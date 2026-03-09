@@ -9,8 +9,8 @@
   "properties": {
     "apiVersion": {
       "type": "string",
-      "enum": ["tsc/v1", "tsc/v2"],
-      "description": "API version. 'tsc/v1' for simple CRUD apps; 'tsc/v2' for complex apps with graph/events/authz extensions."
+      "enum": ["foundry/v1", "tsc/v2"],
+      "description": "API version. 'foundry/v1' for simple CRUD apps; 'tsc/v2' for complex apps with graph/events/authz extensions."
     },
     "kind": {
       "type": "string",
@@ -31,14 +31,14 @@
       "description": "SBOM: pinned versions of all trusted components.",
       "propertyNames": {
         "enum": [
-          "tsc-http",
-          "tsc-postgres",
-          "tsc-auth-jwt",
+          "foundry-http",
+          "foundry-postgres",
+          "foundry-auth-jwt",
           "tsc-auth-spicedb",
-          "tsc-grpc",
-          "tsc-health",
-          "tsc-metrics",
-          "tsc-events",
+          "foundry-grpc",
+          "foundry-health",
+          "foundry-metrics",
+          "foundry-events",
           "tsc-graph-age",
           "tsc-kafka",
           "tsc-nats",

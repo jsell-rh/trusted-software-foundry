@@ -99,13 +99,13 @@ type IRMetrics struct {
 
 var (
 	validComponents = map[string]bool{
-		"tsc-http":     true,
-		"tsc-postgres": true,
-		"tsc-auth-jwt": true,
-		"tsc-grpc":     true,
-		"tsc-health":   true,
-		"tsc-metrics":  true,
-		"tsc-events":   true,
+		"foundry-http":     true,
+		"foundry-postgres": true,
+		"foundry-auth-jwt": true,
+		"foundry-grpc":     true,
+		"foundry-health":   true,
+		"foundry-metrics":  true,
+		"foundry-events":   true,
 	}
 	validFieldTypes = map[string]bool{
 		"string": true, "int": true, "float": true,
@@ -131,8 +131,8 @@ func Validate(spec *IRSpec) []error {
 		errs = append(errs, fmt.Errorf(format, args...))
 	}
 
-	if spec.APIVersion != "tsc/v1" {
-		add("apiVersion must be 'tsc/v1', got %q", spec.APIVersion)
+	if spec.APIVersion != "foundry/v1" {
+		add("apiVersion must be 'foundry/v1', got %q", spec.APIVersion)
 	}
 	if spec.Kind != "Application" {
 		add("kind must be 'Application', got %q", spec.Kind)
@@ -222,9 +222,9 @@ func Validate(spec *IRSpec) []error {
 			seen[op] = true
 		}
 
-		// events requires tsc-events component
-		if r.Events && spec.Components["tsc-events"] == "" {
-			add("%s: events:true requires tsc-events in components", prefix)
+		// events requires foundry-events component
+		if r.Events && spec.Components["foundry-events"] == "" {
+			add("%s: events:true requires foundry-events in components", prefix)
 		}
 	}
 
@@ -233,22 +233,22 @@ func Validate(spec *IRSpec) []error {
 		if spec.Auth.JWKURL == "" {
 			add("auth.jwk_url is required when auth.type is 'jwt'")
 		}
-		if spec.Components["tsc-auth-jwt"] == "" {
-			add("auth.type=jwt requires tsc-auth-jwt in components")
+		if spec.Components["foundry-auth-jwt"] == "" {
+			add("auth.type=jwt requires foundry-auth-jwt in components")
 		}
 	}
 
 	// gRPC cross-checks
 	if spec.API != nil && spec.API.GRPC != nil && spec.API.GRPC.Enabled {
-		if spec.Components["tsc-grpc"] == "" {
-			add("api.grpc.enabled=true requires tsc-grpc in components")
+		if spec.Components["foundry-grpc"] == "" {
+			add("api.grpc.enabled=true requires foundry-grpc in components")
 		}
 	}
 
 	// Database cross-checks
 	if spec.Database != nil {
-		if spec.Components["tsc-postgres"] == "" {
-			add("database block requires tsc-postgres in components")
+		if spec.Components["foundry-postgres"] == "" {
+			add("database block requires foundry-postgres in components")
 		}
 	}
 	if len(spec.Resources) > 0 && spec.Database == nil {

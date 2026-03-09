@@ -54,8 +54,8 @@ func TestParse_ValidSpec(t *testing.T) {
 	if ir.Metadata.Version != "1.0.0" {
 		t.Errorf("metadata.version: want %q, got %q", "1.0.0", ir.Metadata.Version)
 	}
-	if _, ok := ir.Components["tsc-http"]; !ok {
-		t.Error("expected tsc-http in components")
+	if _, ok := ir.Components["foundry-http"]; !ok {
+		t.Error("expected foundry-http in components")
 	}
 	if len(ir.Resources) == 0 {
 		t.Error("expected at least one resource")
@@ -71,7 +71,7 @@ metadata:
   name: test-app
   version: 1.0.0
 components:
-  tsc-http: v1.0.0
+  foundry-http: v1.0.0
 `)
 	_, err := ParseWithSchema(spec, schemaPathForTest())
 	if err == nil {
@@ -84,12 +84,12 @@ components:
 
 func TestParse_MissingKind(t *testing.T) {
 	spec := writeTempSpec(t, `
-apiVersion: tsc/v1
+apiVersion: foundry/v1
 metadata:
   name: test-app
   version: 1.0.0
 components:
-  tsc-http: v1.0.0
+  foundry-http: v1.0.0
 `)
 	_, err := ParseWithSchema(spec, schemaPathForTest())
 	if err == nil {
@@ -102,10 +102,10 @@ components:
 
 func TestParse_MissingMetadata(t *testing.T) {
 	spec := writeTempSpec(t, `
-apiVersion: tsc/v1
+apiVersion: foundry/v1
 kind: Application
 components:
-  tsc-http: v1.0.0
+  foundry-http: v1.0.0
 `)
 	_, err := ParseWithSchema(spec, schemaPathForTest())
 	if err == nil {
@@ -118,12 +118,12 @@ components:
 
 func TestParse_MissingMetadataName(t *testing.T) {
 	spec := writeTempSpec(t, `
-apiVersion: tsc/v1
+apiVersion: foundry/v1
 kind: Application
 metadata:
   version: 1.0.0
 components:
-  tsc-http: v1.0.0
+  foundry-http: v1.0.0
 `)
 	_, err := ParseWithSchema(spec, schemaPathForTest())
 	if err == nil {
@@ -133,7 +133,7 @@ components:
 
 func TestParse_MissingComponents(t *testing.T) {
 	spec := writeTempSpec(t, `
-apiVersion: tsc/v1
+apiVersion: foundry/v1
 kind: Application
 metadata:
   name: test-app
@@ -152,13 +152,13 @@ metadata:
 
 func TestParse_UnknownComponent(t *testing.T) {
 	spec := writeTempSpec(t, `
-apiVersion: tsc/v1
+apiVersion: foundry/v1
 kind: Application
 metadata:
   name: test-app
   version: 1.0.0
 components:
-  tsc-http: v1.0.0
+  foundry-http: v1.0.0
   tsc-unknown-gadget: v1.0.0
 `)
 	_, err := ParseWithSchema(spec, schemaPathForTest())
@@ -173,19 +173,19 @@ components:
 func TestParse_AllKnownComponents(t *testing.T) {
 	// All seven known components should be accepted.
 	spec := writeTempSpec(t, `
-apiVersion: tsc/v1
+apiVersion: foundry/v1
 kind: Application
 metadata:
   name: full-stack
   version: 1.0.0
 components:
-  tsc-http:     v1.0.0
-  tsc-postgres: v1.0.0
-  tsc-auth-jwt: v1.0.0
-  tsc-grpc:     v1.0.0
-  tsc-health:   v1.0.0
-  tsc-metrics:  v1.0.0
-  tsc-events:   v1.0.0
+  foundry-http:     v1.0.0
+  foundry-postgres: v1.0.0
+  foundry-auth-jwt: v1.0.0
+  foundry-grpc:     v1.0.0
+  foundry-health:   v1.0.0
+  foundry-metrics:  v1.0.0
+  foundry-events:   v1.0.0
 database:
   type: postgres
   migrations: auto
@@ -208,14 +208,14 @@ resources:
 
 func TestParse_InvalidFieldType(t *testing.T) {
 	spec := writeTempSpec(t, `
-apiVersion: tsc/v1
+apiVersion: foundry/v1
 kind: Application
 metadata:
   name: test-app
   version: 1.0.0
 components:
-  tsc-http:     v1.0.0
-  tsc-postgres: v1.0.0
+  foundry-http:     v1.0.0
+  foundry-postgres: v1.0.0
 database:
   type: postgres
   migrations: auto
@@ -238,14 +238,14 @@ resources:
 
 func TestParse_ValidFieldTypes(t *testing.T) {
 	spec := writeTempSpec(t, `
-apiVersion: tsc/v1
+apiVersion: foundry/v1
 kind: Application
 metadata:
   name: type-test
   version: 1.0.0
 components:
-  tsc-http:     v1.0.0
-  tsc-postgres: v1.0.0
+  foundry-http:     v1.0.0
+  foundry-postgres: v1.0.0
 database:
   type: postgres
   migrations: auto
@@ -283,7 +283,7 @@ metadata:
   name: test-app
   version: 1.0.0
 components:
-  tsc-http: v1.0.0
+  foundry-http: v1.0.0
 `)
 	_, err := ParseWithSchema(spec, schemaPathForTest())
 	if err == nil {
@@ -293,13 +293,13 @@ components:
 
 func TestParse_WrongKind(t *testing.T) {
 	spec := writeTempSpec(t, `
-apiVersion: tsc/v1
+apiVersion: foundry/v1
 kind: Service
 metadata:
   name: test-app
   version: 1.0.0
 components:
-  tsc-http: v1.0.0
+  foundry-http: v1.0.0
 `)
 	_, err := ParseWithSchema(spec, schemaPathForTest())
 	if err == nil {
@@ -311,13 +311,13 @@ components:
 
 func TestParse_InvalidMetadataName(t *testing.T) {
 	spec := writeTempSpec(t, `
-apiVersion: tsc/v1
+apiVersion: foundry/v1
 kind: Application
 metadata:
   name: MyApp
   version: 1.0.0
 components:
-  tsc-http: v1.0.0
+  foundry-http: v1.0.0
 `)
 	_, err := ParseWithSchema(spec, schemaPathForTest())
 	if err == nil {
@@ -327,13 +327,13 @@ components:
 
 func TestParse_InvalidComponentVersion(t *testing.T) {
 	spec := writeTempSpec(t, `
-apiVersion: tsc/v1
+apiVersion: foundry/v1
 kind: Application
 metadata:
   name: test-app
   version: 1.0.0
 components:
-  tsc-http: 1.0.0
+  foundry-http: 1.0.0
 `)
 	_, err := ParseWithSchema(spec, schemaPathForTest())
 	if err == nil {
@@ -349,13 +349,13 @@ func TestParseWithSchema_EmptySchemaPath_SkipsSchemaValidation(t *testing.T) {
 	// only produce semantic errors — not schema errors.
 	// Use a completely minimal valid spec to confirm skip works.
 	specPath := writeTempSpec(t, `
-apiVersion: tsc/v1
+apiVersion: foundry/v1
 kind: Application
 metadata:
   name: minimal-app
   version: 1.0.0
 components:
-  tsc-http: v1.0.0
+  foundry-http: v1.0.0
 `)
 	// Empty schemaPath skips schema validation.
 	_, err := ParseWithSchema(specPath, "")

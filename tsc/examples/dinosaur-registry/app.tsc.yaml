@@ -1,4 +1,4 @@
-apiVersion: tsc/v1
+apiVersion: foundry/v1
 kind: Application
 
 metadata:
@@ -10,13 +10,13 @@ metadata:
 
 # Trusted component versions (pinned). This block is the application SBOM.
 components:
-  tsc-http:     v1.0.0
-  tsc-postgres: v1.0.0
-  tsc-auth-jwt: v1.0.0
-  tsc-grpc:     v1.0.0
-  tsc-health:   v1.0.0
-  tsc-metrics:  v1.0.0
-  tsc-events:   v1.0.0
+  foundry-http:     v1.0.0
+  foundry-postgres: v1.0.0
+  foundry-auth-jwt: v1.0.0
+  foundry-grpc:     v1.0.0
+  foundry-health:   v1.0.0
+  foundry-metrics:  v1.0.0
+  foundry-events:   v1.0.0
 
 # Data resources — what the application stores and manages.
 resources:

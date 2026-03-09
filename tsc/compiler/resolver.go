@@ -77,7 +77,7 @@ type registryEntryYAML struct {
 // parseRegistryEntry parses a YAML registry entry.
 // Expected format:
 //
-//	name: tsc-http
+//	name: foundry-http
 //	version: v1.0.0
 //	module: github.com/openshift-online/tsc-components/http
 //	audit_hash: <sha256-hex>

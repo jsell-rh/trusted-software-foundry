@@ -30,11 +30,11 @@ func newFake(name, version, hash string) *fakeComponent {
 }
 
 const (
-	httpName    = "tsc-http"
+	httpName    = "foundry-http"
 	httpVersion = "v1.0.0"
 	httpHash    = "abc123def456abc123def456abc123def456abc123def456abc123def456abcd"
 
-	pgName    = "tsc-postgres"
+	pgName    = "foundry-postgres"
 	pgVersion = "v1.0.0"
 	pgHash    = "def456abc123def456abc123def456abc123def456abc123def456abc123deff"
 )
@@ -112,7 +112,7 @@ func TestRegistry_All_DeterministicOrder(t *testing.T) {
 	if len(all) != 2 {
 		t.Fatalf("All: got %d components, want 2", len(all))
 	}
-	// Should be alphabetical: tsc-http before tsc-postgres.
+	// Should be alphabetical: foundry-http before foundry-postgres.
 	if all[0].Name() != httpName {
 		t.Errorf("All[0]: got %q, want %q", all[0].Name(), httpName)
 	}

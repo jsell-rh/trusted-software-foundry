@@ -344,14 +344,14 @@ New component registry entries (all require audit before use):
 
 | Component | Provides | Dependencies |
 |-----------|----------|--------------|
-| `tsc-graph-age` | Apache AGE graph CRUD, Cypher query API | `tsc-postgres` |
+| `tsc-graph-age` | Apache AGE graph CRUD, Cypher query API | `foundry-postgres` |
 | `tsc-kafka` | Kafka producer/consumer, schema registry | — |
 | `tsc-nats` | NATS JetStream producer/consumer | — |
 | `tsc-redis-streams` | Redis Streams producer/consumer | `tsc-redis` |
 | `tsc-redis` | Redis cache, rate limiting, distributed locks | — |
-| `tsc-auth-spicedb` | SpiceDB ReBAC enforcement middleware | `tsc-auth-jwt` |
-| `tsc-temporal` | Bi-temporal table management, AS OF queries | `tsc-postgres` |
-| `tsc-tenancy` | Tenant isolation (schema/row/database model) | `tsc-postgres` |
+| `tsc-auth-spicedb` | SpiceDB ReBAC enforcement middleware | `foundry-auth-jwt` |
+| `tsc-temporal` | Bi-temporal table management, AS OF queries | `foundry-postgres` |
+| `tsc-tenancy` | Tenant isolation (schema/row/database model) | `foundry-postgres` |
 | `tsc-service-router` | Inter-service discovery and gRPC routing | — |
 
 ---
@@ -361,21 +361,21 @@ New component registry entries (all require audit before use):
 Using the v2 IR, the kartograph application would be described as:
 
 ```yaml
-apiVersion: tsc/v1
+apiVersion: foundry/v1
 kind: Application
 metadata:
   name: kartograph
   version: 1.0.0
 
 components:
-  tsc-http:         v2.0.0
-  tsc-postgres:     v1.0.0
-  tsc-auth-jwt:     v1.0.0
+  foundry-http:         v2.0.0
+  foundry-postgres:     v1.0.0
+  foundry-auth-jwt:     v1.0.0
   tsc-auth-spicedb: v1.0.0
   tsc-graph-age:    v1.0.0
   tsc-kafka:        v1.0.0
-  tsc-health:       v1.0.0
-  tsc-metrics:      v1.0.0
+  foundry-health:       v1.0.0
+  foundry-metrics:      v1.0.0
   tsc-redis:        v1.0.0
   tsc-tenancy:      v1.0.0
 

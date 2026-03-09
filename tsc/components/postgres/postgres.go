@@ -1,6 +1,6 @@
-// Package postgres implements the tsc-postgres trusted component.
+// Package postgres implements the foundry-postgres trusted component.
 //
-// tsc-postgres provides:
+// foundry-postgres provides:
 //   - A PostgreSQL connection pool (implements spec.DB)
 //   - Per-resource CRUD DAOs generated from IRSpec ResourceDefinitions
 //   - SQL migration generation from IR resource declarations
@@ -22,12 +22,12 @@ import (
 )
 
 const (
-	componentName    = "tsc-postgres"
+	componentName    = "foundry-postgres"
 	componentVersion = "v1.0.0"
 	auditHash        = "sha256:a3f8c2e1b4d7f9a0c5e2b8d4f1a6c3e0b7d2f5a8c1e4b7d0f3a6c9e2b5d8f1a4"
 )
 
-// Component is the tsc-postgres trusted component implementation.
+// Component is the foundry-postgres trusted component implementation.
 // It satisfies spec.Component and spec.ResourceProvider.
 type Component struct {
 	cfg    Config
@@ -49,7 +49,7 @@ type Config struct {
 	Resources []spec.ResourceDefinition
 }
 
-// New returns a new tsc-postgres Component. Use in generated main.go.
+// New returns a new foundry-postgres Component. Use in generated main.go.
 func New() *Component {
 	return &Component{
 		daos: make(map[string]*resourceDAO),
@@ -104,7 +104,7 @@ func (c *Component) Register(app *spec.Application) error {
 
 	sqldb, err := sql.Open("postgres", c.cfg.DSN)
 	if err != nil {
-		return fmt.Errorf("tsc-postgres: open db: %w", err)
+		return fmt.Errorf("foundry-postgres: open db: %w", err)
 	}
 	sqldb.SetMaxOpenConns(c.cfg.MaxOpenConns)
 	sqldb.SetMaxIdleConns(c.cfg.MaxIdleConns)
@@ -112,7 +112,7 @@ func (c *Component) Register(app *spec.Application) error {
 
 	c.db = &sqlDB{db: sqldb}
 
-	// Expose DB to other components (e.g. tsc-events).
+	// Expose DB to other components (e.g. foundry-events).
 	app.SetDB(c.db)
 
 	// Build one DAO per resource.
@@ -126,10 +126,10 @@ func (c *Component) Register(app *spec.Application) error {
 // Start pings the database and runs migrations.
 func (c *Component) Start(ctx context.Context) error {
 	if err := c.db.db.PingContext(ctx); err != nil {
-		return fmt.Errorf("tsc-postgres: ping: %w", err)
+		return fmt.Errorf("foundry-postgres: ping: %w", err)
 	}
 	if err := c.runMigrations(ctx); err != nil {
-		return fmt.Errorf("tsc-postgres: migrations: %w", err)
+		return fmt.Errorf("foundry-postgres: migrations: %w", err)
 	}
 	return nil
 }
