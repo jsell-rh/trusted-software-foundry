@@ -1,6 +1,6 @@
-// Package jwt provides the tsc-auth-jwt trusted component.
+// Package jwt provides the foundry-auth-jwt trusted component.
 //
-// tsc-auth-jwt validates JWT bearer tokens and enforces RBAC on HTTP requests.
+// foundry-auth-jwt validates JWT bearer tokens and enforces RBAC on HTTP requests.
 // It registers an HTTP middleware that extracts the Authorization header,
 // validates the token signature and claims, and attaches the parsed claims
 // to the request context. Downstream handlers receive the verified identity
@@ -44,7 +44,7 @@ type contextKey string
 
 const (
 	// ClaimsKey is the context key under which validated JWT claims are stored.
-	ClaimsKey contextKey = "tsc-auth-jwt:claims"
+	ClaimsKey contextKey = "foundry-auth-jwt:claims"
 )
 
 // Claims is the set of standard + custom claims extracted from a validated token.
@@ -76,12 +76,12 @@ type Component struct {
 	cancel  context.CancelFunc
 }
 
-// New returns an unconfigured tsc-auth-jwt component.
+// New returns an unconfigured foundry-auth-jwt component.
 func New() *Component {
 	return &Component{}
 }
 
-func (c *Component) Name() string      { return "tsc-auth-jwt" }
+func (c *Component) Name() string      { return "foundry-auth-jwt" }
 func (c *Component) Version() string   { return "v1.0.0" }
 func (c *Component) AuditHash() string { return auditHash }
 
@@ -116,10 +116,10 @@ func (c *Component) Configure(cfg spec.ComponentConfig) error {
 	}
 
 	if c.jwksURL == "" && len(c.secret) == 0 {
-		return fmt.Errorf("tsc-auth-jwt: exactly one of jwks_url or secret must be configured")
+		return fmt.Errorf("foundry-auth-jwt: exactly one of jwks_url or secret must be configured")
 	}
 	if c.jwksURL != "" && len(c.secret) > 0 {
-		return fmt.Errorf("tsc-auth-jwt: jwks_url and secret are mutually exclusive")
+		return fmt.Errorf("foundry-auth-jwt: jwks_url and secret are mutually exclusive")
 	}
 
 	if len(c.algorithms) == 0 {
@@ -144,7 +144,7 @@ func (c *Component) Register(app *spec.Application) error {
 func (c *Component) Start(ctx context.Context) error {
 	if c.jwksURL != "" {
 		if err := c.refreshKeys(); err != nil {
-			return fmt.Errorf("tsc-auth-jwt: initial JWKS fetch: %w", err)
+			return fmt.Errorf("foundry-auth-jwt: initial JWKS fetch: %w", err)
 		}
 		ctx2, cancel := context.WithCancel(ctx)
 		c.cancel = cancel

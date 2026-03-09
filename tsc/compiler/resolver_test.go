@@ -12,13 +12,13 @@ var allComponents = []struct {
 	version string
 	module  string
 }{
-	{"tsc-http", "v1.0.0", "github.com/jsell-rh/trusted-software-components/tsc/components/http"},
-	{"tsc-postgres", "v1.0.0", "github.com/jsell-rh/trusted-software-components/tsc/components/postgres"},
-	{"tsc-auth-jwt", "v1.0.0", "github.com/jsell-rh/trusted-software-components/tsc/components/auth/jwt"},
-	{"tsc-grpc", "v1.0.0", "github.com/jsell-rh/trusted-software-components/tsc/components/grpc"},
-	{"tsc-health", "v1.0.0", "github.com/jsell-rh/trusted-software-components/tsc/components/health"},
-	{"tsc-metrics", "v1.0.0", "github.com/jsell-rh/trusted-software-components/tsc/components/metrics"},
-	{"tsc-events", "v1.0.0", "github.com/jsell-rh/trusted-software-components/tsc/components/events"},
+	{"foundry-http", "v1.0.0", "github.com/jsell-rh/trusted-software-components/tsc/components/http"},
+	{"foundry-postgres", "v1.0.0", "github.com/jsell-rh/trusted-software-components/tsc/components/postgres"},
+	{"foundry-auth-jwt", "v1.0.0", "github.com/jsell-rh/trusted-software-components/tsc/components/auth/jwt"},
+	{"foundry-grpc", "v1.0.0", "github.com/jsell-rh/trusted-software-components/tsc/components/grpc"},
+	{"foundry-health", "v1.0.0", "github.com/jsell-rh/trusted-software-components/tsc/components/health"},
+	{"foundry-metrics", "v1.0.0", "github.com/jsell-rh/trusted-software-components/tsc/components/metrics"},
+	{"foundry-events", "v1.0.0", "github.com/jsell-rh/trusted-software-components/tsc/components/events"},
 }
 
 func testdataRegistryDir(t *testing.T) string {
@@ -66,7 +66,7 @@ func TestStubRegistry_UnknownComponent(t *testing.T) {
 
 func TestStubRegistry_WrongVersion(t *testing.T) {
 	reg := NewStubRegistry()
-	_, err := reg.Lookup("tsc-http", "v9.9.9")
+	_, err := reg.Lookup("foundry-http", "v9.9.9")
 	if err == nil {
 		t.Fatal("expected error for wrong version, got nil")
 	}
@@ -117,7 +117,7 @@ func TestFileRegistry_UnknownComponent(t *testing.T) {
 func TestFileRegistry_WrongVersion(t *testing.T) {
 	dir := testdataRegistryDir(t)
 	reg := NewFileRegistry(dir)
-	_, err := reg.Lookup("tsc-http", "v9.9.9")
+	_, err := reg.Lookup("foundry-http", "v9.9.9")
 	if err == nil {
 		t.Fatal("expected error for wrong version, got nil")
 	}
@@ -130,7 +130,7 @@ func TestFileRegistry_WrongVersion(t *testing.T) {
 
 func TestParseRegistryEntry_Valid(t *testing.T) {
 	data := []byte(`
-name: tsc-http
+name: foundry-http
 version: v1.0.0
 module: github.com/openshift-online/tsc-components/http
 audit_hash: abc123
@@ -139,8 +139,8 @@ audit_hash: abc123
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if entry.Name != "tsc-http" {
-		t.Errorf("Name = %q, want %q", entry.Name, "tsc-http")
+	if entry.Name != "foundry-http" {
+		t.Errorf("Name = %q, want %q", entry.Name, "foundry-http")
 	}
 	if entry.Module != "github.com/openshift-online/tsc-components/http" {
 		t.Errorf("Module = %q, want %q", entry.Module, "github.com/openshift-online/tsc-components/http")
@@ -164,7 +164,7 @@ audit_hash: abc123
 
 func TestParseRegistryEntry_MissingVersion(t *testing.T) {
 	data := []byte(`
-name: tsc-http
+name: foundry-http
 module: github.com/openshift-online/tsc-components/http
 audit_hash: abc123
 `)
@@ -176,7 +176,7 @@ audit_hash: abc123
 
 func TestParseRegistryEntry_MissingModule(t *testing.T) {
 	data := []byte(`
-name: tsc-http
+name: foundry-http
 version: v1.0.0
 audit_hash: abc123
 `)

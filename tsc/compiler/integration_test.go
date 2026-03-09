@@ -53,19 +53,19 @@ func TestE2E_DinosaurRegistry(t *testing.T) {
 		}
 	}
 
-	// Assert: tsc-postgres AddComponent call appears before tsc-http (dependency order).
+	// Assert: foundry-postgres AddComponent call appears before foundry-http (dependency order).
 	// Search only in the AddComponent block, not the import block.
 	addComponentSection := mainGoStr[strings.Index(mainGoStr, "app.AddComponent("):]
-	postgresAddIdx := strings.Index(addComponentSection, "tscpostgres")
-	httpAddIdx := strings.Index(addComponentSection, "tschttp")
+	postgresAddIdx := strings.Index(addComponentSection, "foundrypostgres")
+	httpAddIdx := strings.Index(addComponentSection, "foundryhttp")
 	if postgresAddIdx < 0 {
-		t.Error("main.go missing tsc-postgres AddComponent call")
+		t.Error("main.go missing foundry-postgres AddComponent call")
 	}
 	if httpAddIdx < 0 {
-		t.Error("main.go missing tsc-http AddComponent call")
+		t.Error("main.go missing foundry-http AddComponent call")
 	}
 	if postgresAddIdx > 0 && httpAddIdx > 0 && postgresAddIdx > httpAddIdx {
-		t.Error("tsc-postgres must be added before tsc-http (dependency order: postgres sets DB, others need DB)")
+		t.Error("foundry-postgres must be added before foundry-http (dependency order: postgres sets DB, others need DB)")
 	}
 
 	// Assert: go.mod exists

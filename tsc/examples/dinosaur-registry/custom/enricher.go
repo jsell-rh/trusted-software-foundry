@@ -11,8 +11,8 @@ import (
 // DescriptionEnricher is a custom HTTP middleware that annotates GET /dinosaurs
 // responses with service metadata.
 //
-// This demonstrates Pattern 2: middleware that wraps the tsc-http response
-// pipeline without touching tsc-http or tsc-postgres source code.
+// This demonstrates Pattern 2: middleware that wraps the foundry-http response
+// pipeline without touching foundry-http or foundry-postgres source code.
 type DescriptionEnricher struct {
 	ServiceName string
 	Version     string

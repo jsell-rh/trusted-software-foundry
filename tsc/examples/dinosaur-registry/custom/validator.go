@@ -37,9 +37,9 @@ type handlerFunc func(w spec.ResponseWriter, r *spec.Request)
 func (f handlerFunc) ServeHTTP(w spec.ResponseWriter, r *spec.Request) { f(w, r) }
 
 // SpeciesValidator is an HTTP middleware that validates species name constraints
-// before forwarding requests to the trusted tsc-http component.
+// before forwarding requests to the trusted foundry-http component.
 //
-// This is NOT a modification to tsc-http. It is custom code that wraps requests
+// This is NOT a modification to foundry-http. It is custom code that wraps requests
 // using the public spec.HTTPMiddleware extension point.
 type SpeciesValidator struct {
 	// MaxLength is the maximum allowed species name length (default: 255).
@@ -71,7 +71,7 @@ func (v *SpeciesValidator) Middleware() spec.HTTPMiddleware {
 
 			var body map[string]any
 			if err := json.Unmarshal(r.Body, &body); err != nil {
-				// Let it through — tsc-postgres will handle malformed JSON.
+				// Let it through — foundry-postgres will handle malformed JSON.
 				next.ServeHTTP(w, r)
 				return
 			}

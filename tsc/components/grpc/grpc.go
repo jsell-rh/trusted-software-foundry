@@ -1,13 +1,13 @@
-// Package grpc provides the tsc-grpc trusted component.
+// Package grpc provides the foundry-grpc trusted component.
 //
-// tsc-grpc starts a gRPC server and wires in services registered by other
+// foundry-grpc starts a gRPC server and wires in services registered by other
 // components via app.AddGRPCService. It provides:
 //
 //   - Configurable listen address (default ":9000")
 //   - Recovery interceptor (panics → Internal status code)
 //   - Logging interceptor (method + duration)
 //   - Optional TLS via cert/key paths
-//   - Pre-auth interceptor slot for tsc-auth-jwt integration
+//   - Pre-auth interceptor slot for foundry-auth-jwt integration
 //
 // Startup order: Register() stores the app reference and creates the base
 // server. Start() wires in all services registered by other components (which
@@ -55,7 +55,7 @@ type Component struct {
 	maxSendMB   int
 
 	// preAuthInterceptors run before the standard recovery/logging chain.
-	// tsc-auth-jwt calls AddPreAuthInterceptor from its own Register().
+	// foundry-auth-jwt calls AddPreAuthInterceptor from its own Register().
 	preAuthInterceptors []grpc.UnaryServerInterceptor
 
 	// runtime — set in Register()
@@ -66,7 +66,7 @@ type Component struct {
 	listener net.Listener
 }
 
-// New returns an unconfigured tsc-grpc component.
+// New returns an unconfigured foundry-grpc component.
 func New() *Component {
 	return &Component{
 		listenAddr: ":9000",
@@ -75,7 +75,7 @@ func New() *Component {
 	}
 }
 
-func (c *Component) Name() string      { return "tsc-grpc" }
+func (c *Component) Name() string      { return "foundry-grpc" }
 func (c *Component) Version() string   { return "v1.0.0" }
 func (c *Component) AuditHash() string { return auditHash }
 
@@ -101,15 +101,15 @@ func (c *Component) Configure(cfg spec.ComponentConfig) error {
 	}
 
 	if (c.tlsCertFile == "") != (c.tlsKeyFile == "") {
-		return fmt.Errorf("tsc-grpc: tls_cert_file and tls_key_file must both be set or both be empty")
+		return fmt.Errorf("foundry-grpc: tls_cert_file and tls_key_file must both be set or both be empty")
 	}
 
 	return nil
 }
 
 // AddPreAuthInterceptor registers a unary interceptor that runs before the
-// standard recovery/logging chain. Intended for use by tsc-auth-jwt: call
-// this from tsc-auth-jwt's Register() method to enforce token validation on
+// standard recovery/logging chain. Intended for use by foundry-auth-jwt: call
+// this from foundry-auth-jwt's Register() method to enforce token validation on
 // every gRPC call before any handler logic executes.
 func (c *Component) AddPreAuthInterceptor(i grpc.UnaryServerInterceptor) {
 	c.mu.Lock()
@@ -139,7 +139,7 @@ func (c *Component) Start(_ context.Context) error {
 
 	opts, err := c.serverOptions()
 	if err != nil {
-		return fmt.Errorf("tsc-grpc: build server options: %w", err)
+		return fmt.Errorf("foundry-grpc: build server options: %w", err)
 	}
 
 	server := grpc.NewServer(opts...)
@@ -148,23 +148,23 @@ func (c *Component) Start(_ context.Context) error {
 	for _, entry := range c.app.GRPCServices() {
 		sd, ok := entry.Desc.(*grpc.ServiceDesc)
 		if !ok {
-			return fmt.Errorf("tsc-grpc: GRPCServiceDesc must be *grpc.ServiceDesc, got %T", entry.Desc)
+			return fmt.Errorf("foundry-grpc: GRPCServiceDesc must be *grpc.ServiceDesc, got %T", entry.Desc)
 		}
 		server.RegisterService(sd, entry.Impl)
 	}
 
 	lis, err := net.Listen("tcp", c.listenAddr)
 	if err != nil {
-		return fmt.Errorf("tsc-grpc: listen on %s: %w", c.listenAddr, err)
+		return fmt.Errorf("foundry-grpc: listen on %s: %w", c.listenAddr, err)
 	}
 
 	c.server = server
 	c.listener = lis
 
 	go func() {
-		log.Printf("tsc-grpc: serving on %s", c.listenAddr)
+		log.Printf("foundry-grpc: serving on %s", c.listenAddr)
 		if err := server.Serve(lis); err != nil {
-			log.Printf("tsc-grpc: server stopped: %v", err)
+			log.Printf("foundry-grpc: server stopped: %v", err)
 		}
 	}()
 
@@ -192,9 +192,9 @@ func (c *Component) Stop(_ context.Context) error {
 
 	select {
 	case <-stopped:
-		log.Printf("tsc-grpc: graceful shutdown complete")
+		log.Printf("foundry-grpc: graceful shutdown complete")
 	case <-timer.C:
-		log.Printf("tsc-grpc: graceful stop timeout, forcing stop")
+		log.Printf("foundry-grpc: graceful stop timeout, forcing stop")
 		server.Stop()
 	}
 	return nil
@@ -248,7 +248,7 @@ func recoveryInterceptor() grpc.UnaryServerInterceptor {
 	) (resp interface{}, err error) {
 		defer func() {
 			if r := recover(); r != nil {
-				log.Printf("tsc-grpc: panic in %s: %v\n%s", info.FullMethod, r, debug.Stack())
+				log.Printf("foundry-grpc: panic in %s: %v\n%s", info.FullMethod, r, debug.Stack())
 				err = status.Errorf(codes.Internal, "internal server error")
 			}
 		}()
@@ -270,7 +270,7 @@ func loggingInterceptor() grpc.UnaryServerInterceptor {
 		if err != nil {
 			code = status.Code(err)
 		}
-		log.Printf("tsc-grpc: %s %s %v", info.FullMethod, code, time.Since(start))
+		log.Printf("foundry-grpc: %s %s %v", info.FullMethod, code, time.Since(start))
 		return resp, err
 	}
 }

@@ -9,8 +9,8 @@
   "properties": {
     "apiVersion": {
       "type": "string",
-      "const": "tsc/v1",
-      "description": "API version of this spec. Must be 'tsc/v1'."
+      "const": "foundry/v1",
+      "description": "API version of this spec. Must be 'foundry/v1'."
     },
     "kind": {
       "type": "string",
@@ -43,13 +43,13 @@
       "description": "SBOM: pinned versions of all trusted components used by this application. Each key is a component name; value is a semver version string.",
       "propertyNames": {
         "enum": [
-          "tsc-http",
-          "tsc-postgres",
-          "tsc-auth-jwt",
-          "tsc-grpc",
-          "tsc-health",
-          "tsc-metrics",
-          "tsc-events"
+          "foundry-http",
+          "foundry-postgres",
+          "foundry-auth-jwt",
+          "foundry-grpc",
+          "foundry-health",
+          "foundry-metrics",
+          "foundry-events"
         ]
       },
       "additionalProperties": {

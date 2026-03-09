@@ -1,4 +1,4 @@
-// Package http provides the tsc-http trusted component — a self-contained HTTP
+// Package http provides the foundry-http trusted component — a self-contained HTTP
 // server that routes requests to handlers registered by peer components.
 //
 // Configuration (spec api.rest block):
@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	componentName    = "tsc-http"
+	componentName    = "foundry-http"
 	componentVersion = "v1.0.0"
 	// auditHash is the SHA-256 of this source tree at audit time.
 	// Re-computed by the audit pipeline and verified by tsc compile.
@@ -139,7 +139,7 @@ func (c *HTTPComponent) Start(ctx context.Context) error {
 	// Check for immediate startup error.
 	select {
 	case err := <-errCh:
-		return fmt.Errorf("tsc-http: listen %s: %w", c.cfg.bind, err)
+		return fmt.Errorf("foundry-http: listen %s: %w", c.cfg.bind, err)
 	default:
 	}
 	return nil
@@ -154,7 +154,7 @@ func (c *HTTPComponent) Stop(ctx context.Context) error {
 		return nil
 	}
 	if err := srv.Shutdown(ctx); err != nil {
-		return fmt.Errorf("tsc-http: shutdown: %w", err)
+		return fmt.Errorf("foundry-http: shutdown: %w", err)
 	}
 	return nil
 }

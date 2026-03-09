@@ -1,4 +1,4 @@
-// Package health provides the tsc-health trusted component — a lightweight
+// Package health provides the foundry-health trusted component — a lightweight
 // HTTP server that exposes liveness and readiness endpoints.
 //
 // Configuration (spec observability.health_check block):
@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	componentName    = "tsc-health"
+	componentName    = "foundry-health"
 	componentVersion = "v1.0.0"
 	auditHash        = "0000000000000000000000000000000000000000000000000000000000000002"
 
@@ -62,7 +62,7 @@ func (c *HealthComponent) Configure(cfg spec.ComponentConfig) error {
 	return nil
 }
 
-// Register is a no-op — tsc-health manages its own server independently.
+// Register is a no-op — foundry-health manages its own server independently.
 func (c *HealthComponent) Register(_ *spec.Application) error { return nil }
 
 // Start launches the health check HTTP server.
@@ -89,7 +89,7 @@ func (c *HealthComponent) Start(_ context.Context) error {
 
 	select {
 	case err := <-errCh:
-		return fmt.Errorf("tsc-health: listen %s: %w", c.cfg.bind, err)
+		return fmt.Errorf("foundry-health: listen %s: %w", c.cfg.bind, err)
 	default:
 	}
 	return nil
@@ -104,7 +104,7 @@ func (c *HealthComponent) Stop(ctx context.Context) error {
 		return nil
 	}
 	if err := srv.Shutdown(ctx); err != nil {
-		return fmt.Errorf("tsc-health: shutdown: %w", err)
+		return fmt.Errorf("foundry-health: shutdown: %w", err)
 	}
 	return nil
 }

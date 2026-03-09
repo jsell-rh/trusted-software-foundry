@@ -1,4 +1,4 @@
-# Trusted Software Components (TSC) Platform
+# Trusted Software Foundry
 
 An IR-first application platform where **AI agents write declarative specs, not code**.
 
@@ -13,7 +13,7 @@ AI Agent
   ▼
 app.tsc.yaml          ← the IR spec (declarative, schema-validated)
   │
-  │  tsc compile app.tsc.yaml -o ./out
+  │  forge compile app.tsc.yaml -o ./out
   ▼
 Compiler
   │  resolves trusted components (audited, version-pinned)
@@ -30,7 +30,7 @@ The AI never touches source code. Every line of generated code comes from audite
 
 ```yaml
 # app.tsc.yaml
-apiVersion: tsc/v1
+apiVersion: foundry/v1
 kind: Application
 
 metadata:
@@ -38,11 +38,11 @@ metadata:
   version: 1.0.0
 
 components:
-  tsc-http:     v1.0.0
-  tsc-postgres: v1.0.0
-  tsc-auth-jwt: v1.0.0
-  tsc-health:   v1.0.0
-  tsc-metrics:  v1.0.0
+  foundry-http:     v1.0.0
+  foundry-postgres: v1.0.0
+  foundry-auth-jwt: v1.0.0
+  foundry-health:   v1.0.0
+  foundry-metrics:  v1.0.0
 
 resources:
   - name: Widget
@@ -91,11 +91,11 @@ observability:
 ### 2. Compile
 
 ```bash
-# Build the tsc compiler
-go build -o /usr/local/bin/tsc ./cmd/tsc
+# Build the forge compiler
+go build -o /usr/local/bin/forge ./cmd/forge
 
 # Compile your spec into a runnable Go project
-tsc compile app.tsc.yaml \
+forge compile app.tsc.yaml \
   --rh-trex-ai ~/code/scratch/rh-trex-ai \
   -o ./my-service-out
 ```
@@ -133,7 +133,7 @@ REST API on `:8000`, health check on `:8083`, metrics on `:8080`.
 
 ```bash
 # Recompile — the compiler handles everything
-tsc compile app.tsc.yaml --rh-trex-ai . -o ./my-service-out
+forge compile app.tsc.yaml --rh-trex-ai . -o ./my-service-out
 cd my-service-out && go build -o app .
 # /api/v1/fossils endpoints now work. No code written.
 ```
@@ -176,13 +176,13 @@ go test ./tsc/...
 
 | Component | Version | Purpose | Ports |
 |-----------|---------|---------|-------|
-| `tsc-http` | v1.0.0 | HTTP server, routing, CORS middleware | :8000 |
-| `tsc-postgres` | v1.0.0 | DB pool, CRUD DAOs, auto-migrations, soft delete | — |
-| `tsc-auth-jwt` | v1.0.0 | JWT validation, RBAC middleware | — |
-| `tsc-grpc` | v1.0.0 | gRPC server, pre-auth interceptor hook | :9000 |
-| `tsc-health` | v1.0.0 | Liveness + readiness check | :8083 |
-| `tsc-metrics` | v1.0.0 | Prometheus metrics | :8080 |
-| `tsc-events` | v1.0.0 | PostgreSQL LISTEN/NOTIFY event loop | — |
+| `foundry-http` | v1.0.0 | HTTP server, routing, CORS middleware | :8000 |
+| `foundry-postgres` | v1.0.0 | DB pool, CRUD DAOs, auto-migrations, soft delete | — |
+| `foundry-auth-jwt` | v1.0.0 | JWT validation, RBAC middleware | — |
+| `foundry-grpc` | v1.0.0 | gRPC server, pre-auth interceptor hook | :9000 |
+| `foundry-health` | v1.0.0 | Liveness + readiness check | :8083 |
+| `foundry-metrics` | v1.0.0 | Prometheus metrics | :8080 |
+| `foundry-events` | v1.0.0 | PostgreSQL LISTEN/NOTIFY event loop | — |
 
 Each component: audited, version-pinned, immutable after audit. Bug fixes create new versions.
 
@@ -202,7 +202,7 @@ Full JSON Schema: `tsc/spec/schema.json`
 
 Validate your spec:
 ```bash
-tsc validate app.tsc.yaml
+forge validate app.tsc.yaml
 ```
 
 ## Architecture

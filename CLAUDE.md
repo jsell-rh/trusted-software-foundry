@@ -4,7 +4,7 @@ This file provides guidance to Claude Code when working with this repository.
 
 ## Project Overview
 
-This is the **Trusted Software Components (TSC) Platform** — an IR-first application platform where AI agents write declarative YAML specs (`app.tsc.yaml`) and a deterministic compiler assembles working Go applications from pre-audited, version-pinned trusted components.
+This is the **Trusted Software Foundry** — an IR-first application platform where AI agents write declarative YAML specs (`app.tsc.yaml`) and a deterministic compiler assembles working Go applications from pre-audited, version-pinned trusted components.
 
 **AI agents write specs, not code.** The compiler does the rest.
 
@@ -15,7 +15,7 @@ tsc/spec/           Core interfaces: Component, Application, Registrar, JSON Sch
 tsc/components/     Trusted component library (7 components)
 tsc/compiler/       TSC compiler: parse → resolve → generate
 tsc/examples/       Reference applications
-cmd/tsc/            tsc CLI entrypoint
+cmd/forge/            tsc CLI entrypoint
 TSC-ARCHITECTURE.md Full architecture reference
 ```
 
@@ -24,7 +24,7 @@ TSC-ARCHITECTURE.md Full architecture reference
 ### Build the TSC compiler
 
 ```bash
-go build -o /tmp/tsc ./cmd/tsc
+go build -o /tmp/forge ./cmd/forge
 ```
 
 ### Test
@@ -36,7 +36,7 @@ go test ./tsc/...
 ### Compile an example spec
 
 ```bash
-/tmp/tsc compile tsc/examples/dinosaur-registry/app.tsc.yaml \
+/tmp/forge compile tsc/examples/dinosaur-registry/app.tsc.yaml \
   --rh-trex-ai $(pwd) \
   -o /tmp/dinosaur-out
 
@@ -46,12 +46,12 @@ cd /tmp/dinosaur-out && go build -o app .
 ### Validate a spec
 
 ```bash
-/tmp/tsc validate tsc/examples/dinosaur-registry/app.tsc.yaml
+/tmp/forge validate tsc/examples/dinosaur-registry/app.tsc.yaml
 ```
 
 ## IR Spec Format
 
-All application specs follow `tsc/spec/schema.json`. Validate with `tsc validate`.
+All application specs follow `tsc/spec/schema.json`. Validate with `forge validate`.
 
 Key sections:
 - `components` — SBOM: pinned trusted component versions

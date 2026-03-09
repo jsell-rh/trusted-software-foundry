@@ -1,6 +1,6 @@
-// Package events implements the tsc-events trusted component.
+// Package events implements the foundry-events trusted component.
 //
-// tsc-events provides PostgreSQL LISTEN/NOTIFY based event streaming.
+// foundry-events provides PostgreSQL LISTEN/NOTIFY based event streaming.
 // It subscribes to per-resource channels (e.g. "dinosaur_events") and
 // delivers mutation events to registered handlers.
 //
@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	componentName    = "tsc-events"
+	componentName    = "foundry-events"
 	componentVersion = "v1.0.0"
 	auditHash        = "sha256:b4e9d3f2a7c0e5b8d1f4a7c2e5b8d3f6a9c4e7b2d5f8a3c6e1b4d7f0a3c8e3b6"
 )
@@ -35,7 +35,7 @@ type EventPayload struct {
 // Handler is a callback invoked when an event arrives for a resource.
 type Handler func(ctx context.Context, resource string, payload EventPayload)
 
-// Component is the tsc-events trusted component implementation.
+// Component is the foundry-events trusted component implementation.
 type Component struct {
 	mu       sync.RWMutex
 	dsn      string
@@ -45,7 +45,7 @@ type Component struct {
 	done     chan struct{}
 }
 
-// New returns a new tsc-events Component.
+// New returns a new foundry-events Component.
 func New() *Component {
 	return &Component{
 		handlers: make(map[string][]Handler),
@@ -77,10 +77,10 @@ func (c *Component) Configure(cfg spec.ComponentConfig) error {
 }
 
 // Register hooks into the application. If no DSN was configured, reads
-// the DSN from the shared Application DB (set by tsc-postgres).
+// the DSN from the shared Application DB (set by foundry-postgres).
 func (c *Component) Register(app *spec.Application) error {
 	// If no DSN provided, try to get connection info from the DB.
-	// tsc-events needs its own connection for LISTEN (cannot share a pool conn).
+	// foundry-events needs its own connection for LISTEN (cannot share a pool conn).
 	if c.dsn == "" {
 		// Attempt to retrieve DSN from environment fallback.
 		c.dsn = "host=localhost user=postgres dbname=postgres sslmode=disable"
@@ -108,7 +108,7 @@ func (c *Component) Start(ctx context.Context) error {
 
 	reportProblem := func(ev pq.ListenerEventType, err error) {
 		if err != nil {
-			fmt.Printf("tsc-events: listener error: %v\n", err)
+			fmt.Printf("foundry-events: listener error: %v\n", err)
 		}
 	}
 
@@ -125,7 +125,7 @@ func (c *Component) Start(ctx context.Context) error {
 		channel := strings.ToLower(name) + "_events"
 		if err := c.listener.Listen(channel); err != nil {
 			c.listener.Close()
-			return fmt.Errorf("tsc-events: LISTEN %s: %w", channel, err)
+			return fmt.Errorf("foundry-events: LISTEN %s: %w", channel, err)
 		}
 	}
 
@@ -180,7 +180,7 @@ func (c *Component) dispatch(ctx context.Context, n *pq.Notification) {
 
 	var payload EventPayload
 	if err := json.Unmarshal([]byte(n.Extra), &payload); err != nil {
-		fmt.Printf("tsc-events: decode payload on %s: %v\n", channelName, err)
+		fmt.Printf("foundry-events: decode payload on %s: %v\n", channelName, err)
 		return
 	}
 
@@ -194,7 +194,7 @@ func (c *Component) dispatch(ctx context.Context, n *pq.Notification) {
 }
 
 // channelNameToResource converts "dinosaur_events" → "Dinosaur".
-// This is a best-effort reverse of the naming convention used by tsc-postgres.
+// This is a best-effort reverse of the naming convention used by foundry-postgres.
 func channelNameToResource(channel string) string {
 	name := strings.TrimSuffix(channel, "_events")
 	if len(name) == 0 {

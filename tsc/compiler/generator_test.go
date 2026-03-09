@@ -35,50 +35,50 @@ func generateFromExample(t *testing.T) (outDir string, components []ResolvedComp
 
 func TestSortComponents_PostgresFirst(t *testing.T) {
 	input := []ResolvedComponent{
-		{Name: "tsc-events"},
-		{Name: "tsc-health"},
-		{Name: "tsc-auth-jwt"},
-		{Name: "tsc-grpc"},
-		{Name: "tsc-http"},
-		{Name: "tsc-metrics"},
-		{Name: "tsc-postgres"},
+		{Name: "foundry-events"},
+		{Name: "foundry-health"},
+		{Name: "foundry-auth-jwt"},
+		{Name: "foundry-grpc"},
+		{Name: "foundry-http"},
+		{Name: "foundry-metrics"},
+		{Name: "foundry-postgres"},
 	}
 	sorted := sortComponents(input)
 	if len(sorted) != len(input) {
 		t.Fatalf("sortComponents returned %d components, want %d", len(sorted), len(input))
 	}
-	if sorted[0].Name != "tsc-postgres" {
-		t.Errorf("first component must be tsc-postgres, got %q", sorted[0].Name)
+	if sorted[0].Name != "foundry-postgres" {
+		t.Errorf("first component must be foundry-postgres, got %q", sorted[0].Name)
 	}
 }
 
 func TestSortComponents_StableOrder(t *testing.T) {
 	input := []ResolvedComponent{
-		{Name: "tsc-metrics"},
-		{Name: "tsc-http"},
-		{Name: "tsc-postgres"},
+		{Name: "foundry-metrics"},
+		{Name: "foundry-http"},
+		{Name: "foundry-postgres"},
 	}
 	sorted := sortComponents(input)
-	if sorted[0].Name != "tsc-postgres" {
-		t.Errorf("want tsc-postgres first, got %q", sorted[0].Name)
+	if sorted[0].Name != "foundry-postgres" {
+		t.Errorf("want foundry-postgres first, got %q", sorted[0].Name)
 	}
-	if sorted[1].Name != "tsc-http" {
-		t.Errorf("want tsc-http second, got %q", sorted[1].Name)
+	if sorted[1].Name != "foundry-http" {
+		t.Errorf("want foundry-http second, got %q", sorted[1].Name)
 	}
-	if sorted[2].Name != "tsc-metrics" {
-		t.Errorf("want tsc-metrics third, got %q", sorted[2].Name)
+	if sorted[2].Name != "foundry-metrics" {
+		t.Errorf("want foundry-metrics third, got %q", sorted[2].Name)
 	}
 }
 
 func TestSortComponents_UnknownComponentLast(t *testing.T) {
 	input := []ResolvedComponent{
 		{Name: "custom-component"},
-		{Name: "tsc-postgres"},
-		{Name: "tsc-http"},
+		{Name: "foundry-postgres"},
+		{Name: "foundry-http"},
 	}
 	sorted := sortComponents(input)
-	if sorted[0].Name != "tsc-postgres" {
-		t.Errorf("want tsc-postgres first, got %q", sorted[0].Name)
+	if sorted[0].Name != "foundry-postgres" {
+		t.Errorf("want foundry-postgres first, got %q", sorted[0].Name)
 	}
 	if sorted[len(sorted)-1].Name != "custom-component" {
 		t.Errorf("want custom-component last, got %q", sorted[len(sorted)-1].Name)
@@ -149,23 +149,23 @@ func TestGenerateMainGo_PostgresBeforeOtherComponents(t *testing.T) {
 	}
 	src := string(content)
 
-	postgresIdx := strings.Index(src, "tscpostgres.New()")
+	postgresIdx := strings.Index(src, "foundrypostgres.New()")
 	if postgresIdx == -1 {
-		t.Fatal("main.go missing tscpostgres.New() call")
+		t.Fatal("main.go missing foundrypostgres.New() call")
 	}
 
 	// All DB-dependent components must appear after postgres in main.go
 	for _, call := range []string{
-		"tscauthjwt.New()",
-		"tschttp.New()",
-		"tscgrpc.New()",
-		"tschealth.New()",
-		"tscmetrics.New()",
-		"tscevents.New()",
+		"foundryauthjwt.New()",
+		"foundryhttp.New()",
+		"foundrygrpc.New()",
+		"foundryhealth.New()",
+		"foundrymetrics.New()",
+		"foundryevents.New()",
 	} {
 		idx := strings.Index(src, call)
 		if idx != -1 && idx < postgresIdx {
-			t.Errorf("%s appears before tscpostgres.New() in main.go", call)
+			t.Errorf("%s appears before foundrypostgres.New() in main.go", call)
 		}
 	}
 }

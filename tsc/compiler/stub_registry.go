@@ -6,44 +6,44 @@ import "fmt"
 // These module paths and versions match the architecture plan.
 // In production, these entries are signed and come from the trusted catalog.
 var knownComponents = map[string]*RegistryEntry{
-	"tsc-http": {
-		Name:      "tsc-http",
+	"foundry-http": {
+		Name:      "foundry-http",
 		Version:   "v1.0.0",
 		Module:    "github.com/jsell-rh/trusted-software-components/tsc/components/http",
 		AuditHash: "stub-not-verified",
 	},
-	"tsc-postgres": {
-		Name:      "tsc-postgres",
+	"foundry-postgres": {
+		Name:      "foundry-postgres",
 		Version:   "v1.0.0",
 		Module:    "github.com/jsell-rh/trusted-software-components/tsc/components/postgres",
 		AuditHash: "stub-not-verified",
 	},
-	"tsc-auth-jwt": {
-		Name:      "tsc-auth-jwt",
+	"foundry-auth-jwt": {
+		Name:      "foundry-auth-jwt",
 		Version:   "v1.0.0",
 		Module:    "github.com/jsell-rh/trusted-software-components/tsc/components/auth/jwt",
 		AuditHash: "stub-not-verified",
 	},
-	"tsc-grpc": {
-		Name:      "tsc-grpc",
+	"foundry-grpc": {
+		Name:      "foundry-grpc",
 		Version:   "v1.0.0",
 		Module:    "github.com/jsell-rh/trusted-software-components/tsc/components/grpc",
 		AuditHash: "stub-not-verified",
 	},
-	"tsc-health": {
-		Name:      "tsc-health",
+	"foundry-health": {
+		Name:      "foundry-health",
 		Version:   "v1.0.0",
 		Module:    "github.com/jsell-rh/trusted-software-components/tsc/components/health",
 		AuditHash: "stub-not-verified",
 	},
-	"tsc-metrics": {
-		Name:      "tsc-metrics",
+	"foundry-metrics": {
+		Name:      "foundry-metrics",
 		Version:   "v1.0.0",
 		Module:    "github.com/jsell-rh/trusted-software-components/tsc/components/metrics",
 		AuditHash: "stub-not-verified",
 	},
-	"tsc-events": {
-		Name:      "tsc-events",
+	"foundry-events": {
+		Name:      "foundry-events",
 		Version:   "v1.0.0",
 		Module:    "github.com/jsell-rh/trusted-software-components/tsc/components/events",
 		AuditHash: "stub-not-verified",
@@ -64,7 +64,7 @@ func NewStubRegistry() *StubRegistry {
 func (s *StubRegistry) Lookup(name, version string) (*RegistryEntry, error) {
 	entry, ok := knownComponents[name]
 	if !ok {
-		return nil, fmt.Errorf("unknown component %q — not in stub registry (known: tsc-http, tsc-postgres, tsc-auth-jwt, tsc-grpc, tsc-health, tsc-metrics, tsc-events)", name)
+		return nil, fmt.Errorf("unknown component %q — not in stub registry (known: foundry-http, foundry-postgres, foundry-auth-jwt, foundry-grpc, foundry-health, foundry-metrics, foundry-events)", name)
 	}
 	if entry.Version != version {
 		return nil, fmt.Errorf("component %q: requested version %q but stub registry only has %q", name, version, entry.Version)

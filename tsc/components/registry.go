@@ -21,7 +21,7 @@ import (
 // the SHA-256 hash of its source tree at audit time. The registry rejects any
 // component whose AuditHash() does not match the catalog record.
 type AuditRecord struct {
-	// Name is the component registry name, e.g. "tsc-http".
+	// Name is the component registry name, e.g. "foundry-http".
 	Name string
 
 	// Version is the semver string, e.g. "v1.0.0".
@@ -43,8 +43,8 @@ func (r AuditRecord) key() string {
 // Usage:
 //
 //	reg := components.New(
-//	    components.AuditRecord{Name: "tsc-http",     Version: "v1.0.0", Hash: "<sha256>"},
-//	    components.AuditRecord{Name: "tsc-postgres",  Version: "v1.0.0", Hash: "<sha256>"},
+//	    components.AuditRecord{Name: "foundry-http",     Version: "v1.0.0", Hash: "<sha256>"},
+//	    components.AuditRecord{Name: "foundry-postgres",  Version: "v1.0.0", Hash: "<sha256>"},
 //	)
 //	if err := reg.Register(myHTTPComponent); err != nil {
 //	    log.Fatal(err)

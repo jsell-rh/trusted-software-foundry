@@ -1,4 +1,4 @@
-// Package metrics provides the tsc-metrics trusted component — a Prometheus
+// Package metrics provides the foundry-metrics trusted component — a Prometheus
 // metrics endpoint served on a dedicated port.
 //
 // Configuration (spec observability.metrics block):
@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	componentName    = "tsc-metrics"
+	componentName    = "foundry-metrics"
 	componentVersion = "v1.0.0"
 	auditHash        = "0000000000000000000000000000000000000000000000000000000000000003"
 
@@ -63,7 +63,7 @@ func (c *MetricsComponent) Configure(cfg spec.ComponentConfig) error {
 	return nil
 }
 
-// Register is a no-op — tsc-metrics manages its own server independently.
+// Register is a no-op — foundry-metrics manages its own server independently.
 func (c *MetricsComponent) Register(_ *spec.Application) error { return nil }
 
 // Start launches the Prometheus metrics HTTP server.
@@ -88,7 +88,7 @@ func (c *MetricsComponent) Start(_ context.Context) error {
 
 	select {
 	case err := <-errCh:
-		return fmt.Errorf("tsc-metrics: listen %s: %w", c.cfg.bind, err)
+		return fmt.Errorf("foundry-metrics: listen %s: %w", c.cfg.bind, err)
 	default:
 	}
 	return nil
@@ -103,7 +103,7 @@ func (c *MetricsComponent) Stop(ctx context.Context) error {
 		return nil
 	}
 	if err := srv.Shutdown(ctx); err != nil {
-		return fmt.Errorf("tsc-metrics: shutdown: %w", err)
+		return fmt.Errorf("foundry-metrics: shutdown: %w", err)
 	}
 	return nil
 }

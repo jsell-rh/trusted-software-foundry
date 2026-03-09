@@ -1,4 +1,4 @@
-# Trusted Software Components (TSC) Platform — Architecture
+# Trusted Software Foundry — Architecture
 
 ## Company Vision
 
@@ -62,7 +62,7 @@ The IR is a YAML document that describes WHAT an application does — not HOW it
 ### Example: Dinosaur Registry (trex parity target)
 
 ```yaml
-apiVersion: tsc/v1
+apiVersion: foundry/v1
 kind: Application
 
 metadata:
@@ -71,13 +71,13 @@ metadata:
 
 # Trusted component versions (pinned, forms the SBOM)
 components:
-  tsc-http:     v1.0.0
-  tsc-postgres: v1.0.0
-  tsc-auth-jwt: v1.0.0
-  tsc-grpc:     v1.0.0
-  tsc-health:   v1.0.0
-  tsc-metrics:  v1.0.0
-  tsc-events:   v1.0.0
+  foundry-http:     v1.0.0
+  foundry-postgres: v1.0.0
+  foundry-auth-jwt: v1.0.0
+  foundry-grpc:     v1.0.0
+  foundry-health:   v1.0.0
+  foundry-metrics:  v1.0.0
+  foundry-events:   v1.0.0
 
 # Data resources — what the app stores and manages
 resources:
@@ -172,7 +172,7 @@ All component implementations live in `tsc/components/` and are never modified a
 
 ## TSC Compiler
 
-The compiler is a CLI tool: `tsc compile <spec.yaml> --output <dir>`
+The compiler is a CLI tool: `forge compile <spec.yaml> --output <dir>`
 
 ### Compilation Steps
 
