@@ -632,6 +632,22 @@ func Validate(spec *IRSpec) []error {
 		if spec.Components["foundry-tenancy"] == "" {
 			add("tenancy block requires foundry-tenancy in components")
 		}
+		validTenancyStrategies := map[string]bool{
+			"row": true, "schema": true, "database": true,
+		}
+		if spec.Tenancy.Strategy != "" && !validTenancyStrategies[spec.Tenancy.Strategy] {
+			add("tenancy.strategy must be one of row/schema/database, got %q", spec.Tenancy.Strategy)
+		}
+	}
+
+	// Services cross-checks — components referenced must be declared in the global SBOM.
+	for si, svc := range spec.Services {
+		sp := fmt.Sprintf("services[%d](%s)", si, svc.Name)
+		for _, comp := range svc.Components {
+			if spec.Components[comp] == "" {
+				add("%s: component %q is not declared in the top-level components block", sp, comp)
+			}
+		}
 	}
 
 	// Hooks validation
