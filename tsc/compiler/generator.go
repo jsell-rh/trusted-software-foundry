@@ -42,16 +42,34 @@ func newGeneratorWithSpecDir(outputDir, rhtexAIPath, specDir string) *Generator 
 }
 
 // componentPriority defines the registration order for trusted components.
-// Lower index = registered earlier. foundry-postgres is always first because
-// other components call app.DB() during Register and depend on the DB being set.
+// Lower index = registered earlier.
+//
+// Ordering rationale:
+//  1. foundry-postgres first — sets the DB; auth/tenancy/graph components depend on it
+//  2. Auth providers before HTTP — middleware is installed during HTTP setup
+//  3. foundry-tenancy before HTTP — tenant row-isolation middleware must wrap all handlers
+//  4. foundry-http / foundry-grpc — HTTP/gRPC servers wire in registered middleware
+//  5. Observability (health, metrics) — standalone, no ordering deps
+//  6. Messaging and streaming backends — standalone, no ordering deps
+//  7. foundry-graph-age — uses Postgres (via AGE extension), registers after postgres
+//  8. foundry-service-router last — routes traffic to already-registered services
 var componentPriority = map[string]int{
-	"foundry-postgres": 0,
-	"foundry-auth-jwt": 1,
-	"foundry-http":     2,
-	"foundry-grpc":     3,
-	"foundry-health":   4,
-	"foundry-metrics":  5,
-	"foundry-events":   6,
+	"foundry-postgres":       0,
+	"foundry-auth-jwt":       1,
+	"foundry-auth-spicedb":   2,
+	"foundry-tenancy":        3,
+	"foundry-http":           4,
+	"foundry-grpc":           5,
+	"foundry-health":         6,
+	"foundry-metrics":        7,
+	"foundry-events":         8,
+	"foundry-kafka":          9,
+	"foundry-nats":           10,
+	"foundry-redis":          11,
+	"foundry-redis-streams":  12,
+	"foundry-temporal":       13,
+	"foundry-graph-age":      14,
+	"foundry-service-router": 15,
 }
 
 // sortComponents returns a copy of components sorted into safe registration order.
