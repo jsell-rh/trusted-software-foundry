@@ -404,6 +404,66 @@ func (g *Generator) writeHookRegistry(ir *spec.IRSpec, appModule string) error {
 	return os.WriteFile(filepath.Join(g.outputDir, "hook_registry.go"), formatted, 0644)
 }
 
+// --------------------------------------------------------------------------
+// authz/schema.zed stub — skeleton SpiceDB schema for human completion
+// --------------------------------------------------------------------------
+
+// writeAuthzSchemaStub generates a starter SpiceDB schema at the path declared
+// in the authz block (e.g. authz/schema.zed). The stub defines one definition
+// per authz relation and is intended as a scaffold for engineers to fill in.
+// If the file already exists, it is not overwritten so that engineer edits are preserved.
+func (g *Generator) writeAuthzSchemaStub(ir *spec.IRSpec) error {
+	if ir.Authz == nil || ir.Authz.SchemaFile == "" {
+		return nil
+	}
+	dest := filepath.Join(g.outputDir, ir.Authz.SchemaFile)
+
+	// Do not overwrite an existing schema — preserve engineer edits.
+	if _, err := os.Stat(dest); err == nil {
+		return nil
+	}
+
+	if err := os.MkdirAll(filepath.Dir(dest), 0755); err != nil {
+		return fmt.Errorf("creating authz dir: %w", err)
+	}
+
+	// Collect unique resource and subject types from relations.
+	seen := map[string]bool{}
+	var defs []string
+	addDef := func(name string) {
+		if !seen[name] {
+			seen[name] = true
+			defs = append(defs, name)
+		}
+	}
+	for _, r := range ir.Authz.Relations {
+		if r.Resource != "" {
+			addDef(strings.ToLower(r.Resource))
+		}
+		if r.Subject != "" {
+			addDef(strings.ToLower(r.Subject))
+		}
+	}
+
+	var buf bytes.Buffer
+	buf.WriteString("// SpiceDB schema — generated stub by forge compile. Fill in permissions.\n")
+	buf.WriteString("// Spec: " + ir.Metadata.Name + " v" + ir.Metadata.Version + "\n\n")
+
+	for _, def := range defs {
+		buf.WriteString("definition " + def + " {}\n\n")
+	}
+
+	// Re-emit relation structure as commented guidance.
+	if len(ir.Authz.Relations) > 0 {
+		buf.WriteString("// Declared relations (replace stub definitions above with full schema):\n")
+		for _, r := range ir.Authz.Relations {
+			buf.WriteString(fmt.Sprintf("//   %s.%s -> %s\n", r.Resource, r.Relation, r.Subject))
+		}
+	}
+
+	return os.WriteFile(dest, buf.Bytes(), 0644)
+}
+
 // copyHookFiles copies all declared hooks/*.go source files into the generated project.
 // Hook files are human-written and must be copied unchanged — the compiler never modifies them.
 // If a hook file does not yet exist on disk, it is skipped gracefully (engineers write it later).
