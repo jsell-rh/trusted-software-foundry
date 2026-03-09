@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"context"
 	"testing"
 
 	"github.com/jsell-rh/trusted-software-foundry/tsc/spec"
@@ -60,5 +61,19 @@ func TestComponent_Register_WithBroker(t *testing.T) {
 	_ = c.Configure(spec.ComponentConfig{"broker_url": "localhost:9092"})
 	if err := c.Register(nil); err != nil {
 		t.Errorf("Register: unexpected error: %v", err)
+	}
+}
+
+func TestComponent_Start(t *testing.T) {
+	c := New()
+	if err := c.Start(context.Background()); err != nil {
+		t.Errorf("Start: %v", err)
+	}
+}
+
+func TestComponent_Stop(t *testing.T) {
+	c := New()
+	if err := c.Stop(context.Background()); err != nil {
+		t.Errorf("Stop: %v", err)
 	}
 }
