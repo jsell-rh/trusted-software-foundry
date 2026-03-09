@@ -1,15 +1,15 @@
-# TSC IR Extensions for Complex Applications
+# TSF IR Extensions for Complex Applications
 
-**Author:** TSC-Architect
-**Branch:** feat/tsc-complex-ir
+**Author:** TSF-Architect
+**Branch:** feat/foundry-complex-ir
 **Status:** Draft — for CTO review
-**Context:** Extends `tsc/spec/schema.json` (v1) to support complex platform applications beyond simple CRUD services. Informed by studying [kartograph](https://github.com/openshift-hyperfleet/kartograph) (bi-temporal property graph platform) as the canonical complex-case target.
+**Context:** Extends `foundry/spec/schema.json` (v1) to support complex platform applications beyond simple CRUD services. Informed by studying [kartograph](https://github.com/openshift-hyperfleet/kartograph) (bi-temporal property graph platform) as the canonical complex-case target.
 
 ---
 
 ## Problem Statement
 
-TSC v1 targets CRUD services (trex parity). Real enterprise platforms (kartograph, OCM, ACS) require:
+TSF v1 targets CRUD services (trex parity). Real enterprise platforms (kartograph, OCM, ACS) require:
 
 1. **Property graphs** — nodes, edges, bi-directional relationships, Cypher queries (Apache AGE)
 2. **Multi-service** — cooperating services with distinct deployment profiles and APIs within one logical application
@@ -19,7 +19,7 @@ TSC v1 targets CRUD services (trex parity). Real enterprise platforms (kartograp
 6. **Bi-temporality** — valid time + transaction time tracking for audit and point-in-time queries
 7. **Multi-tenancy** — tenant-scoped data, isolated namespaces, per-tenant config overrides
 
-The AI should still write only the IR. TSC v2 components handle all implementation complexity.
+The AI should still write only the IR. TSF v2 components handle all implementation complexity.
 
 ---
 
@@ -89,7 +89,7 @@ graph:
     expose_api: true            # generate REST+gRPC query endpoints
 ```
 
-**New trusted component:** `tsc-graph-age` v1.x
+**New trusted component:** `foundry-graph-age` v1.x
 
 ---
 
@@ -103,32 +103,32 @@ services:
     role: rest-api
     port: 8000
     components:
-      - tsc-http
-      - tsc-auth-jwt
-      - tsc-postgres
-      - tsc-graph-age
+      - foundry-http
+      - foundry-auth-jwt
+      - foundry-postgres
+      - foundry-graph-age
     resources: [Resource, DataSource]    # which resources this service owns
 
   - name: mutation-worker
     role: worker
     components:
-      - tsc-postgres
-      - tsc-graph-age
-      - tsc-kafka-consumer
+      - foundry-postgres
+      - foundry-graph-age
+      - foundry-kafka-consumer
     triggers:
       - event: graph.mutation.requested
-        handler: apply_mutation           # compiler generates dispatch to tsc-graph-age
+        handler: apply_mutation           # compiler generates dispatch to foundry-graph-age
 
   - name: metrics-server
     role: metrics
     port: 8080
     components:
-      - tsc-metrics
+      - foundry-metrics
 ```
 
 The compiler generates a separate `main_<service>.go` per service. A single `docker-compose.yaml` (dev) and `deploy/` tree (prod) is also generated.
 
-**New trusted component:** `tsc-service-router` v1.x (handles inter-service discovery)
+**New trusted component:** `foundry-service-router` v1.x (handles inter-service discovery)
 
 ---
 
@@ -174,7 +174,7 @@ events:
       error_topic: graph.mutation.dlq
 ```
 
-**New trusted components:** `tsc-kafka` v1.x, `tsc-nats` v1.x, `tsc-redis-streams` v1.x
+**New trusted components:** `foundry-kafka` v1.x, `foundry-nats` v1.x, `foundry-redis-streams` v1.x
 
 ---
 
@@ -208,7 +208,7 @@ authz:
       object_type: resource
 ```
 
-**New trusted component:** `tsc-auth-spicedb` v1.x
+**New trusted component:** `foundry-auth-spicedb` v1.x
 
 ---
 
@@ -246,7 +246,7 @@ state:
       operations: [update, delete]   # acquire lock before mutating
 ```
 
-**New trusted component:** `tsc-redis` v1.x
+**New trusted component:** `foundry-redis` v1.x
 
 ---
 
@@ -271,7 +271,7 @@ temporal:
     between_param: "between"  # ?between=2024-01-01,2025-01-01
 ```
 
-**New trusted component:** `tsc-temporal` v1.x
+**New trusted component:** `foundry-temporal` v1.x
 
 ---
 
@@ -293,7 +293,7 @@ tenancy:
     role: "platform-admin"    # JWT role that bypasses tenant filtering
 ```
 
-**New trusted component:** `tsc-tenancy` v1.x
+**New trusted component:** `foundry-tenancy` v1.x
 
 ---
 
@@ -317,11 +317,11 @@ hooks:
     implementation: hooks/validate_mutation_schema.go
 ```
 
-The compiler copies `hooks/*.go` into the generated project without modification. This is the ONLY way custom code enters a TSC application.
+The compiler copies `hooks/*.go` into the generated project without modification. This is the ONLY way custom code enters a TSF application.
 
 ---
 
-## Extended Schema Design (tsc/spec/schema-v2.json)
+## Extended Schema Design (foundry/spec/schema.json)
 
 New top-level optional blocks added to the v1 JSON Schema:
 
@@ -344,19 +344,19 @@ New component registry entries (all require audit before use):
 
 | Component | Provides | Dependencies |
 |-----------|----------|--------------|
-| `tsc-graph-age` | Apache AGE graph CRUD, Cypher query API | `foundry-postgres` |
-| `tsc-kafka` | Kafka producer/consumer, schema registry | — |
-| `tsc-nats` | NATS JetStream producer/consumer | — |
-| `tsc-redis-streams` | Redis Streams producer/consumer | `tsc-redis` |
-| `tsc-redis` | Redis cache, rate limiting, distributed locks | — |
-| `tsc-auth-spicedb` | SpiceDB ReBAC enforcement middleware | `foundry-auth-jwt` |
-| `tsc-temporal` | Bi-temporal table management, AS OF queries | `foundry-postgres` |
-| `tsc-tenancy` | Tenant isolation (schema/row/database model) | `foundry-postgres` |
-| `tsc-service-router` | Inter-service discovery and gRPC routing | — |
+| `foundry-graph-age` | Apache AGE graph CRUD, Cypher query API | `foundry-postgres` |
+| `foundry-kafka` | Kafka producer/consumer, schema registry | — |
+| `foundry-nats` | NATS JetStream producer/consumer | — |
+| `foundry-redis-streams` | Redis Streams producer/consumer | `foundry-redis` |
+| `foundry-redis` | Redis cache, rate limiting, distributed locks | — |
+| `foundry-auth-spicedb` | SpiceDB ReBAC enforcement middleware | `foundry-auth-jwt` |
+| `foundry-temporal` | Bi-temporal table management, AS OF queries | `foundry-postgres` |
+| `foundry-tenancy` | Tenant isolation (schema/row/database model) | `foundry-postgres` |
+| `foundry-service-router` | Inter-service discovery and gRPC routing | — |
 
 ---
 
-## Kartograph in TSC IR
+## Kartograph in TSF IR
 
 Using the v2 IR, the kartograph application would be described as:
 
@@ -371,13 +371,13 @@ components:
   foundry-http:         v2.0.0
   foundry-postgres:     v1.0.0
   foundry-auth-jwt:     v1.0.0
-  tsc-auth-spicedb: v1.0.0
-  tsc-graph-age:    v1.0.0
-  tsc-kafka:        v1.0.0
+  foundry-auth-spicedb: v1.0.0
+  foundry-graph-age:    v1.0.0
+  foundry-kafka:        v1.0.0
   foundry-health:       v1.0.0
   foundry-metrics:      v1.0.0
-  tsc-redis:        v1.0.0
-  tsc-tenancy:      v1.0.0
+  foundry-redis:        v1.0.0
+  foundry-tenancy:      v1.0.0
 
 graph:
   backend: age
@@ -413,10 +413,10 @@ services:
   - name: api
     role: rest-api
     port: 8000
-    components: [tsc-http, tsc-auth-jwt, tsc-auth-spicedb, tsc-postgres, tsc-graph-age, tsc-redis]
+    components: [foundry-http, foundry-auth-jwt, foundry-auth-spicedb, foundry-postgres, foundry-graph-age, foundry-redis]
   - name: mutation-worker
     role: worker
-    components: [tsc-postgres, tsc-graph-age, tsc-kafka]
+    components: [foundry-postgres, foundry-graph-age, foundry-kafka]
     triggers:
       - event: graph.mutation.requested
         handler: apply_mutation
@@ -473,7 +473,7 @@ observability:
   metrics: { port: 8080, path: /metrics }
 ```
 
-This single YAML file describes kartograph's entire architecture. The AI writes it; TSC compiles it.
+This single YAML file describes kartograph's entire architecture. The AI writes it; TSF compiles it.
 
 ---
 
@@ -481,11 +481,11 @@ This single YAML file describes kartograph's entire architecture. The AI writes 
 
 | Phase | Deliverable | Owner | Blocks |
 |-------|-------------|-------|--------|
-| 1 | `schema-v2.json` — all extension blocks formalized | TSC-Architect | TSC-Compiler v2 |
-| 2 | `tsc-graph-age` component | TSC-Library | TSC-Compiler v2 |
-| 3 | `tsc-kafka`, `tsc-redis` components | TSC-Library | Phase 4 |
-| 4 | `tsc-auth-spicedb`, `tsc-tenancy` components | TSC-Library | Phase 5 |
-| 5 | TSC-Compiler v2: multi-service codegen, kafka wiring | TSC-Compiler | Phase 6 |
+| 1 | `schema-v2.json` — all extension blocks formalized | TSF-Architect | TSF-Compiler v2 |
+| 2 | `foundry-graph-age` component | TSF-Library | TSF-Compiler v2 |
+| 3 | `foundry-kafka`, `foundry-redis` components | TSF-Library | Phase 4 |
+| 4 | `foundry-auth-spicedb`, `foundry-tenancy` components | TSF-Library | Phase 5 |
+| 5 | TSF-Compiler v2: multi-service codegen, kafka wiring | TSF-Compiler | Phase 6 |
 | 6 | kartograph parity: compile kartograph spec end-to-end | All | Done |
 
 ---
@@ -494,5 +494,5 @@ This single YAML file describes kartograph's entire architecture. The AI writes 
 
 1. **[?BOSS]** Should `schema-v2.json` extend v1 via `$ref` inheritance or replace it with a unified schema? Extending is cleaner for backward compat but adds schema complexity.
 2. **[?BOSS]** Should `hooks:` be a v2 feature or a v1 hotfix? Some teams need it immediately.
-3. **[?BOSS]** Should `tsc-temporal` use PostgreSQL temporal tables (range types) or a dedicated table-pair pattern (current/history tables)?
+3. **[?BOSS]** Should `foundry-temporal` use PostgreSQL temporal tables (range types) or a dedicated table-pair pattern (current/history tables)?
 4. **[?BOSS]** Is Neo4j a v2 target or future? Impacts whether `graph.backend` is an enum or extensible.

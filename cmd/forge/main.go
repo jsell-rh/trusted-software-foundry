@@ -15,7 +15,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/jsell-rh/trusted-software-foundry/tsc/compiler"
+	"github.com/jsell-rh/trusted-software-foundry/foundry/compiler"
 )
 
 func main() {
@@ -39,6 +39,9 @@ All generated code is assembled from pre-audited, version-pinned trusted compone
 	cmd.AddCommand(lintCmd())
 	cmd.AddCommand(explainCmd())
 	cmd.AddCommand(diffCmd())
+	cmd.AddCommand(deployCmd())
+	cmd.AddCommand(sbomCmd())
+	cmd.AddCommand(verifyCmd())
 	return cmd
 }
 
@@ -52,7 +55,7 @@ func compileCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "compile <spec.yaml>",
-		Short: "Compile a TSC IR spec into a Go application",
+		Short: "Compile a Foundry IR spec into a Go application",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			specPath := args[0]

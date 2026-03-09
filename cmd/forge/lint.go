@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/jsell-rh/trusted-software-foundry/tsc/compiler"
+	"github.com/jsell-rh/trusted-software-foundry/foundry/compiler"
 )
 
 func lintCmd() *cobra.Command {
@@ -14,8 +14,8 @@ func lintCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "lint <spec.yaml>",
-		Short: "Validate a TSC IR spec and report all errors",
-		Long: `lint validates a TSC IR spec file in two passes:
+		Short: "Validate a Foundry IR spec and report all errors",
+		Long: `lint validates a Foundry IR spec file in two passes:
   1. JSON Schema structural validation (schema.json)
   2. Semantic validation (cross-field rules, registry checks)
 
@@ -36,7 +36,7 @@ Exit code 0 = valid; exit code 1 = validation errors found.`,
 		},
 	}
 
-	cmd.Flags().StringVar(&schemaPath, "schema", "", "Path to JSON Schema file (default: built-in tsc/spec/schema.json)")
+	cmd.Flags().StringVar(&schemaPath, "schema", "", "Path to JSON Schema file (default: built-in foundry/spec/schema.json)")
 
 	return cmd
 }

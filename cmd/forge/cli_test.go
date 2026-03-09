@@ -45,7 +45,7 @@ func captureLint(t *testing.T, specPath string) (string, error) {
 }
 
 func TestLint_ValidSpec_DinosaurRegistry(t *testing.T) {
-	specPath := filepath.Join("..", "..", "tsc", "examples", "dinosaur-registry", "app.foundry.yaml")
+	specPath := filepath.Join("..", "..", "foundry", "examples", "dinosaur-registry", "app.foundry.yaml")
 	if _, err := os.Stat(specPath); os.IsNotExist(err) {
 		t.Skip("dinosaur-registry spec not found")
 	}
@@ -63,7 +63,7 @@ func TestLint_ValidSpec_DinosaurRegistry(t *testing.T) {
 }
 
 func TestLint_ValidSpec_FleetManager(t *testing.T) {
-	specPath := filepath.Join("..", "..", "tsc", "examples", "fleet-manager", "app.foundry.yaml")
+	specPath := filepath.Join("..", "..", "foundry", "examples", "fleet-manager", "app.foundry.yaml")
 	if _, err := os.Stat(specPath); os.IsNotExist(err) {
 		t.Skip("fleet-manager spec not found")
 	}
@@ -97,8 +97,8 @@ func TestLint_ValidSpec_Scaffolded(t *testing.T) {
 
 // Note: TestLint_InvalidSpec is intentionally omitted. lintCmd calls os.Exit(1)
 // on validation failure, which would terminate the test process. The error path
-// is covered at the compiler.ParseWithSchema level in tsc/compiler/parser_test.go
-// and tsc/compiler/validation_test.go. To test lint's exit-code behaviour,
+// is covered at the compiler.ParseWithSchema level in foundry/compiler/parser_test.go
+// and foundry/compiler/validation_test.go. To test lint's exit-code behaviour,
 // use an exec.Command subprocess test (deferred to future work).
 
 // --------------------------------------------------------------------------
@@ -108,7 +108,7 @@ func TestLint_ValidSpec_Scaffolded(t *testing.T) {
 func TestCompileCmd_MissingOutputFlag(t *testing.T) {
 	// compileCmd requires --output; without it, RunE returns an error
 	// (cobra propagates this without calling os.Exit).
-	specPath := filepath.Join("..", "..", "tsc", "examples", "dinosaur-registry", "app.foundry.yaml")
+	specPath := filepath.Join("..", "..", "foundry", "examples", "dinosaur-registry", "app.foundry.yaml")
 	if _, err := os.Stat(specPath); os.IsNotExist(err) {
 		t.Skip("dinosaur-registry spec not found")
 	}
@@ -128,7 +128,7 @@ func TestCompileCmd_MissingOutputFlag(t *testing.T) {
 }
 
 func TestCompileCmd_ValidSpec(t *testing.T) {
-	specPath := filepath.Join("..", "..", "tsc", "examples", "dinosaur-registry", "app.foundry.yaml")
+	specPath := filepath.Join("..", "..", "foundry", "examples", "dinosaur-registry", "app.foundry.yaml")
 	if _, err := os.Stat(specPath); os.IsNotExist(err) {
 		t.Skip("dinosaur-registry spec not found")
 	}
@@ -173,8 +173,8 @@ func TestCompileCmd_ValidSpec(t *testing.T) {
 }
 
 func TestCompileCmd_WithFileRegistry(t *testing.T) {
-	specPath := filepath.Join("..", "..", "tsc", "examples", "dinosaur-registry", "app.foundry.yaml")
-	registryDir := filepath.Join("..", "..", "tsc", "compiler", "testdata", "registry")
+	specPath := filepath.Join("..", "..", "foundry", "examples", "dinosaur-registry", "app.foundry.yaml")
+	registryDir := filepath.Join("..", "..", "foundry", "compiler", "testdata", "registry")
 	if _, err := os.Stat(specPath); os.IsNotExist(err) {
 		t.Skip("dinosaur-registry spec not found")
 	}

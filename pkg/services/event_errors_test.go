@@ -87,7 +87,7 @@ func TestEventService_Create_Error(t *testing.T) {
 
 func TestEventService_Replace_HappyPath(t *testing.T) {
 	svc := NewEventService(&happyReplaceEventDao{})
-	evt := &api.Event{Source: "tsc", EventType: "update"}
+	evt := &api.Event{Source: "foundry", EventType: "update"}
 	evt.ID = "ev-r"
 	got, err := svc.Replace(context.Background(), evt)
 	if err != nil {

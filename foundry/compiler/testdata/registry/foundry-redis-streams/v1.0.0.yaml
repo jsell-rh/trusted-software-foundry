@@ -1,0 +1,4 @@
+name: foundry-redis-streams
+version: v1.0.0
+module: github.com/jsell-rh/trusted-software-foundry/foundry/components/redis-streams
+audit_hash: a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2

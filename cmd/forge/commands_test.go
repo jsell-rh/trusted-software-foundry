@@ -291,7 +291,7 @@ func TestCompileCmd_CompileFailure(t *testing.T) {
 }
 
 func TestCompileCmd_WithRhTrexAI(t *testing.T) {
-	specPath := filepath.Join("..", "..", "tsc", "examples", "dinosaur-registry", "app.foundry.yaml")
+	specPath := filepath.Join("..", "..", "foundry", "examples", "dinosaur-registry", "app.foundry.yaml")
 	if _, err := os.Stat(specPath); os.IsNotExist(err) {
 		t.Skip("dinosaur-registry spec not found")
 	}

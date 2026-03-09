@@ -6,14 +6,14 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/jsell-rh/trusted-software-foundry/tsc/compiler"
+	"github.com/jsell-rh/trusted-software-foundry/foundry/compiler"
 )
 
 func explainCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "explain <spec.yaml>",
-		Short: "Print a human-readable summary of what a TSC spec will build",
-		Long: `explain parses a TSC IR spec and prints a structured summary:
+		Short: "Print a human-readable summary of what a Foundry IR spec will build",
+		Long: `explain parses a Foundry IR spec and prints a structured summary:
   - Application identity (name, version)
   - Trusted component SBOM (name + version)
   - Resources: fields, operations, events
