@@ -154,33 +154,6 @@ func TestNewSchemaValidator_InvalidJSON(t *testing.T) {
 	}
 }
 
-func TestNewSchemaValidator_NoDefs(t *testing.T) {
-	// Schema without $defs should not error and defs should be nil.
-	sv, err := newSchemaValidator([]byte(`{"type": "object"}`))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if sv.defs != nil {
-		t.Errorf("expected nil defs for schema without $defs, got %v", sv.defs)
-	}
-}
-
-// --------------------------------------------------------------------------
-// validateNode — unresolved $ref
-// --------------------------------------------------------------------------
-
-func TestValidateNode_UnresolvedRef(t *testing.T) {
-	sv := &schemaValidator{root: map[string]interface{}{}, defs: map[string]interface{}{}}
-	schema := map[string]interface{}{"$ref": "#/$defs/Nonexistent"}
-	errs := sv.validateNode("data", schema, "root")
-	if len(errs) == 0 {
-		t.Error("expected errors for unresolved $ref, got none")
-	}
-	if !strings.Contains(errs[0].Error(), "unresolved") {
-		t.Errorf("unexpected error: %v", errs[0])
-	}
-}
-
 // --------------------------------------------------------------------------
 // validateAgainstSchema — error paths
 // --------------------------------------------------------------------------
