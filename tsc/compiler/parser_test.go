@@ -373,3 +373,114 @@ func TestParse_FileNotFound(t *testing.T) {
 		t.Fatal("expected error for missing spec file, got nil")
 	}
 }
+
+// --- Tenancy strategy validation ---
+
+func TestParse_TenancyInvalidStrategy(t *testing.T) {
+	spec := writeTempSpec(t, `
+apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-postgres: v1.0.0
+  foundry-tenancy:  v1.0.0
+database:
+  type: postgres
+  migrations: auto
+resources:
+  - name: Item
+    plural: items
+    fields:
+      - name: id
+        type: uuid
+    operations: [create, read]
+    events: false
+tenancy:
+  field: org_id
+  strategy: column
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for invalid tenancy strategy, got nil")
+	}
+	if !strings.Contains(err.Error(), "tenancy.strategy") {
+		t.Errorf("expected error to mention tenancy.strategy, got: %v", err)
+	}
+}
+
+func TestParse_TenancyValidStrategies(t *testing.T) {
+	for _, strategy := range []string{"row", "schema", "database"} {
+		t.Run(strategy, func(t *testing.T) {
+			spec := writeTempSpec(t, `
+apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-postgres: v1.0.0
+  foundry-tenancy:  v1.0.0
+database:
+  type: postgres
+  migrations: auto
+resources:
+  - name: Item
+    plural: items
+    fields:
+      - name: id
+        type: uuid
+    operations: [create, read]
+    events: false
+tenancy:
+  field: org_id
+  strategy: `+strategy+`
+`)
+			_, err := ParseWithSchema(spec, schemaPathForTest())
+			if err != nil {
+				t.Errorf("strategy %q should be valid, got error: %v", strategy, err)
+			}
+		})
+	}
+}
+
+// --- Service component cross-reference ---
+
+func TestParse_ServiceUndeclaredComponent(t *testing.T) {
+	spec := writeTempSpec(t, `
+apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-postgres: v1.0.0
+  foundry-http:     v1.0.0
+database:
+  type: postgres
+  migrations: auto
+resources:
+  - name: Item
+    plural: items
+    fields:
+      - name: id
+        type: uuid
+    operations: [create, read]
+    events: false
+services:
+  - name: api
+    role: gateway
+    port: 8080
+    components:
+      - foundry-http
+      - foundry-grpc
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for service using undeclared component, got nil")
+	}
+	if !strings.Contains(err.Error(), "foundry-grpc") {
+		t.Errorf("expected error to mention foundry-grpc, got: %v", err)
+	}
+}

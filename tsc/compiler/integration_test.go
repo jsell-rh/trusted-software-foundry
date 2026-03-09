@@ -199,6 +199,22 @@ func TestE2E_FleetManager(t *testing.T) {
 		}
 	}
 
+	// Assert: hook implementation files are copied into the output directory.
+	// The compiler resolves hook paths relative to the spec file's directory,
+	// so all 5 fleet-manager hooks should be present.
+	for _, hookFile := range []string{
+		"hooks/audit_logger.go",
+		"hooks/tenant_isolation.go",
+		"hooks/cluster_status_enricher.go",
+		"hooks/event_schema_validator.go",
+		"hooks/graph_sync_consumer.go",
+	} {
+		hookPath := filepath.Join(outDir, hookFile)
+		if _, err := os.Stat(hookPath); err != nil {
+			t.Errorf("hook file %s not copied to output: %v", hookFile, err)
+		}
+	}
+
 	// Assert: all generated Go files are gofmt-clean
 	if gofmt, err := exec.LookPath("gofmt"); err == nil {
 		goFiles, _ := filepath.Glob(filepath.Join(outDir, "*.go"))
