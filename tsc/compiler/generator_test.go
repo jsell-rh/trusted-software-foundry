@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"github.com/jsell-rh/trusted-software-foundry/tsc/spec"
 	"os"
 	"path/filepath"
 	"strings"
@@ -351,5 +352,170 @@ func TestIRTypeToSQL_AllTypes(t *testing.T) {
 				t.Errorf("irTypeToSQL(%q, %d) = %q, want %q", tc.irType, tc.maxLen, got, tc.wantSQL)
 			}
 		})
+	}
+}
+
+// --------------------------------------------------------------------------
+// sortComponents — alphabetical tiebreaker for unknown components
+// --------------------------------------------------------------------------
+
+// TestSortComponents_TwoUnknownTiebreakByName exercises the alphabetical
+// tiebreaker inside sortComponents (line: `return sorted[i].Name < sorted[j].Name`).
+// This branch fires when two components both lack a priority entry and must be
+// ordered by name to guarantee deterministic output across Go test runs.
+func TestSortComponents_TwoUnknownTiebreakByName(t *testing.T) {
+	input := []ResolvedComponent{
+		{Name: "zeta-service"},
+		{Name: "alpha-service"},
+		{Name: "foundry-postgres"}, // known, must come first
+	}
+	sorted := sortComponents(input)
+
+	if sorted[0].Name != "foundry-postgres" {
+		t.Errorf("foundry-postgres must be first, got %q", sorted[0].Name)
+	}
+	alphaIdx, zetaIdx := -1, -1
+	for i, c := range sorted {
+		switch c.Name {
+		case "alpha-service":
+			alphaIdx = i
+		case "zeta-service":
+			zetaIdx = i
+		}
+	}
+	if alphaIdx == -1 || zetaIdx == -1 {
+		t.Fatal("one or both unknown components missing from sorted output")
+	}
+	if alphaIdx > zetaIdx {
+		t.Errorf("alpha-service (pos %d) should appear before zeta-service (pos %d) via alphabetical tiebreak", alphaIdx, zetaIdx)
+	}
+}
+
+// --------------------------------------------------------------------------
+// Generate — write error path when output dir is read-only
+// --------------------------------------------------------------------------
+
+// TestGenerate_WriteError verifies that Generate returns a wrapped error
+// mentioning "generating main.go" when the output directory exists but is
+// read-only (so WriteFile for main.go fails). This covers the first error
+// path in the Generate sub-function call chain.
+func TestGenerate_WriteError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("root can write to read-only directories; skip")
+	}
+
+	ir, err := Parse(exampleSpecPath)
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	resolver := NewResolver(NewStubRegistry(), "")
+	components, err := resolver.ResolveAll(ir.Components)
+	if err != nil {
+		t.Fatalf("ResolveAll: %v", err)
+	}
+
+	// Create the output dir then make it read-only.
+	// os.MkdirAll will succeed (dir exists), but subsequent WriteFile will fail.
+	outDir := t.TempDir()
+	if err := os.Chmod(outDir, 0555); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	defer os.Chmod(outDir, 0755) // restore so TempDir cleanup works
+
+	genErr := NewGenerator(outDir, "").Generate(ir, components)
+	if genErr == nil {
+		t.Fatal("expected error for read-only output dir, got nil")
+	}
+	if !strings.Contains(genErr.Error(), "generating main.go") {
+		t.Errorf("expected 'generating main.go' in error, got: %v", genErr)
+	}
+}
+
+// --------------------------------------------------------------------------
+// writeMigrations — empty plural field and MkdirAll error
+// --------------------------------------------------------------------------
+
+// TestWriteMigrations_EmptyPlural verifies that when a resource has an empty
+// Plural field, writeMigrations derives the table name from Name+"s". This is a
+// defensive code path since the schema requires plural, but the IR allows it.
+func TestWriteMigrations_EmptyPlural(t *testing.T) {
+	ir := &spec.IRSpec{
+		Metadata: spec.IRMetadata{Name: "test-app", Version: "1.0.0"},
+		Resources: []spec.IRResource{
+			{
+				Name:   "Widget",
+				Plural: "", // empty — triggers the Name+"s" fallback
+				Fields: []spec.IRField{
+					{Name: "id", Type: "uuid", Required: true},
+				},
+				Operations: []string{"create"},
+			},
+		},
+	}
+	outDir := t.TempDir()
+	g := NewGenerator(outDir, "")
+	if err := g.writeMigrations(ir); err != nil {
+		t.Fatalf("writeMigrations: %v", err)
+	}
+
+	// Table name should be "widgets" (Name + "s", lowercased)
+	entries, err := os.ReadDir(filepath.Join(outDir, "migrations"))
+	if err != nil {
+		t.Fatalf("migrations/ not created: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 migration file, got %d", len(entries))
+	}
+	if !strings.Contains(entries[0].Name(), "widgets") {
+		t.Errorf("expected migration filename to contain 'widgets', got %q", entries[0].Name())
+	}
+}
+
+// TestWriteMigrations_SkipsAutoAndSoftDeleteFields verifies that auto-managed
+// fields (created/updated) and soft-delete fields are excluded from the
+// generated CREATE TABLE statement (they are managed by the base schema).
+func TestWriteMigrations_SkipsAutoAndSoftDeleteFields(t *testing.T) {
+	ir := &spec.IRSpec{
+		Metadata: spec.IRMetadata{Name: "test-app", Version: "1.0.0"},
+		Resources: []spec.IRResource{
+			{
+				Name:   "Order",
+				Plural: "orders",
+				Fields: []spec.IRField{
+					{Name: "id", Type: "uuid", Required: true},
+					{Name: "created_at", Type: "timestamp", Auto: "created"},
+					{Name: "updated_at", Type: "timestamp", Auto: "updated"},
+					{Name: "deleted_at", Type: "timestamp", SoftDelete: true},
+					{Name: "total", Type: "int", Required: true},
+				},
+				Operations: []string{"create"},
+			},
+		},
+	}
+	outDir := t.TempDir()
+	g := NewGenerator(outDir, "")
+	if err := g.writeMigrations(ir); err != nil {
+		t.Fatalf("writeMigrations: %v", err)
+	}
+
+	entries, err := os.ReadDir(filepath.Join(outDir, "migrations"))
+	if err != nil {
+		t.Fatalf("migrations/ not created: %v", err)
+	}
+	sql, err := os.ReadFile(filepath.Join(outDir, "migrations", entries[0].Name()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlStr := string(sql)
+
+	// The non-auto field must appear in the Columns range
+	if !strings.Contains(sqlStr, "total") {
+		t.Error("migration must include the 'total' field")
+	}
+	// Auto-managed fields appear exactly once in the template header — not doubled via Columns.
+	for _, f := range []string{"created_at", "updated_at"} {
+		if n := strings.Count(sqlStr, f); n != 1 {
+			t.Errorf("field %q appears %d times in migration SQL, want exactly 1 (template header only)", f, n)
+		}
 	}
 }

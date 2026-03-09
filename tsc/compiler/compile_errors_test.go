@@ -180,3 +180,53 @@ resources:
 		t.Errorf("expected 'generate' in error, got: %v", err)
 	}
 }
+
+// --------------------------------------------------------------------------
+// Compile() — go mod tidy error path (rhtexAIPath != "")
+// --------------------------------------------------------------------------
+
+// TestCompile_GoModTidyError verifies that when Compile is given a non-empty
+// rhtexAIPath that points to a non-existent directory, the generated go.mod
+// contains a replace directive pointing to that path, and the subsequent
+// `go mod tidy` step fails, returning an error mentioning "go mod tidy".
+// This exercises the Compile step-5 block (lines 61-67) that is otherwise
+// unreachable when rhtexAIPath is empty (as in all other tests).
+func TestCompile_GoModTidyError(t *testing.T) {
+	specFile := filepath.Join(t.TempDir(), "app.foundry.yaml")
+	yaml := `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http:     v1.0.0
+  foundry-postgres: v1.0.0
+database:
+  type: postgres
+  migrations: auto
+resources:
+  - name: Item
+    plural: items
+    fields:
+      - name: id
+        type: uuid
+        required: true
+    operations: [create, read]
+    events: false
+`
+	if err := os.WriteFile(specFile, []byte(yaml), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Pass a fake local path — the replace directive will reference it and
+	// go mod tidy will fail because the directory doesn't exist.
+	fakeLocalPath := "/nonexistent/rh-trex-ai-local"
+	c := compiler.New(compiler.NewStubRegistry(), "", fakeLocalPath)
+	err := c.Compile(specFile, t.TempDir())
+	if err == nil {
+		t.Fatal("expected error from go mod tidy with invalid replace path, got nil")
+	}
+	if !strings.Contains(err.Error(), "go mod tidy") {
+		t.Errorf("expected 'go mod tidy' in error, got: %v", err)
+	}
+}

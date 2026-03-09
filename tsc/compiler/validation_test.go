@@ -10,6 +10,8 @@ package compiler
 //   - Graph edge cross-reference against declared node_type labels
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -1339,5 +1341,491 @@ auth:
 	_, err := ParseWithSchema(spec, schemaPathForTest())
 	if err != nil {
 		t.Fatalf("expected valid auth config to parse without error, got: %v", err)
+	}
+}
+
+// --------------------------------------------------------------------------
+// validateAgainstSchema error path tests
+// --------------------------------------------------------------------------
+
+// TestParseWithSchema_MissingSchemaFile verifies that ParseWithSchema returns
+// an error wrapping "reading schema file" when the schema path does not exist.
+// This covers the os.ReadFile error branch in validateAgainstSchema.
+func TestParseWithSchema_MissingSchemaFile(t *testing.T) {
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http: v1.0.0
+`)
+	_, err := ParseWithSchema(spec, "/nonexistent/path/schema.json")
+	if err == nil {
+		t.Fatal("expected error for missing schema file, got nil")
+	}
+	if !strings.Contains(err.Error(), "reading schema") {
+		t.Errorf("expected 'reading schema' in error, got: %v", err)
+	}
+}
+
+// TestParseWithSchema_InvalidSchemaJSON verifies that ParseWithSchema returns
+// an error mentioning "loading schema" when the schema file contains invalid
+// JSON. This covers the newSchemaValidator error branch in validateAgainstSchema.
+func TestParseWithSchema_InvalidSchemaJSON(t *testing.T) {
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http: v1.0.0
+`)
+	// Write a schema file containing invalid JSON.
+	schemaFile := filepath.Join(t.TempDir(), "bad-schema.json")
+	if err := os.WriteFile(schemaFile, []byte(`{invalid json`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := ParseWithSchema(spec, schemaFile)
+	if err == nil {
+		t.Fatal("expected error for invalid schema JSON, got nil")
+	}
+	if !strings.Contains(err.Error(), "loading schema") {
+		t.Errorf("expected 'loading schema' in error, got: %v", err)
+	}
+}
+
+// --------------------------------------------------------------------------
+// checkJSONType — array and object type-mismatch errors
+// --------------------------------------------------------------------------
+
+// TestParse_OperationsNotArray verifies that a scalar string in the operations
+// field (which must be a JSON array) triggers the checkJSONType array error.
+func TestParse_OperationsNotArray(t *testing.T) {
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http:     v1.0.0
+  foundry-postgres: v1.0.0
+database:
+  type: postgres
+  migrations: auto
+resources:
+  - name: Widget
+    plural: widgets
+    fields:
+      - name: id
+        type: uuid
+        required: true
+    operations: "create"
+    events: false
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for non-array operations value, got nil")
+	}
+	if !strings.Contains(err.Error(), "operations") {
+		t.Errorf("expected error to mention 'operations', got: %v", err)
+	}
+}
+
+// TestParse_DatabaseNotObject verifies that a scalar value for the database
+// block (which must be a JSON object) triggers the checkJSONType object error.
+func TestParse_DatabaseNotObject(t *testing.T) {
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http:     v1.0.0
+  foundry-postgres: v1.0.0
+database: "postgres"
+resources:
+  - name: Widget
+    plural: widgets
+    fields:
+      - name: id
+        type: uuid
+        required: true
+    operations: [create, read]
+    events: false
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for non-object database value, got nil")
+	}
+	if !strings.Contains(err.Error(), "database") {
+		t.Errorf("expected error to mention 'database', got: %v", err)
+	}
+}
+
+// --------------------------------------------------------------------------
+// checkJSONType — boolean, string, and integer type-mismatch errors
+// --------------------------------------------------------------------------
+
+func TestParse_ResourceEventsWrongType(t *testing.T) {
+	// events field expects a boolean; passing a string "yes" triggers a
+	// JSON Schema type-mismatch error in the schema validator.
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-postgres: v1.0.0
+  foundry-http:     v1.0.0
+database:
+  type: postgres
+  migrations: auto
+resources:
+  - name: Widget
+    plural: widgets
+    fields:
+      - name: id
+        type: uuid
+        required: true
+    operations: [create]
+    events: "yes"
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for non-boolean events value, got nil")
+	}
+	if !strings.Contains(err.Error(), "events") {
+		t.Errorf("expected error to mention 'events', got: %v", err)
+	}
+}
+
+func TestParse_BiTemporalEnabledWrongType(t *testing.T) {
+	// bi_temporal.enabled expects boolean; passing an integer triggers type error.
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-temporal: v1.0.0
+  foundry-postgres: v1.0.0
+  foundry-http:     v1.0.0
+database:
+  type: postgres
+  migrations: auto
+resources:
+  - name: Widget
+    plural: widgets
+    fields:
+      - name: id
+        type: uuid
+        required: true
+    operations: [create]
+    events: false
+bi_temporal:
+  enabled: 1
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for integer-typed bi_temporal.enabled, got nil")
+	}
+	if !strings.Contains(err.Error(), "enabled") && !strings.Contains(err.Error(), "bi_temporal") {
+		t.Errorf("expected error to mention 'enabled' or 'bi_temporal', got: %v", err)
+	}
+}
+
+func TestParse_APIVersionWrongType(t *testing.T) {
+	// apiVersion expects a specific string; passing an integer value triggers type mismatch.
+	spec := writeTempSpec(t, `apiVersion: 1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http: v1.0.0
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for integer apiVersion, got nil")
+	}
+	if !strings.Contains(err.Error(), "apiVersion") {
+		t.Errorf("expected error to mention 'apiVersion', got: %v", err)
+	}
+}
+
+func TestParse_PortNotInteger(t *testing.T) {
+	// Port fields expect integer; passing a float (1.5) triggers the
+	// "expected integer, got float" branch in checkJSONType.
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http:   v1.0.0
+  foundry-health: v1.0.0
+observability:
+  health_check:
+    port: 1.5
+    path: /healthz
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for float-typed port, got nil")
+	}
+	if !strings.Contains(err.Error(), "port") && !strings.Contains(err.Error(), "integer") {
+		t.Errorf("expected error to mention 'port' or 'integer', got: %v", err)
+	}
+}
+
+// --------------------------------------------------------------------------
+// validateObject — minProperties, propertyNames enum, pattern mismatch
+// --------------------------------------------------------------------------
+
+// TestParse_ComponentsMapEmpty verifies that an empty components map is rejected.
+// The schema declares minProperties: 1 on the components object; this test
+// exercises the minProperties violation branch in validateObject (line ~140).
+func TestParse_ComponentsMapEmpty(t *testing.T) {
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components: {}
+resources:
+  - name: Item
+    plural: items
+    fields:
+      - name: id
+        type: uuid
+        required: true
+    operations: [create]
+    events: false
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for empty components map, got nil")
+	}
+	if !strings.Contains(err.Error(), "component") && !strings.Contains(err.Error(), "properties") {
+		t.Errorf("expected error to mention 'component' or 'properties', got: %v", err)
+	}
+}
+
+// TestParse_UnknownComponentName verifies that a component name not in the
+// trusted catalog is rejected at schema validation time. The schema's
+// propertyNames.enum constraint on the components object fires the
+// "unknown property name" branch in validateObject (line ~164).
+func TestParse_UnknownComponentName(t *testing.T) {
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  not-a-real-component: v1.0.0
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for unknown component name, got nil")
+	}
+	if !strings.Contains(err.Error(), "not-a-real-component") && !strings.Contains(err.Error(), "property") {
+		t.Errorf("expected error to mention the unknown component or 'property', got: %v", err)
+	}
+}
+
+// TestParse_AppNamePatternViolation verifies that an app name failing the
+// pattern constraint (^[a-z][a-z0-9-]*$) is rejected. This exercises the
+// pattern mismatch error path in validateNode (line ~88).
+func TestParse_AppNamePatternViolation(t *testing.T) {
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: "My App"
+  version: 1.0.0
+components:
+  foundry-http: v1.0.0
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for app name violating pattern, got nil")
+	}
+	if !strings.Contains(err.Error(), "name") && !strings.Contains(err.Error(), "pattern") {
+		t.Errorf("expected error to mention 'name' or 'pattern', got: %v", err)
+	}
+}
+
+// TestParse_PortBelowMinimum verifies that a port value of 0 (below the
+// schema minimum of 1) is rejected. This exercises the `num < min` branch
+// in validateNode (the numeric minimum check).
+func TestParse_PortBelowMinimum(t *testing.T) {
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http:   v1.0.0
+  foundry-health: v1.0.0
+observability:
+  health_check:
+    port: 0
+    path: /healthz
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for port below minimum, got nil")
+	}
+	if !strings.Contains(err.Error(), "port") && !strings.Contains(err.Error(), "minimum") {
+		t.Errorf("expected error to mention 'port' or 'minimum', got: %v", err)
+	}
+}
+
+// TestParse_PortAboveMaximum verifies that a port value above 65535 is
+// rejected. This exercises the `num > max` branch in validateNode (numeric
+// maximum check).
+func TestParse_PortAboveMaximum(t *testing.T) {
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http:   v1.0.0
+  foundry-health: v1.0.0
+observability:
+  health_check:
+    port: 99999
+    path: /healthz
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for port above maximum, got nil")
+	}
+	if !strings.Contains(err.Error(), "port") && !strings.Contains(err.Error(), "maximum") {
+		t.Errorf("expected error to mention 'port' or 'maximum', got: %v", err)
+	}
+}
+
+// TestParse_PortAsString verifies that a quoted string port value is rejected
+// as a non-integer type. When YAML parses `port: "8080"` as a string, the
+// schema's integer type check fires the non-float64 else branch in
+// checkJSONType (line ~273).
+func TestParse_PortAsString(t *testing.T) {
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http:   v1.0.0
+  foundry-health: v1.0.0
+observability:
+  health_check:
+    port: "8080"
+    path: /healthz
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for string-typed port, got nil")
+	}
+	if !strings.Contains(err.Error(), "port") && !strings.Contains(err.Error(), "integer") {
+		t.Errorf("expected error to mention 'port' or 'integer', got: %v", err)
+	}
+}
+
+// TestParseWithSchema_InvalidYAMLSyntax verifies that validateAgainstSchema
+// returns an error when the YAML is syntactically invalid (YAMLToJSON fails).
+// This covers the first error return in validateAgainstSchema (line ~76).
+func TestParseWithSchema_InvalidYAMLSyntax(t *testing.T) {
+	// Write YAML that cannot be converted to JSON (invalid syntax).
+	tmp := filepath.Join(t.TempDir(), "broken.yaml")
+	if err := os.WriteFile(tmp, []byte("{unclosed: [bracket\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := ParseWithSchema(tmp, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for invalid YAML, got nil")
+	}
+	// The error should mention YAML or JSON conversion.
+	if !strings.Contains(err.Error(), "YAML") && !strings.Contains(err.Error(), "JSON") && !strings.Contains(err.Error(), "schema") {
+		t.Errorf("expected conversion error in output, got: %v", err)
+	}
+}
+
+// TestParse_AuthJWTMissingJWKURL verifies that auth.type=jwt without a jwk_url
+// is rejected. The schema has an if/then constraint: if auth.type == "jwt" then
+// jwk_url is required. This exercises the if/then branch in validateObject
+// (line ~198) when the if condition holds and the then constraint fires.
+func TestParse_AuthJWTMissingJWKURL(t *testing.T) {
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http:     v1.0.0
+  foundry-auth-jwt: v1.0.0
+auth:
+  type: jwt
+  required: true
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for jwt auth without jwk_url, got nil")
+	}
+	if !strings.Contains(err.Error(), "jwk_url") && !strings.Contains(err.Error(), "jwt") {
+		t.Errorf("expected error to mention 'jwk_url' or 'jwt', got: %v", err)
+	}
+}
+
+// TestParseWithSchema_YAMLRootScalar verifies that validateAgainstSchema returns
+// an error when YAML is syntactically valid but converts to a JSON non-object
+// (e.g. a scalar), causing json.Unmarshal into map[string]interface{} to fail.
+// This covers the json.Unmarshal error path in validateAgainstSchema (line ~91).
+func TestParseWithSchema_YAMLRootScalar(t *testing.T) {
+	// A YAML scalar converts to a JSON string, which cannot unmarshal into
+	// map[string]interface{}; this is distinct from the YAMLToJSON error path.
+	tmp := filepath.Join(t.TempDir(), "scalar.yaml")
+	if err := os.WriteFile(tmp, []byte("just a scalar string\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := ParseWithSchema(tmp, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for YAML root scalar, got nil")
+	}
+}
+
+// TestParseWithSchema_MissingSpecFile verifies that ParseWithSchema returns a
+// "reading spec file" error when the spec path does not exist. This covers
+// the os.ReadFile error branch in ParseWithSchema (line ~38).
+func TestParseWithSchema_MissingSpecFile(t *testing.T) {
+	_, err := ParseWithSchema("/nonexistent/spec/file.yaml", schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for missing spec file, got nil")
+	}
+	if !strings.Contains(err.Error(), "reading spec file") {
+		t.Errorf("expected 'reading spec file' in error, got: %v", err)
+	}
+}
+
+// TestParseWithSchema_GoyamlUnmarshalError verifies that ParseWithSchema returns
+// a "parsing YAML" error when goyaml.Unmarshal fails. Calling with an empty
+// schemaPath skips JSON Schema validation so the invalid YAML reaches the
+// goyaml.Unmarshal call. This covers the Unmarshal error path (parser.go:55).
+func TestParseWithSchema_GoyamlUnmarshalError(t *testing.T) {
+	// Write YAML that is syntactically invalid for go-yaml v3 Unmarshal.
+	// An unclosed flow sequence triggers a parse error in go-yaml.
+	tmp := filepath.Join(t.TempDir(), "invalid.yaml")
+	if err := os.WriteFile(tmp, []byte("{key: [unclosed_bracket\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	// Empty schemaPath skips JSON Schema validation; the invalid YAML reaches goyaml.Unmarshal.
+	_, err := ParseWithSchema(tmp, "")
+	if err == nil {
+		t.Fatal("expected error for invalid YAML in goyaml.Unmarshal, got nil")
+	}
+	if !strings.Contains(err.Error(), "parsing YAML") {
+		t.Errorf("expected 'parsing YAML' in error, got: %v", err)
 	}
 }
