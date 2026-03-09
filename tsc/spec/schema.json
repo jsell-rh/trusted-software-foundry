@@ -104,9 +104,14 @@
       "description": "External state backends (Redis). Configures caching, rate limiting, and distributed locking. Requires foundry-redis component."
     },
 
-    "temporal": {
-      "$ref": "#/$defs/temporalConfig",
+    "bi_temporal": {
+      "$ref": "#/$defs/biTemporalConfig",
       "description": "Bi-temporal data tracking (valid time + transaction time). Generates current/history table pairs and AS-OF query endpoints. Requires foundry-temporal component."
+    },
+
+    "workflows": {
+      "$ref": "#/$defs/workflowsConfig",
+      "description": "Temporal.io durable workflow engine configuration. Declares long-running workflows, their activities, and trigger events. Requires foundry-temporal component."
     },
 
     "tenancy": {
@@ -387,10 +392,11 @@
       "required": ["name", "role"],
       "additionalProperties": false,
       "properties": {
-        "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "name":        { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "description": { "type": "string", "description": "Human-readable description of this service's responsibility." },
         "role": {
           "type": "string",
-          "enum": ["rest-api", "grpc-api", "worker", "metrics", "scheduler"],
+          "enum": ["rest-api", "grpc-api", "worker", "metrics", "scheduler", "gateway"],
           "description": "Service role determines the generated entrypoint template."
         },
         "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
@@ -431,8 +437,9 @@
         "backend": {
           "type": "string",
           "enum": ["kafka", "nats", "redis-streams", "pg-notify"],
-          "description": "Event bus backend. 'pg-notify' uses the built-in PostgreSQL LISTEN/NOTIFY (no extra component). Others require the matching foundry-* component."
+          "description": "Event bus backend."
         },
+        "broker_url":      { "type": "string", "description": "Broker URL shorthand, e.g. '${KAFKA_BROKER_URL}'. Equivalent to broker.url." },
         "broker":          { "$ref": "#/$defs/eventsBroker" },
         "schema_registry": { "$ref": "#/$defs/eventsSchemaRegistry" },
         "topics":          { "type": "array", "items": { "$ref": "#/$defs/eventTopic" } },
@@ -465,7 +472,13 @@
       "required": ["name"],
       "additionalProperties": false,
       "properties": {
-        "name":            { "type": "string", "pattern": "^[a-z][a-z0-9.-]*$" },
+        "name":            { "type": "string", "pattern": "^[a-z][a-z0-9._-]*$" },
+        "resource":        { "type": "string", "description": "Resource whose lifecycle events are published to this topic." },
+        "operations": {
+          "type": "array",
+          "description": "Resource operations that trigger an event on this topic.",
+          "items": { "type": "string", "enum": ["create", "read", "update", "delete", "list"] }
+        },
         "partitions":      { "type": "integer", "minimum": 1, "default": 1 },
         "replication":     { "type": "integer", "minimum": 1, "default": 1 },
         "retention_hours": { "type": "integer", "minimum": 1 },
@@ -539,10 +552,26 @@
             }
           }
         },
+        "relations": {
+          "type": "array",
+          "description": "SpiceDB relation declarations — maps resource types to subject types.",
+          "items": { "$ref": "#/$defs/authzRelation" }
+        },
         "policies": {
           "type": "array",
           "items": { "$ref": "#/$defs/authzPolicy" }
         }
+      }
+    },
+
+    "authzRelation": {
+      "type": "object",
+      "required": ["resource", "relation", "subject"],
+      "additionalProperties": false,
+      "properties": {
+        "resource": { "type": "string", "description": "Resource type name (e.g. 'Cluster')." },
+        "relation": { "type": "string", "description": "Relation name (e.g. 'owner', 'viewer')." },
+        "subject":  { "type": "string", "description": "Subject type (e.g. 'User', 'Organization')." }
       }
     },
 
@@ -564,12 +593,19 @@
 
     "stateConfig": {
       "type": "object",
-      "required": ["backends"],
       "additionalProperties": false,
+      "description": "External distributed state via Redis. Configures caching, rate limiting, and distributed locking.",
       "properties": {
+        "backend": { "type": "string", "enum": ["redis"], "default": "redis" },
+        "url":     { "type": "string", "description": "Redis connection URL or env-var ref, e.g. '${REDIS_URL}'." },
+        "keys": {
+          "type": "array",
+          "description": "Named state entries with strategies.",
+          "items": { "$ref": "#/$defs/stateKey" }
+        },
         "backends": {
           "type": "array",
-          "minItems": 1,
+          "description": "Named backend pool (advanced: multiple Redis instances).",
           "items": { "$ref": "#/$defs/stateBackend" }
         },
         "uses": {
@@ -579,15 +615,27 @@
       }
     },
 
+    "stateKey": {
+      "type": "object",
+      "required": ["name", "strategy"],
+      "additionalProperties": false,
+      "properties": {
+        "name":        { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "description": "Logical key name." },
+        "resource":    { "type": "string", "description": "Resource this key is scoped to (optional)." },
+        "strategy":    { "type": "string", "enum": ["cache", "distributed_lock", "rate_limit", "counter"], "description": "How this key is used." },
+        "ttl_seconds": { "type": "integer", "minimum": 1, "description": "Time-to-live in seconds." }
+      }
+    },
+
     "stateBackend": {
       "type": "object",
       "required": ["name", "type", "url"],
       "additionalProperties": false,
       "properties": {
-        "name":        { "type": "string", "pattern": "^[a-z][a-z0-9-]*$", "description": "Logical name for this backend, referenced in uses." },
+        "name":        { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
         "type":        { "type": "string", "enum": ["redis"] },
-        "url":         { "type": "string", "description": "Connection URL or env-var reference." },
-        "default_ttl": { "type": "integer", "minimum": 1, "description": "Default cache TTL in seconds." }
+        "url":         { "type": "string" },
+        "default_ttl": { "type": "integer", "minimum": 1 }
       }
     },
 
@@ -595,27 +643,26 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "cache":              { "type": "string", "description": "Backend name for response caching." },
-        "rate_limit":         { "type": "string", "description": "Backend name for rate limiting." },
-        "distributed_lock":   { "type": "string", "description": "Backend name for distributed locking." },
+        "cache":              { "type": "string" },
+        "rate_limit":         { "type": "string" },
+        "distributed_lock":   { "type": "string" },
         "resources": {
           "oneOf": [
             { "type": "string", "const": "all" },
             { "type": "array", "items": { "type": "string" } }
           ]
         },
-        "routes":               { "type": "array", "items": { "type": "string" }, "description": "HTTP routes to rate limit." },
+        "routes":               { "type": "array", "items": { "type": "string" } },
         "requests_per_second":  { "type": "integer", "minimum": 1 },
         "burst":                { "type": "integer", "minimum": 1 },
         "operations": {
           "type": "array",
-          "items": { "type": "string", "enum": ["create", "read", "update", "delete", "list"] },
-          "description": "Operations that acquire a distributed lock before executing."
+          "items": { "type": "string", "enum": ["create", "read", "update", "delete", "list"] }
         }
       }
     },
 
-    "temporalConfig": {
+    "biTemporalConfig": {
       "type": "object",
       "required": ["enabled"],
       "additionalProperties": false,
@@ -650,44 +697,72 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "as_of_param":   { "type": "string", "default": "as_of",    "description": "Query parameter for point-in-time queries, e.g. ?as_of=2025-01-01T00:00:00Z." },
+            "as_of_param":   { "type": "string", "default": "as_of",    "description": "Query parameter for point-in-time queries." },
             "between_param": { "type": "string", "default": "between",  "description": "Query parameter for range queries." }
           }
         }
       }
     },
 
-    "tenancyConfig": {
+    "workflowsConfig": {
       "type": "object",
-      "required": ["model"],
+      "required": ["namespace", "worker_queue"],
+      "additionalProperties": false,
+      "description": "Temporal.io workflow engine configuration.",
+      "properties": {
+        "namespace":    { "type": "string", "description": "Temporal namespace. Defaults to application name." },
+        "worker_queue": { "type": "string", "description": "Task queue name for worker polling." },
+        "host":         { "type": "string", "description": "Temporal gRPC host:port. Default: localhost:7233." },
+        "workflows": {
+          "type": "array",
+          "description": "Workflow definitions — each maps a resource lifecycle trigger to a sequence of activities.",
+          "items": { "$ref": "#/$defs/workflowDefinition" }
+        }
+      }
+    },
+
+    "workflowDefinition": {
+      "type": "object",
+      "required": ["name"],
       "additionalProperties": false,
       "properties": {
-        "model": {
+        "name":       { "type": "string", "pattern": "^[A-Z][a-zA-Z0-9]*$", "description": "Workflow name in PascalCase." },
+        "resource":   { "type": "string", "description": "Resource that triggers this workflow." },
+        "trigger":    { "type": "string", "enum": ["create", "update", "delete", "schedule"], "description": "Lifecycle event that starts this workflow." },
+        "activities": {
+          "type": "array",
+          "description": "Ordered list of activity names. Engineers implement each as a Go function.",
+          "items": { "type": "string", "pattern": "^[A-Z][a-zA-Z0-9]*$" }
+        }
+      }
+    },
+
+    "tenancyConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Multi-tenant isolation. The presence of this block enables tenancy. strategy defaults to 'row'.",
+      "properties": {
+        "strategy": {
           "type": "string",
           "enum": ["schema", "row", "database"],
-          "description": "'schema': PostgreSQL schema per tenant. 'row': tenant_id column on each table. 'database': separate database per tenant."
+          "default": "row",
+          "description": "'row': tenant column on every table (most common). 'schema': PostgreSQL schema per tenant. 'database': separate database per tenant."
         },
-        "tenant_identifier": {
-          "type": "object",
-          "required": ["source"],
-          "additionalProperties": false,
-          "properties": {
-            "source": { "type": "string", "enum": ["jwt_claim", "header", "subdomain"] },
-            "claim":  { "type": "string", "description": "JWT claim name when source=jwt_claim." },
-            "header": { "type": "string", "description": "HTTP header name when source=header." }
-          }
-        },
+        "field":  { "type": "string", "default": "org_id",           "description": "Column name injected into every resource table (strategy=row)." },
+        "header": { "type": "string", "default": "X-Organization-Id","description": "HTTP header from which the tenant identifier is extracted." },
+        "claim":  { "type": "string", "description": "JWT claim name to extract tenant ID from (falls back to header)." },
         "resources": {
           "oneOf": [
             { "type": "string", "const": "all" },
             { "type": "array", "items": { "type": "string" } }
-          ]
+          ],
+          "description": "Which resources are tenant-scoped. Default: all."
         },
         "admin_bypass": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "role": { "type": "string", "description": "JWT role that bypasses tenant filtering for platform administrators." }
+            "role": { "type": "string", "description": "JWT role that bypasses tenant filtering for platform admins." }
           }
         }
       }

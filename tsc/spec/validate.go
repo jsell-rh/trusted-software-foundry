@@ -20,14 +20,15 @@ type IRSpec struct {
 	Database   *IRDatabase       `yaml:"database"   json:"database,omitempty"`
 	Observ     *IRObservability  `yaml:"observability" json:"observability,omitempty"`
 	// Advanced capabilities — all optional
-	Graph    *IRGraphConfig    `yaml:"graph"     json:"graph,omitempty"`
-	Services []IRService       `yaml:"services"  json:"services,omitempty"`
-	Events   *IREventsConfig   `yaml:"events"    json:"events,omitempty"`
-	Authz    *IRAuthzConfig    `yaml:"authz"     json:"authz,omitempty"`
-	State    *IRStateConfig    `yaml:"state"     json:"state,omitempty"`
-	Temporal *IRTemporalConfig `yaml:"temporal"  json:"temporal,omitempty"`
-	Tenancy  *IRTenancyConfig  `yaml:"tenancy"   json:"tenancy,omitempty"`
-	Hooks    []IRHook          `yaml:"hooks"     json:"hooks,omitempty"`
+	Graph      *IRGraphConfig      `yaml:"graph"        json:"graph,omitempty"`
+	Services   []IRService         `yaml:"services"     json:"services,omitempty"`
+	Events     *IREventsConfig     `yaml:"events"       json:"events,omitempty"`
+	Authz      *IRAuthzConfig      `yaml:"authz"        json:"authz,omitempty"`
+	State      *IRStateConfig      `yaml:"state"        json:"state,omitempty"`
+	BiTemporal *IRBiTemporalConfig `yaml:"bi_temporal"  json:"bi_temporal,omitempty"`
+	Workflows  *IRWorkflowsConfig  `yaml:"workflows"    json:"workflows,omitempty"`
+	Tenancy    *IRTenancyConfig    `yaml:"tenancy"      json:"tenancy,omitempty"`
+	Hooks      []IRHook            `yaml:"hooks"        json:"hooks,omitempty"`
 }
 
 // IRHook declares a custom code injection point in the application lifecycle.
@@ -104,6 +105,7 @@ type IRServiceTrigger struct {
 // IREventsConfig describes the event bus and topic layout.
 type IREventsConfig struct {
 	Backend        string                  `yaml:"backend"         json:"backend"`
+	BrokerURL      string                  `yaml:"broker_url"      json:"broker_url,omitempty"` // shorthand for Broker.URL
 	Broker         *IREventsBroker         `yaml:"broker"          json:"broker,omitempty"`
 	SchemaRegistry *IREventsSchemaRegistry `yaml:"schema_registry" json:"schema_registry,omitempty"`
 	Topics         []IREventTopic          `yaml:"topics"          json:"topics,omitempty"`
@@ -124,13 +126,15 @@ type IREventsSchemaRegistry struct {
 
 // IREventTopic describes a single topic.
 type IREventTopic struct {
-	Name           string `yaml:"name"            json:"name"`
-	Partitions     int    `yaml:"partitions"      json:"partitions"`
-	Replication    int    `yaml:"replication"     json:"replication"`
-	RetentionHours int    `yaml:"retention_hours" json:"retention_hours,omitempty"`
-	Schema         string `yaml:"schema"          json:"schema,omitempty"`
-	Role           string `yaml:"role"            json:"role"`
-	Source         string `yaml:"source"          json:"source,omitempty"`
+	Name           string   `yaml:"name"            json:"name"`
+	Resource       string   `yaml:"resource"        json:"resource,omitempty"`
+	Operations     []string `yaml:"operations"      json:"operations,omitempty"`
+	Partitions     int      `yaml:"partitions"      json:"partitions"`
+	Replication    int      `yaml:"replication"     json:"replication"`
+	RetentionHours int      `yaml:"retention_hours" json:"retention_hours,omitempty"`
+	Schema         string   `yaml:"schema"          json:"schema,omitempty"`
+	Role           string   `yaml:"role"            json:"role"`
+	Source         string   `yaml:"source"          json:"source,omitempty"`
 }
 
 // IREventProducer associates a service with the topics it produces to.
@@ -149,11 +153,19 @@ type IREventConsumer struct {
 
 // IRAuthzConfig configures external authorization.
 type IRAuthzConfig struct {
-	Backend     string          `yaml:"backend"     json:"backend"`
-	SpiceDB     *IRSpiceDB      `yaml:"spicedb"     json:"spicedb,omitempty"`
-	SchemaFile  string          `yaml:"schema_file" json:"schema_file,omitempty"`
-	Enforcement *IREnforcement  `yaml:"enforcement" json:"enforcement,omitempty"`
-	Policies    []IRAuthzPolicy `yaml:"policies"    json:"policies,omitempty"`
+	Backend     string             `yaml:"backend"     json:"backend"`
+	SpiceDB     *IRSpiceDB         `yaml:"spicedb"     json:"spicedb,omitempty"`
+	SchemaFile  string             `yaml:"schema_file" json:"schema_file,omitempty"`
+	Enforcement *IREnforcement     `yaml:"enforcement" json:"enforcement,omitempty"`
+	Relations   []IRAuthzRelation  `yaml:"relations"   json:"relations,omitempty"`
+	Policies    []IRAuthzPolicy    `yaml:"policies"    json:"policies,omitempty"`
+}
+
+// IRAuthzRelation declares a SpiceDB relation between a resource and a subject type.
+type IRAuthzRelation struct {
+	Resource string `yaml:"resource" json:"resource"`
+	Relation string `yaml:"relation" json:"relation"`
+	Subject  string `yaml:"subject"  json:"subject"`
 }
 
 // IRSpiceDB holds SpiceDB connection config.
@@ -177,9 +189,21 @@ type IRAuthzPolicy struct {
 }
 
 // IRStateConfig configures external state backends (Redis).
+// Backend/URL/Keys are the short-form fields. Backends/Uses are the long-form.
 type IRStateConfig struct {
-	Backends []IRStateBackend `yaml:"backends" json:"backends"`
-	Uses     []IRStateUse     `yaml:"uses"     json:"uses,omitempty"`
+	Backend  string          `yaml:"backend"  json:"backend,omitempty"`  // "redis"
+	URL      string          `yaml:"url"      json:"url,omitempty"`       // Redis URL
+	Keys     []IRStateKey    `yaml:"keys"     json:"keys,omitempty"`      // named state entries
+	Backends []IRStateBackend `yaml:"backends" json:"backends,omitempty"`
+	Uses     []IRStateUse    `yaml:"uses"     json:"uses,omitempty"`
+}
+
+// IRStateKey is a named state entry with a strategy.
+type IRStateKey struct {
+	Name       string `yaml:"name"        json:"name"`
+	Resource   string `yaml:"resource"    json:"resource,omitempty"`
+	Strategy   string `yaml:"strategy"    json:"strategy"` // cache, distributed_lock, rate_limit, counter
+	TTLSeconds int    `yaml:"ttl_seconds" json:"ttl_seconds,omitempty"`
 }
 
 // IRStateBackend is a named Redis backend.
@@ -202,13 +226,14 @@ type IRStateUse struct {
 	Operations         []string    `yaml:"operations"           json:"operations,omitempty"`
 }
 
-// IRTemporalConfig configures bi-temporal data tracking.
-type IRTemporalConfig struct {
-	Enabled         bool               `yaml:"enabled"          json:"enabled"`
-	ValidTime       *IRValidTime       `yaml:"valid_time"       json:"valid_time,omitempty"`
-	TransactionTime *IRTransactionTime `yaml:"transaction_time" json:"transaction_time,omitempty"`
-	Resources       interface{}        `yaml:"resources"        json:"resources,omitempty"`
-	QueryAPI        *IRTemporalQueryAPI `yaml:"query_api"       json:"query_api,omitempty"`
+// IRBiTemporalConfig configures bi-temporal data tracking (valid time + transaction time).
+// Use the workflows block for Temporal.io workflow engine configuration.
+type IRBiTemporalConfig struct {
+	Enabled         bool                `yaml:"enabled"          json:"enabled"`
+	ValidTime       *IRValidTime        `yaml:"valid_time"       json:"valid_time,omitempty"`
+	TransactionTime *IRTransactionTime  `yaml:"transaction_time" json:"transaction_time,omitempty"`
+	Resources       interface{}         `yaml:"resources"        json:"resources,omitempty"`
+	QueryAPI        *IRBiTemporalQueryAPI `yaml:"query_api"       json:"query_api,omitempty"`
 }
 
 // IRValidTime configures the valid-time field.
@@ -221,15 +246,37 @@ type IRTransactionTime struct {
 	Auto bool `yaml:"auto" json:"auto"`
 }
 
-// IRTemporalQueryAPI configures AS-OF query parameters.
-type IRTemporalQueryAPI struct {
+// IRBiTemporalQueryAPI configures AS-OF query parameters.
+type IRBiTemporalQueryAPI struct {
 	AsOfParam    string `yaml:"as_of_param"   json:"as_of_param"`
 	BetweenParam string `yaml:"between_param" json:"between_param"`
 }
 
+// IRWorkflowsConfig configures Temporal.io durable workflow execution.
+type IRWorkflowsConfig struct {
+	Namespace   string               `yaml:"namespace"    json:"namespace"`
+	WorkerQueue string               `yaml:"worker_queue" json:"worker_queue"`
+	Host        string               `yaml:"host"         json:"host,omitempty"`
+	Workflows   []IRWorkflowDef      `yaml:"workflows"    json:"workflows,omitempty"`
+}
+
+// IRWorkflowDef declares a single Temporal.io workflow.
+type IRWorkflowDef struct {
+	Name       string   `yaml:"name"       json:"name"`
+	Resource   string   `yaml:"resource"   json:"resource,omitempty"`
+	Trigger    string   `yaml:"trigger"    json:"trigger,omitempty"`
+	Activities []string `yaml:"activities" json:"activities,omitempty"`
+}
+
 // IRTenancyConfig configures multi-tenant isolation.
+// Strategy, Field, and Header are the preferred short-form fields.
+// Model is kept for compatibility with the longer form.
 type IRTenancyConfig struct {
-	Model              string                `yaml:"model"               json:"model"`
+	Strategy           string                `yaml:"strategy"            json:"strategy,omitempty"`
+	Field              string                `yaml:"field"               json:"field,omitempty"`
+	Header             string                `yaml:"header"              json:"header,omitempty"`
+	Claim              string                `yaml:"claim"               json:"claim,omitempty"`
+	Model              string                `yaml:"model"               json:"model,omitempty"`
 	TenantIdentifier   *IRTenantIdentifier   `yaml:"tenant_identifier"   json:"tenant_identifier,omitempty"`
 	Resources          interface{}           `yaml:"resources"           json:"resources,omitempty"`
 	AdminBypass        *IRAdminBypass        `yaml:"admin_bypass"        json:"admin_bypass,omitempty"`
@@ -557,13 +604,26 @@ func Validate(spec *IRSpec) []error {
 		}
 	}
 
-	// Temporal cross-checks
-	if spec.Temporal != nil && spec.Temporal.Enabled {
+	// Bi-temporal tracking cross-checks
+	if spec.BiTemporal != nil && spec.BiTemporal.Enabled {
 		if spec.Components["foundry-temporal"] == "" {
-			add("temporal.enabled=true requires foundry-temporal in components")
+			add("bi_temporal.enabled=true requires foundry-temporal in components")
 		}
 		if spec.Database == nil {
-			add("temporal requires a database block")
+			add("bi_temporal requires a database block")
+		}
+	}
+
+	// Workflows (Temporal.io) cross-checks
+	if spec.Workflows != nil {
+		if spec.Components["foundry-temporal"] == "" {
+			add("workflows block requires foundry-temporal in components")
+		}
+		if spec.Workflows.Namespace == "" {
+			add("workflows.namespace is required")
+		}
+		if spec.Workflows.WorkerQueue == "" {
+			add("workflows.worker_queue is required")
 		}
 	}
 
