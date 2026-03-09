@@ -4,7 +4,7 @@
 
 Enterprises adopting AI-driven software development face a fundamental trust problem: AI agents produce non-deterministic code that cannot be formally audited, verified, or trusted at the component level. Traditional software supply-chain guarantees (SBOM, FIPS compliance, CVE tracking) require stable, audited artifacts — not generated code.
 
-**TSC solves this by inverting the model:**
+**TSF solves this by inverting the model:**
 
 Instead of AI agents writing code, AI agents write an *Intermediate Representation* (IR) — a declarative application spec. The IR is then *deterministically compiled* into a working application by assembling pre-audited, version-pinned trusted components. The AI never touches source code.
 
@@ -29,7 +29,7 @@ Instead of AI agents writing code, AI agents write an *Intermediate Representati
                      │ app.foundry.yaml
                      ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                       TSC Compiler                              │
+│                       Foundry Compiler                              │
 │                                                                 │
 │   1. Validates IR against JSON Schema                           │
 │   2. Resolves components from the Component Registry            │
@@ -55,7 +55,7 @@ Instead of AI agents writing code, AI agents write an *Intermediate Representati
 
 ---
 
-## IR Specification (TSC Spec)
+## IR Specification (Foundry IR Spec)
 
 The IR is a YAML document that describes WHAT an application does — not HOW it does it.
 
@@ -170,7 +170,7 @@ All component implementations live in `foundry/components/` and are never modifi
 
 ---
 
-## TSC Compiler
+## Foundry Compiler
 
 The compiler is a CLI tool: `forge compile <spec.yaml> --output <dir>`
 
@@ -224,17 +224,17 @@ Working in `github.com/openshift-online/rh-trex-ai` with `.worktrees/` for paral
 
 ```
 rh-trex-ai/
-  TSC-ARCHITECTURE.md       # This document (CTO-owned)
+  FOUNDRY-ARCHITECTURE.md       # This document (CTO-owned)
   foundry/
-    spec/                   # IR JSON Schema (TSC-Architect owns)
+    spec/                   # IR JSON Schema (TSF-Architect owns)
       schema.json
       validate.go
-    compiler/               # TSC Compiler (TSC-Compiler owns)
+    compiler/               # Foundry Compiler (TSF-Compiler owns)
       main.go
       parser.go
       resolver.go
       generator.go
-    components/             # Trusted Component Library (TSC-Library owns)
+    components/             # Trusted Component Library (TSF-Library owns)
       registry.go           # Registry index + audit verification
       http/                 # foundry-http component
       postgres/             # foundry-postgres component
@@ -259,15 +259,15 @@ rh-trex-ai/
 | Role | Agent | Branch | Mandate |
 |------|-------|---------|---------|
 | CTO | CTO | main | Strategy, architecture gates, team coordination |
-| Chief Architect | TSC-Architect | feature/foundry-spec | IR JSON Schema design, component interface contracts |
-| Component Library Lead | TSC-Library | feature/foundry-components | Trusted component implementations (http, postgres, auth, grpc, health, metrics, events) |
-| Compiler Lead | TSC-Compiler | feature/foundry-compiler | TSC compiler: parse IR, resolve components, generate wiring |
+| Chief Architect | TSF-Architect | feature/foundry-spec | IR JSON Schema design, component interface contracts |
+| Component Library Lead | TSF-Library | feature/foundry-components | Trusted component implementations (http, postgres, auth, grpc, health, metrics, events) |
+| Compiler Lead | TSF-Compiler | feature/foundry-compiler | Foundry compiler: parse IR, resolve components, generate wiring |
 
 ---
 
 ## Definition of Done (Trex Parity)
 
-The TSC platform is complete (at trex parity) when:
+The Foundry platform is complete (at trex parity) when:
 
 1. [ ] `app.foundry.yaml` describing the Dinosaur Registry compiles without errors
 2. [ ] Generated binary starts and serves REST API on :8000
@@ -284,10 +284,10 @@ The TSC platform is complete (at trex parity) when:
 
 ## Standing Orders for All Agents
 
-1. **Read this document before starting work.** Path: `~/code/scratch/rh-trex-ai/TSC-ARCHITECTURE.md`
+1. **Read this document before starting work.** Path: `~/code/scratch/rh-trex-ai/FOUNDRY-ARCHITECTURE.md`
 2. **Post status updates every 10 minutes** during active work.
 3. **Work in your assigned worktree** — do not modify files in other agents' worktrees.
-4. **Component interface contracts** (defined by TSC-Architect) are frozen once posted. Compiler and Library agents must wait for contracts before implementing.
+4. **Component interface contracts** (defined by TSF-Architect) are frozen once posted. Compiler and Library agents must wait for contracts before implementing.
 5. **Post blockers immediately** — do not spin on blocked work.
 6. **Tag questions for CTO with `[?BOSS]`** and continue working on what you can.
 7. Coordinator space: `TrustedSoftwareComponents` at `http://localhost:8899`

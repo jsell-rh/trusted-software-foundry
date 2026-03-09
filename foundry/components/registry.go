@@ -1,5 +1,5 @@
-// Package components provides the TSC component registry and audit verification.
-// The registry is the trust boundary of the TSC platform: only components whose
+// Package components provides the Foundry component registry and audit verification.
+// The registry is the trust boundary of the Foundry platform: only components whose
 // audit hash matches a known catalog entry may be registered.
 package components
 
@@ -36,7 +36,7 @@ func (r AuditRecord) key() string {
 	return r.Name + "@" + r.Version
 }
 
-// Registry is the component registry for the TSC platform.
+// Registry is the component registry for the Foundry platform.
 // It holds a catalog of approved audit records and the registered component
 // instances. All methods are safe for concurrent use.
 //

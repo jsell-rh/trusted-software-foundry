@@ -9,7 +9,7 @@
 //	    base_path: /api/v1    # all handler patterns are prefixed with this
 //	    cors:
 //	      allowed_origins: ["*"]
-//	    version_header: true  # emit X-TSC-Version header
+//	    version_header: true  # emit X-TSF-Version header
 //	    tls: false
 package http
 
@@ -208,7 +208,7 @@ func (c *HTTPComponent) corsMiddleware(next http.Handler) http.Handler {
 
 func (c *HTTPComponent) versionHeaderMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("X-TSC-Version", componentVersion)
+		w.Header().Set("X-TSF-Version", componentVersion)
 		next.ServeHTTP(w, r)
 	})
 }

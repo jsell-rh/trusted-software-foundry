@@ -1,5 +1,5 @@
 // Package spec defines the core interfaces and types for the Trusted Software
-// Components (TSC) platform. All trusted components must implement these
+// Trusted Software Foundry (TSF) platform. All trusted components must implement these
 // interfaces. The component interface contract is frozen — bug fixes create
 // new audited versions rather than modifying existing ones.
 package spec
@@ -10,7 +10,7 @@ import "context"
 // as parsed from the app.foundry.yaml spec file.
 type ComponentConfig map[string]any
 
-// Component is implemented by every trusted component in the TSC registry.
+// Component is implemented by every trusted component in the Foundry registry.
 // All methods must be safe for concurrent use.
 type Component interface {
 	// Name returns the registry name, e.g. "foundry-http".

@@ -52,7 +52,7 @@ func compileCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "compile <spec.yaml>",
-		Short: "Compile a TSC IR spec into a Go application",
+		Short: "Compile a Foundry IR spec into a Go application",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			specPath := args[0]

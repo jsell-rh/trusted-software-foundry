@@ -1,6 +1,6 @@
 // Package redis implements the foundry-redis trusted component.
 //
-// foundry-redis provides Redis-backed capabilities for TSC applications:
+// foundry-redis provides Redis-backed capabilities for Foundry applications:
 //
 //   - Caching: TTL-based cache for arbitrary byte values, keyed by string
 //   - Rate limiting: token-bucket rate limiter per route and client IP

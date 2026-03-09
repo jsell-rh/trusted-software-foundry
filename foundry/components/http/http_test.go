@@ -218,8 +218,8 @@ func TestStart_WithHandlerAndCORSAndVersionHeader(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("status = %d, want 200", resp.StatusCode)
 	}
-	if resp.Header.Get("X-TSC-Version") == "" {
-		t.Error("X-TSC-Version header not set")
+	if resp.Header.Get("X-TSF-Version") == "" {
+		t.Error("X-TSF-Version header not set")
 	}
 	if resp.Header.Get("Access-Control-Allow-Origin") == "" {
 		t.Error("CORS Access-Control-Allow-Origin header not set")
@@ -360,8 +360,8 @@ func TestVersionHeaderMiddleware(t *testing.T) {
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 
-	if got := rr.Header().Get("X-TSC-Version"); got != componentVersion {
-		t.Errorf("X-TSC-Version = %q, want %q", got, componentVersion)
+	if got := rr.Header().Get("X-TSF-Version"); got != componentVersion {
+		t.Errorf("X-TSF-Version = %q, want %q", got, componentVersion)
 	}
 }
 
