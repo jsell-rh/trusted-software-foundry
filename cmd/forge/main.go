@@ -40,6 +40,7 @@ All generated code is assembled from pre-audited, version-pinned trusted compone
 	cmd.AddCommand(explainCmd())
 	cmd.AddCommand(diffCmd())
 	cmd.AddCommand(deployCmd())
+	cmd.AddCommand(sbomCmd())
 	return cmd
 }
 
