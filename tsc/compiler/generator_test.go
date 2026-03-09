@@ -308,3 +308,48 @@ func TestGenerateMigrations_SQLColumnTypes(t *testing.T) {
 		t.Errorf("migration missing CREATE TABLE IF NOT EXISTS statement; got:\n%s", sql)
 	}
 }
+
+// --------------------------------------------------------------------------
+// irTypeToSQL unit tests — exhaustive coverage of all type branches
+// --------------------------------------------------------------------------
+
+func TestIRTypeToSQL_AllTypes(t *testing.T) {
+	tests := []struct {
+		irType  string
+		maxLen  int
+		wantSQL string
+	}{
+		// string variants
+		{"string", 0, "TEXT"},
+		{"string", 255, "VARCHAR(255)"},
+		{"string", 64, "VARCHAR(64)"},
+		// integer variants
+		{"int", 0, "INTEGER"},
+		{"integer", 0, "INTEGER"},
+		// 64-bit integer
+		{"int64", 0, "BIGINT"},
+		// boolean variants
+		{"bool", 0, "BOOLEAN"},
+		{"boolean", 0, "BOOLEAN"},
+		// float variants
+		{"float", 0, "DOUBLE PRECISION"},
+		{"float64", 0, "DOUBLE PRECISION"},
+		// timestamp
+		{"timestamp", 0, "TIMESTAMP"},
+		// uuid
+		{"uuid", 0, "UUID"},
+		// default catch-all (unknown type maps to TEXT)
+		{"jsonb", 0, "TEXT"},
+		{"decimal", 0, "TEXT"},
+		{"", 0, "TEXT"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.irType+"_maxLen"+string(rune('0'+tc.maxLen%10)), func(t *testing.T) {
+			got := irTypeToSQL(tc.irType, tc.maxLen)
+			if got != tc.wantSQL {
+				t.Errorf("irTypeToSQL(%q, %d) = %q, want %q", tc.irType, tc.maxLen, got, tc.wantSQL)
+			}
+		})
+	}
+}
