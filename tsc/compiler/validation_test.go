@@ -901,3 +901,443 @@ graph:
 		t.Fatalf("expected valid graph spec to parse without error, got: %v", err)
 	}
 }
+
+// --------------------------------------------------------------------------
+// Resource naming and structure validation
+// --------------------------------------------------------------------------
+
+func TestParse_ResourceNameNotPascalCase(t *testing.T) {
+	// Resource name must be PascalCase — lowercase is rejected.
+	// The JSON schema enforces this with a regex pattern; the error message
+	// mentions the offending value and "pattern" rather than "PascalCase".
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-postgres: v1.0.0
+  foundry-http:     v1.0.0
+database:
+  type: postgres
+  migrations: auto
+resources:
+  - name: widget
+    plural: widgets
+    fields:
+      - name: id
+        type: uuid
+        required: true
+    operations: [create]
+    events: false
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for non-PascalCase resource name, got nil")
+	}
+	// Schema validator fires: "widget" does not match pattern ^[A-Z][a-zA-Z0-9]*$
+	// Semantic validator fires: "name must be PascalCase"
+	// Accept either message — both indicate correct enforcement.
+	if !strings.Contains(err.Error(), "widget") && !strings.Contains(err.Error(), "PascalCase") {
+		t.Errorf("expected error to mention the bad value or 'PascalCase', got: %v", err)
+	}
+}
+
+func TestParse_ResourcePluralNotLowercase(t *testing.T) {
+	// Resource plural must be lowercase-kebab — PascalCase plural is rejected.
+	spec := writeTempSpec(t, baseWithPostgres+`resources:
+  - name: Widget
+    plural: Widgets
+    fields:
+      - name: id
+        type: uuid
+        required: true
+    operations: [create]
+    events: false
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for non-lowercase plural, got nil")
+	}
+	if !strings.Contains(err.Error(), "plural") {
+		t.Errorf("expected error to mention 'plural', got: %v", err)
+	}
+}
+
+func TestParse_DuplicateResourceNames(t *testing.T) {
+	// Two resources with the same name → error.
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-postgres: v1.0.0
+  foundry-http:     v1.0.0
+database:
+  type: postgres
+  migrations: auto
+resources:
+  - name: Widget
+    plural: widgets
+    fields:
+      - name: id
+        type: uuid
+    operations: [create]
+    events: false
+  - name: Widget
+    plural: widget-copies
+    fields:
+      - name: id
+        type: uuid
+    operations: [read]
+    events: false
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for duplicate resource names, got nil")
+	}
+	if !strings.Contains(err.Error(), "duplicate") {
+		t.Errorf("expected error to mention 'duplicate', got: %v", err)
+	}
+}
+
+func TestParse_ResourceMustHaveAtLeastOneField(t *testing.T) {
+	// A resource with no fields at all → error.
+	spec := writeTempSpec(t, baseWithPostgres+`resources:
+  - name: Empty
+    plural: empties
+    fields: []
+    operations: [create]
+    events: false
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for resource with no fields, got nil")
+	}
+	if !strings.Contains(err.Error(), "field") {
+		t.Errorf("expected error to mention 'field', got: %v", err)
+	}
+}
+
+func TestParse_ResourceMustHaveAtLeastOneOperation(t *testing.T) {
+	// A resource with an empty operations list → error.
+	spec := writeTempSpec(t, baseWithPostgres+`resources:
+  - name: NoOp
+    plural: noops
+    fields:
+      - name: id
+        type: uuid
+    operations: []
+    events: false
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for resource with no operations, got nil")
+	}
+	if !strings.Contains(err.Error(), "operation") {
+		t.Errorf("expected error to mention 'operation', got: %v", err)
+	}
+}
+
+func TestParse_ResourceUnknownOperation(t *testing.T) {
+	// An operation not in [create, read, update, delete, list] → error.
+	spec := writeTempSpec(t, baseWithPostgres+`resources:
+  - name: Widget
+    plural: widgets
+    fields:
+      - name: id
+        type: uuid
+    operations: [create, patch]
+    events: false
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for unknown operation 'patch', got nil")
+	}
+	if !strings.Contains(err.Error(), "patch") {
+		t.Errorf("expected error to mention 'patch', got: %v", err)
+	}
+}
+
+func TestParse_ResourceDuplicateOperation(t *testing.T) {
+	// Duplicate operations in the list → error.
+	spec := writeTempSpec(t, baseWithPostgres+`resources:
+  - name: Widget
+    plural: widgets
+    fields:
+      - name: id
+        type: uuid
+    operations: [create, create, read]
+    events: false
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for duplicate operation 'create', got nil")
+	}
+	if !strings.Contains(err.Error(), "duplicate") {
+		t.Errorf("expected error to mention 'duplicate', got: %v", err)
+	}
+}
+
+// --------------------------------------------------------------------------
+// Field naming and structure validation
+// --------------------------------------------------------------------------
+
+func TestParse_FieldNameNotSnakeCase(t *testing.T) {
+	// Field name must be snake_case — camelCase is rejected.
+	// The JSON schema enforces this with a regex pattern.
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-postgres: v1.0.0
+  foundry-http:     v1.0.0
+database:
+  type: postgres
+  migrations: auto
+resources:
+  - name: Widget
+    plural: widgets
+    fields:
+      - name: myField
+        type: string
+    operations: [create]
+    events: false
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for camelCase field name, got nil")
+	}
+	// Schema: "myField" does not match pattern ^[a-z][a-z0-9_]*$
+	// Semantic: "name must be snake_case"
+	if !strings.Contains(err.Error(), "myField") && !strings.Contains(err.Error(), "snake_case") {
+		t.Errorf("expected error to mention the bad field name or 'snake_case', got: %v", err)
+	}
+}
+
+func TestParse_DuplicateFieldNames(t *testing.T) {
+	// Two fields with the same name in one resource → error.
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-postgres: v1.0.0
+  foundry-http:     v1.0.0
+database:
+  type: postgres
+  migrations: auto
+resources:
+  - name: Widget
+    plural: widgets
+    fields:
+      - name: label
+        type: string
+      - name: label
+        type: string
+    operations: [create]
+    events: false
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for duplicate field names, got nil")
+	}
+	if !strings.Contains(err.Error(), "duplicate") {
+		t.Errorf("expected error to mention 'duplicate', got: %v", err)
+	}
+}
+
+func TestParse_MaxLengthOnNonStringField(t *testing.T) {
+	// max_length is only valid on string fields — applying it to uuid → error.
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-postgres: v1.0.0
+  foundry-http:     v1.0.0
+database:
+  type: postgres
+  migrations: auto
+resources:
+  - name: Widget
+    plural: widgets
+    fields:
+      - name: ref_id
+        type: uuid
+        max_length: 36
+    operations: [create]
+    events: false
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for max_length on non-string field, got nil")
+	}
+	if !strings.Contains(err.Error(), "max_length") {
+		t.Errorf("expected error to mention 'max_length', got: %v", err)
+	}
+}
+
+func TestParse_InvalidAutoValue(t *testing.T) {
+	// auto must be 'created' or 'updated' — any other value is rejected.
+	spec := writeTempSpec(t, baseWithPostgres+`resources:
+  - name: Widget
+    plural: widgets
+    fields:
+      - name: ts
+        type: timestamp
+        auto: modified
+    operations: [create]
+    events: false
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for invalid auto value 'modified', got nil")
+	}
+	if !strings.Contains(err.Error(), "auto") {
+		t.Errorf("expected error to mention 'auto', got: %v", err)
+	}
+}
+
+func TestParse_SoftDeleteMustBeTimestamp(t *testing.T) {
+	// soft_delete fields must have type 'timestamp' — using string → error.
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-postgres: v1.0.0
+  foundry-http:     v1.0.0
+database:
+  type: postgres
+  migrations: auto
+resources:
+  - name: Widget
+    plural: widgets
+    fields:
+      - name: deleted_at
+        type: string
+        soft_delete: true
+    operations: [create]
+    events: false
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for soft_delete field with non-timestamp type, got nil")
+	}
+	if !strings.Contains(err.Error(), "soft_delete") {
+		t.Errorf("expected error to mention 'soft_delete', got: %v", err)
+	}
+}
+
+func TestParse_AtMostOneSoftDeleteField(t *testing.T) {
+	// Only one soft_delete field is allowed per resource.
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-postgres: v1.0.0
+  foundry-http:     v1.0.0
+database:
+  type: postgres
+  migrations: auto
+resources:
+  - name: Widget
+    plural: widgets
+    fields:
+      - name: deleted_at
+        type: timestamp
+        soft_delete: true
+      - name: removed_at
+        type: timestamp
+        soft_delete: true
+    operations: [create]
+    events: false
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for two soft_delete fields, got nil")
+	}
+	if !strings.Contains(err.Error(), "soft_delete") {
+		t.Errorf("expected error to mention 'soft_delete', got: %v", err)
+	}
+}
+
+// --------------------------------------------------------------------------
+// Auth block validation
+// --------------------------------------------------------------------------
+
+func TestParse_AuthJWTRequiresJWKURL(t *testing.T) {
+	// auth.type=jwt requires auth.jwk_url to be set.
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http:     v1.0.0
+  foundry-auth-jwt: v1.0.0
+auth:
+  type: jwt
+  required: true
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for auth.type=jwt without jwk_url, got nil")
+	}
+	if !strings.Contains(err.Error(), "jwk_url") {
+		t.Errorf("expected error to mention 'jwk_url', got: %v", err)
+	}
+}
+
+func TestParse_AuthJWTRequiresFoundryAuthJWT(t *testing.T) {
+	// auth.type=jwt requires foundry-auth-jwt in components.
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http: v1.0.0
+auth:
+  type: jwt
+  jwk_url: https://example.com/.well-known/jwks.json
+  required: true
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err == nil {
+		t.Fatal("expected error for auth.type=jwt without foundry-auth-jwt, got nil")
+	}
+	if !strings.Contains(err.Error(), "foundry-auth-jwt") {
+		t.Errorf("expected error to mention 'foundry-auth-jwt', got: %v", err)
+	}
+}
+
+func TestParse_AuthJWTValid(t *testing.T) {
+	// Complete valid auth.type=jwt configuration.
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http:     v1.0.0
+  foundry-auth-jwt: v1.0.0
+auth:
+  type: jwt
+  jwk_url: https://sso.example.com/.well-known/jwks.json
+  required: true
+`)
+	_, err := ParseWithSchema(spec, schemaPathForTest())
+	if err != nil {
+		t.Fatalf("expected valid auth config to parse without error, got: %v", err)
+	}
+}
