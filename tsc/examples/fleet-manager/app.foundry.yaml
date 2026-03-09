@@ -303,8 +303,8 @@ events:
       partitions: 6
       retention_hours: 168
 
-# Temporal workflow configuration.
-temporal:
+# Temporal.io workflow engine configuration.
+workflows:
   namespace: fleet-manager
   worker_queue: fleet-provisioning
   workflows:
