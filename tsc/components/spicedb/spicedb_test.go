@@ -1,6 +1,7 @@
 package spicedb
 
 import (
+	"context"
 	"testing"
 
 	"github.com/jsell-rh/trusted-software-foundry/tsc/spec"
@@ -65,5 +66,29 @@ func TestComponent_Register_WithToken(t *testing.T) {
 	// Register with nil app — stub implementation should not dereference app.
 	if err := c.Register(nil); err != nil {
 		t.Errorf("Register with token: unexpected error: %v", err)
+	}
+}
+
+func TestComponent_Configure_SchemaFile(t *testing.T) {
+	c := New()
+	if err := c.Configure(spec.ComponentConfig{"schema_file": "authz/schema.zed"}); err != nil {
+		t.Fatalf("Configure: %v", err)
+	}
+	if c.schemaFile != "authz/schema.zed" {
+		t.Errorf("schemaFile = %q, want authz/schema.zed", c.schemaFile)
+	}
+}
+
+func TestComponent_Start(t *testing.T) {
+	c := New()
+	if err := c.Start(context.Background()); err != nil {
+		t.Errorf("Start: %v", err)
+	}
+}
+
+func TestComponent_Stop(t *testing.T) {
+	c := New()
+	if err := c.Stop(context.Background()); err != nil {
+		t.Errorf("Stop: %v", err)
 	}
 }
