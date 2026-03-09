@@ -11,9 +11,9 @@ AI Agent
   │
   │  edits only this file:
   ▼
-app.tsc.yaml          ← the IR spec (declarative, schema-validated)
+app.foundry.yaml          ← the IR spec (declarative, schema-validated)
   │
-  │  forge compile app.tsc.yaml -o ./out
+  │  forge compile app.foundry.yaml -o ./out
   ▼
 Compiler
   │  resolves trusted components (audited, version-pinned)
@@ -29,7 +29,7 @@ The AI never touches source code. Every line of generated code comes from audite
 ### 1. Write your application spec
 
 ```yaml
-# app.tsc.yaml
+# app.foundry.yaml
 apiVersion: foundry/v1
 kind: Application
 
@@ -95,7 +95,7 @@ observability:
 go build -o /usr/local/bin/forge ./cmd/forge
 
 # Compile your spec into a runnable Go project
-forge compile app.tsc.yaml \
+forge compile app.foundry.yaml \
   --rh-trex-ai ~/code/scratch/rh-trex-ai \
   -o ./my-service-out
 ```
@@ -117,7 +117,7 @@ REST API on `:8000`, health check on `:8083`, metrics on `:8080`.
 ### 4. Add a new resource — zero code required
 
 ```yaml
-# Edit app.tsc.yaml — add this resource block:
+# Edit app.foundry.yaml — add this resource block:
   - name: Fossil
     plural: fossils
     fields:
@@ -133,7 +133,7 @@ REST API on `:8000`, health check on `:8083`, metrics on `:8080`.
 
 ```bash
 # Recompile — the compiler handles everything
-forge compile app.tsc.yaml --rh-trex-ai . -o ./my-service-out
+forge compile app.foundry.yaml --rh-trex-ai . -o ./my-service-out
 cd my-service-out && go build -o app .
 # /api/v1/fossils endpoints now work. No code written.
 ```
@@ -141,7 +141,7 @@ cd my-service-out && go build -o app .
 ## Repository Structure
 
 ```
-tsc/
+foundry/
   spec/           IR type definitions — Component interface, Application, JSON Schema
   components/     Trusted component library (7 components, 62 tests)
     registry.go   Audit verification registry
@@ -155,21 +155,21 @@ tsc/
   compiler/       TSC compiler: parse → resolve → generate
   examples/
     dinosaur-registry/
-      app.tsc.yaml  Reference application (trex parity demo)
+      app.foundry.yaml  Reference application (trex parity demo)
 cmd/
-  tsc/            tsc CLI entrypoint
+  foundry/            tsc CLI entrypoint
 TSC-ARCHITECTURE.md  Full architecture decision record
 ```
 
 ## Testing
 
 ```bash
-go test ./tsc/...
-# ok  tsc/compiler          (37 tests)
-# ok  tsc/components        (9 tests)
-# ok  tsc/components/auth/jwt (6 tests)
-# ok  tsc/components/events (4 tests)
-# ok  tsc/components/postgres (6 tests)
+go test ./foundry/...
+# ok  foundry/compiler          (37 tests)
+# ok  foundry/components        (9 tests)
+# ok  foundry/components/auth/jwt (6 tests)
+# ok  foundry/components/events (4 tests)
+# ok  foundry/components/postgres (6 tests)
 ```
 
 ## Trusted Component Catalog
@@ -198,11 +198,11 @@ Each component: audited, version-pinned, immutable after audit. Bug fixes create
 
 ## IR Spec Reference
 
-Full JSON Schema: `tsc/spec/schema.json`
+Full JSON Schema: `foundry/spec/schema.json`
 
 Validate your spec:
 ```bash
-forge validate app.tsc.yaml
+forge validate app.foundry.yaml
 ```
 
 ## Architecture

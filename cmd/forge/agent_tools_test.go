@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jsell-rh/trusted-software-foundry/tsc/compiler"
+	"github.com/jsell-rh/trusted-software-foundry/foundry/compiler"
 )
 
 // TestScaffold_Basic verifies that scaffold generates a valid spec with the requested resources.
@@ -60,7 +60,7 @@ func TestScaffold_AllComponents(t *testing.T) {
 
 // TestDiffSpecs_NoChange verifies that identical specs produce no diff lines.
 func TestDiffSpecs_NoChange(t *testing.T) {
-	specPath := filepath.Join("..", "..", "tsc", "examples", "dinosaur-registry", "app.foundry.yaml")
+	specPath := filepath.Join("..", "..", "foundry", "examples", "dinosaur-registry", "app.foundry.yaml")
 	if _, err := os.Stat(specPath); os.IsNotExist(err) {
 		t.Skip("example spec not found")
 	}
@@ -116,7 +116,7 @@ func captureExplain(t *testing.T, specPath string) string {
 // TestExplain_DinosaurRegistry verifies that explain produces core sections
 // for the simple dinosaur-registry spec.
 func TestExplain_DinosaurRegistry(t *testing.T) {
-	specPath := filepath.Join("..", "..", "tsc", "examples", "dinosaur-registry", "app.foundry.yaml")
+	specPath := filepath.Join("..", "..", "foundry", "examples", "dinosaur-registry", "app.foundry.yaml")
 	if _, err := os.Stat(specPath); os.IsNotExist(err) {
 		t.Skip("dinosaur-registry spec not found")
 	}
@@ -142,7 +142,7 @@ func TestExplain_DinosaurRegistry(t *testing.T) {
 // TestExplain_FleetManager verifies that explain surfaces all 8 advanced IR blocks
 // for the comprehensive fleet-manager reference spec.
 func TestExplain_FleetManager(t *testing.T) {
-	specPath := filepath.Join("..", "..", "tsc", "examples", "fleet-manager", "app.foundry.yaml")
+	specPath := filepath.Join("..", "..", "foundry", "examples", "fleet-manager", "app.foundry.yaml")
 	if _, err := os.Stat(specPath); os.IsNotExist(err) {
 		t.Skip("fleet-manager spec not found")
 	}
