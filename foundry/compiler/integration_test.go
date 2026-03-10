@@ -269,3 +269,106 @@ func TestE2E_FleetManager_GoBuild(t *testing.T) {
 		t.Error("go build succeeded but binary not found")
 	}
 }
+
+// TestE2E_Kartograph_GoBuild compiles the Kartograph enterprise spec and verifies
+// that go build succeeds. Kartograph exercises the hook stub generation path:
+// hooks are declared in the spec but their implementation files don't exist,
+// so the compiler must generate hooks/stubs_generated.go with typed stub functions.
+func TestE2E_Kartograph_GoBuild(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping go build E2E in short mode")
+	}
+
+	repoRoot, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatalf("cannot resolve repo root: %v", err)
+	}
+
+	specPath := filepath.Join(repoRoot, "foundry", "examples", "kartograph", "app.foundry.yaml")
+	if _, err := os.Stat(specPath); os.IsNotExist(err) {
+		t.Skipf("kartograph spec not found at %s", specPath)
+	}
+
+	outDir := t.TempDir()
+	c := compiler.New(compiler.NewStubRegistry(), "", repoRoot)
+	if err := c.Compile(specPath, outDir); err != nil {
+		t.Fatalf("Compile(kartograph) failed: %v", err)
+	}
+
+	// Hook stubs must be generated (kartograph declares hooks but has no impl files).
+	stubPath := filepath.Join(outDir, "hooks", "stubs_generated.go")
+	if _, err := os.Stat(stubPath); err != nil {
+		t.Fatalf("hooks/stubs_generated.go not found — hook stub generation failed: %v", err)
+	}
+	stubData, _ := os.ReadFile(stubPath)
+	stubStr := string(stubData)
+	for _, fn := range []string{
+		"BiTemporalValidatorPreDb",
+		"GraphAccessLoggerPreHandler",
+		"QueryCostGuardPreHandler",
+		"AgeGraphSyncPostDb",
+	} {
+		if !strings.Contains(stubStr, fn) {
+			t.Errorf("hooks/stubs_generated.go missing stub for %q", fn)
+		}
+	}
+
+	// go build must succeed on the generated project.
+	goBin, err := exec.LookPath("go")
+	if err != nil {
+		t.Skip("go not found in PATH")
+	}
+	cmd := exec.Command(goBin, "build", "-o", filepath.Join(outDir, "kartograph"), ".")
+	cmd.Dir = outDir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("go build failed on generated kartograph project:\n%s", out)
+	}
+
+	if _, err := os.Stat(filepath.Join(outDir, "kartograph")); err != nil {
+		t.Error("go build succeeded but binary not found")
+	}
+}
+
+// TestE2E_DinosaurRegistry_GoBuild compiles the dinosaur-registry example and verifies
+// that go build succeeds. This is the simplest spec — CRUD service with no hooks.
+func TestE2E_DinosaurRegistry_GoBuild(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping go build E2E in short mode")
+	}
+
+	repoRoot, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatalf("cannot resolve repo root: %v", err)
+	}
+
+	specPath := filepath.Join(repoRoot, "foundry", "examples", "dinosaur-registry", "app.foundry.yaml")
+	if _, err := os.Stat(specPath); os.IsNotExist(err) {
+		t.Skipf("dinosaur-registry spec not found at %s", specPath)
+	}
+
+	outDir := t.TempDir()
+	c := compiler.New(compiler.NewStubRegistry(), "", repoRoot)
+	if err := c.Compile(specPath, outDir); err != nil {
+		t.Fatalf("Compile(dinosaur-registry) failed: %v", err)
+	}
+
+	// No hooks declared — stubs_generated.go must NOT exist.
+	stubPath := filepath.Join(outDir, "hooks", "stubs_generated.go")
+	if _, err := os.Stat(stubPath); err == nil {
+		t.Error("hooks/stubs_generated.go should not exist for spec with no hooks")
+	}
+
+	goBin, err := exec.LookPath("go")
+	if err != nil {
+		t.Skip("go not found in PATH")
+	}
+	cmd := exec.Command(goBin, "build", "-o", filepath.Join(outDir, "dinosaur-registry"), ".")
+	cmd.Dir = outDir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("go build failed on generated dinosaur-registry project:\n%s", out)
+	}
+
+	if _, err := os.Stat(filepath.Join(outDir, "dinosaur-registry")); err != nil {
+		t.Error("go build succeeded but binary not found")
+	}
+}
