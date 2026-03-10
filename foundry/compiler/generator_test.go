@@ -36,10 +36,9 @@ func generateFromExample(t *testing.T) (outDir string, components []ResolvedComp
 
 func TestSortComponents_PostgresFirst(t *testing.T) {
 	input := []ResolvedComponent{
-		{Name: "foundry-events"},
+		{Name: "foundry-tenancy"},
 		{Name: "foundry-health"},
 		{Name: "foundry-auth-jwt"},
-		{Name: "foundry-grpc"},
 		{Name: "foundry-http"},
 		{Name: "foundry-metrics"},
 		{Name: "foundry-postgres"},
@@ -159,10 +158,8 @@ func TestGenerateMainGo_PostgresBeforeOtherComponents(t *testing.T) {
 	for _, call := range []string{
 		"foundryauthjwt.New()",
 		"foundryhttp.New()",
-		"foundrygrpc.New()",
 		"foundryhealth.New()",
 		"foundrymetrics.New()",
-		"foundryevents.New()",
 	} {
 		idx := strings.Index(src, call)
 		if idx != -1 && idx < postgresIdx {
@@ -180,20 +177,14 @@ func TestSortComponents_AllComponentsHavePriority(t *testing.T) {
 	allKnown := []string{
 		"foundry-postgres",
 		"foundry-auth-jwt",
-		"foundry-auth-spicedb",
+		"foundry-auth-ocm",
 		"foundry-tenancy",
 		"foundry-http",
-		"foundry-grpc",
 		"foundry-health",
 		"foundry-metrics",
-		"foundry-events",
-		"foundry-kafka",
-		"foundry-nats",
-		"foundry-redis",
-		"foundry-redis-streams",
-		"foundry-temporal",
-		"foundry-graph-age",
-		"foundry-service-router",
+		"foundry-logging",
+		"foundry-errortracker",
+		"foundry-errortracker-sentry",
 	}
 	for _, name := range allKnown {
 		if _, ok := componentPriority[name]; !ok {
@@ -207,7 +198,7 @@ func TestSortComponents_AuthBeforeHTTP(t *testing.T) {
 	// middleware is installed before the HTTP server wires routes.
 	input := []ResolvedComponent{
 		{Name: "foundry-http"},
-		{Name: "foundry-auth-spicedb"},
+		{Name: "foundry-auth-ocm"},
 		{Name: "foundry-auth-jwt"},
 		{Name: "foundry-tenancy"},
 		{Name: "foundry-postgres"},
@@ -224,26 +215,10 @@ func TestSortComponents_AuthBeforeHTTP(t *testing.T) {
 	}
 
 	httpPos := posOf("foundry-http")
-	for _, name := range []string{"foundry-postgres", "foundry-auth-jwt", "foundry-auth-spicedb", "foundry-tenancy"} {
+	for _, name := range []string{"foundry-postgres", "foundry-auth-jwt", "foundry-auth-ocm", "foundry-tenancy"} {
 		if pos := posOf(name); pos > httpPos {
 			t.Errorf("%s (pos %d) must appear before foundry-http (pos %d)", name, pos, httpPos)
 		}
-	}
-}
-
-func TestSortComponents_ServiceRouterLast(t *testing.T) {
-	// foundry-service-router must be last — it routes to already-registered services.
-	input := []ResolvedComponent{
-		{Name: "foundry-service-router"},
-		{Name: "foundry-http"},
-		{Name: "foundry-postgres"},
-		{Name: "foundry-nats"},
-		{Name: "foundry-kafka"},
-	}
-	sorted := sortComponents(input)
-	last := sorted[len(sorted)-1].Name
-	if last != "foundry-service-router" {
-		t.Errorf("foundry-service-router should be last, got %q", last)
 	}
 }
 
@@ -613,7 +588,7 @@ func TestGenerateMainGo_DatabaseDSNFromEnv(t *testing.T) {
 	}
 }
 
-func TestGenerateMainGo_KafkaBrokerFromEnv(t *testing.T) {
+func TestGenerateMainGo_OCMURLFromEnv(t *testing.T) {
 	ir, err := Parse("../examples/fleet-manager/app.foundry.yaml")
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
@@ -632,8 +607,8 @@ func TestGenerateMainGo_KafkaBrokerFromEnv(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := string(mainGo)
-	// The spec uses ${KAFKA_BROKER_URL} which should be expanded to env(...)
-	if !strings.Contains(s, `env("KAFKA_BROKER_URL"`) {
-		t.Errorf("generated main.go should expand ${KAFKA_BROKER_URL} to env(...); got snippet:\n%s", s)
+	// The spec uses ${OCM_BASE_URL} which should be expanded to env(...)
+	if !strings.Contains(s, `env("OCM_BASE_URL"`) {
+		t.Errorf("generated main.go should expand ${OCM_BASE_URL} to env(...); got snippet:\n%s", s)
 	}
 }

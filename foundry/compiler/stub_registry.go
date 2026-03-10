@@ -3,7 +3,7 @@ package compiler
 import "fmt"
 
 // knownComponents is the development stub registry.
-// These module paths and versions match the architecture plan.
+// These module paths and versions match the rh-trex parity component set.
 // In production, these entries are signed and come from the trusted catalog.
 var knownComponents = map[string]*RegistryEntry{
 	"foundry-http": {
@@ -30,12 +30,6 @@ var knownComponents = map[string]*RegistryEntry{
 		Module:    "github.com/jsell-rh/trusted-software-foundry/foundry/components/auth/ocm",
 		AuditHash: "stub-not-verified",
 	},
-	"foundry-grpc": {
-		Name:      "foundry-grpc",
-		Version:   "v1.0.0",
-		Module:    "github.com/jsell-rh/trusted-software-foundry/foundry/components/grpc",
-		AuditHash: "stub-not-verified",
-	},
 	"foundry-health": {
 		Name:      "foundry-health",
 		Version:   "v1.0.0",
@@ -48,70 +42,34 @@ var knownComponents = map[string]*RegistryEntry{
 		Module:    "github.com/jsell-rh/trusted-software-foundry/foundry/components/metrics",
 		AuditHash: "stub-not-verified",
 	},
-	"foundry-events": {
-		Name:      "foundry-events",
-		Version:   "v1.0.0",
-		Module:    "github.com/jsell-rh/trusted-software-foundry/foundry/components/events",
-		AuditHash: "stub-not-verified",
-	},
-	"foundry-auth-spicedb": {
-		Name:      "foundry-auth-spicedb",
-		Version:   "v1.0.0",
-		Module:    "github.com/jsell-rh/trusted-software-foundry/foundry/components/spicedb",
-		AuditHash: "stub-not-verified",
-	},
-	"foundry-graph-age": {
-		Name:      "foundry-graph-age",
-		Version:   "v1.0.0",
-		Module:    "github.com/jsell-rh/trusted-software-foundry/foundry/components/graph/age",
-		AuditHash: "stub-not-verified",
-	},
-	"foundry-kafka": {
-		Name:      "foundry-kafka",
-		Version:   "v1.0.0",
-		Module:    "github.com/jsell-rh/trusted-software-foundry/foundry/components/kafka",
-		AuditHash: "stub-not-verified",
-	},
-	"foundry-nats": {
-		Name:      "foundry-nats",
-		Version:   "v1.0.0",
-		Module:    "github.com/jsell-rh/trusted-software-foundry/foundry/components/nats",
-		AuditHash: "stub-not-verified",
-	},
-	"foundry-redis": {
-		Name:      "foundry-redis",
-		Version:   "v1.0.0",
-		Module:    "github.com/jsell-rh/trusted-software-foundry/foundry/components/redis",
-		AuditHash: "stub-not-verified",
-	},
-	"foundry-redis-streams": {
-		Name:      "foundry-redis-streams",
-		Version:   "v1.0.0",
-		Module:    "github.com/jsell-rh/trusted-software-foundry/foundry/components/redis-streams",
-		AuditHash: "stub-not-verified",
-	},
-	"foundry-temporal": {
-		Name:      "foundry-temporal",
-		Version:   "v1.0.0",
-		Module:    "github.com/jsell-rh/trusted-software-foundry/foundry/components/temporal",
-		AuditHash: "stub-not-verified",
-	},
 	"foundry-tenancy": {
 		Name:      "foundry-tenancy",
 		Version:   "v1.0.0",
 		Module:    "github.com/jsell-rh/trusted-software-foundry/foundry/components/tenancy",
 		AuditHash: "stub-not-verified",
 	},
-	"foundry-service-router": {
-		Name:      "foundry-service-router",
+	"foundry-logging": {
+		Name:      "foundry-logging",
 		Version:   "v1.0.0",
-		Module:    "github.com/jsell-rh/trusted-software-foundry/foundry/components/service-router",
+		Module:    "github.com/jsell-rh/trusted-software-foundry/foundry/components/logging",
+		AuditHash: "stub-not-verified",
+	},
+	"foundry-errortracker": {
+		Name:      "foundry-errortracker",
+		Version:   "v1.0.0",
+		Module:    "github.com/jsell-rh/trusted-software-foundry/foundry/components/errortracker",
+		AuditHash: "stub-not-verified",
+	},
+	"foundry-errortracker-sentry": {
+		Name:      "foundry-errortracker-sentry",
+		Version:   "v1.0.0",
+		Module:    "github.com/jsell-rh/trusted-software-foundry/foundry/components/errortracker-sentry",
 		AuditHash: "stub-not-verified",
 	},
 }
 
 // StubRegistry is an in-memory registry for development and testing.
-// It supports all components defined in the architecture plan.
+// It supports all rh-trex parity components.
 // Audit hash verification is skipped (hashes are placeholder values).
 type StubRegistry struct{}
 

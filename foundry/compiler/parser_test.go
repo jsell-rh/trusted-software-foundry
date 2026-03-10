@@ -171,7 +171,7 @@ components:
 }
 
 func TestParse_AllKnownComponents(t *testing.T) {
-	// All 16 known components should be accepted by the validator.
+	// All rh-trex parity components should be accepted by the validator.
 	spec := writeTempSpec(t, `
 apiVersion: foundry/v1
 kind: Application
@@ -179,22 +179,16 @@ metadata:
   name: full-stack
   version: 1.0.0
 components:
-  foundry-http:           v1.0.0
-  foundry-postgres:       v1.0.0
-  foundry-auth-jwt:       v1.0.0
-  foundry-grpc:           v1.0.0
-  foundry-health:         v1.0.0
-  foundry-metrics:        v1.0.0
-  foundry-events:         v1.0.0
-  foundry-auth-spicedb:   v1.0.0
-  foundry-graph-age:      v1.0.0
-  foundry-kafka:          v1.0.0
-  foundry-nats:           v1.0.0
-  foundry-redis:          v1.0.0
-  foundry-redis-streams:  v1.0.0
-  foundry-temporal:       v1.0.0
-  foundry-tenancy:        v1.0.0
-  foundry-service-router: v1.0.0
+  foundry-http:                v1.0.0
+  foundry-postgres:            v1.0.0
+  foundry-auth-jwt:            v1.0.0
+  foundry-auth-ocm:            v1.0.0
+  foundry-health:              v1.0.0
+  foundry-metrics:             v1.0.0
+  foundry-tenancy:             v1.0.0
+  foundry-logging:             v1.0.0
+  foundry-errortracker:        v1.0.0
+  foundry-errortracker-sentry: v1.0.0
 database:
   type: postgres
   migrations: auto
@@ -205,7 +199,6 @@ resources:
       - name: id
         type: uuid
     operations: [create, read]
-    events: true
 `)
 	_, err := ParseWithSchema(spec, schemaPathForTest())
 	if err != nil {

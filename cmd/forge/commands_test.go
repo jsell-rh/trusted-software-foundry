@@ -153,23 +153,19 @@ func TestExplainCmd_BadSpecPath(t *testing.T) {
 	}
 }
 
-// TestExplainCmd_GRPCDefaultPort verifies that when grpc.port is unspecified
-// (zero value), explainCmd defaults to port 9000 in the output.
-func TestExplainCmd_GRPCDefaultPort(t *testing.T) {
-	// grpc.port is intentionally omitted so IRGRPCConfig.Port == 0 → defaults to 9000.
+// TestExplainCmd_RESTBasePath verifies that explainCmd surfaces the REST API base path.
+func TestExplainCmd_RESTBasePath(t *testing.T) {
 	yamlContent := `apiVersion: foundry/v1
 kind: Application
 metadata:
-  name: grpc-default-app
+  name: rest-app
   version: 1.0.0
 components:
   foundry-http:     v1.0.0
   foundry-postgres: v1.0.0
   foundry-auth-jwt: v1.0.0
-  foundry-grpc:     v1.0.0
   foundry-health:   v1.0.0
   foundry-metrics:  v1.0.0
-  foundry-events:   v1.0.0
 database:
   type: postgres
   migrations: auto
@@ -185,8 +181,9 @@ auth:
   type: jwt
   jwk_url: "https://example.com/.well-known/jwks.json"
 api:
-  grpc:
-    enabled: true
+  rest:
+    base_path: /api/v2
+    version_header: true
 `
 	specFile := filepath.Join(t.TempDir(), "app.foundry.yaml")
 	if err := os.WriteFile(specFile, []byte(yamlContent), 0644); err != nil {
@@ -215,8 +212,8 @@ api:
 		t.Fatalf("explainCmd failed: %v", runErr)
 	}
 	out := buf.String()
-	if !strings.Contains(out, "gRPC port: 9000") {
-		t.Errorf("expected 'gRPC port: 9000' in output (default fallback), got:\n%s", out)
+	if !strings.Contains(out, "REST base_path: /api/v2") {
+		t.Errorf("expected 'REST base_path: /api/v2' in output, got:\n%s", out)
 	}
 }
 

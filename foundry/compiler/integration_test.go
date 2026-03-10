@@ -119,17 +119,16 @@ func TestE2E_DinosaurRegistry(t *testing.T) {
 	}
 }
 
-// TestE2E_FleetManager is the end-to-end integration test for the full-capability
-// fleet-manager example spec. It exercises all 8 advanced IR blocks:
-// graph, services, events, authz, state, temporal, tenancy, hooks.
+// TestE2E_FleetManager is the end-to-end integration test for the fleet-manager
+// example spec. It demonstrates a multi-tenant rh-trex-style service with:
+// 3 resources, OCM auth, row-level tenancy, and hook-based audit/policy enforcement.
 //
 // Verifies that:
-//  1. Compilation succeeds (spec is valid AND compiler handles all advanced blocks)
+//  1. Compilation succeeds
 //  2. 3 SQL migrations generated (Cluster, ClusterUpgrade, NodePool)
-//  3. 3 service main files generated (main_api_server.go, main_provisioner.go, main_graph_indexer.go)
-//  4. docker-compose.yaml generated
-//  5. hook_registry.go generated with 5 hook call sites (imports canonical foundry/spec/foundry types)
-//  7. All generated Go files pass gofmt
+//  3. main.go generated with all component registrations
+//  4. hook_registry.go generated with 3 hook call sites
+//  5. All generated Go files pass gofmt
 func TestE2E_FleetManager(t *testing.T) {
 	specPath := filepath.Join("..", "examples", "fleet-manager", "app.foundry.yaml")
 	if _, err := os.Stat(specPath); os.IsNotExist(err) {
@@ -159,17 +158,10 @@ func TestE2E_FleetManager(t *testing.T) {
 		t.Errorf("expected 3 migration files, got %d: %v", len(sqlFiles), sqlFiles)
 	}
 
-	// Assert: service mains generated
-	for _, svc := range []string{"api_server", "provisioner", "graph_indexer"} {
-		p := filepath.Join(outDir, "main_"+svc+".go")
-		if _, err := os.Stat(p); err != nil {
-			t.Errorf("service main %s not generated: %v", "main_"+svc+".go", err)
-		}
-	}
-
-	// Assert: docker-compose.yaml generated
-	if _, err := os.Stat(filepath.Join(outDir, "docker-compose.yaml")); err != nil {
-		t.Error("docker-compose.yaml not generated")
+	// Assert: single main.go (no multi-service architecture)
+	mainGoPath := filepath.Join(outDir, "main.go")
+	if _, err := os.Stat(mainGoPath); err != nil {
+		t.Fatalf("main.go not generated: %v", err)
 	}
 
 	// Assert: no local foundry/types.go — types are imported from upstream foundry/spec/foundry package.
@@ -177,19 +169,16 @@ func TestE2E_FleetManager(t *testing.T) {
 		t.Error("foundry/types.go should NOT be generated: hook types come from canonical upstream package")
 	}
 
-	// Assert: hook_registry.go generated
+	// Assert: hook_registry.go generated with 3 hooks
 	hookRegPath := filepath.Join(outDir, "hook_registry.go")
 	if hookReg, err := os.ReadFile(hookRegPath); err != nil {
 		t.Errorf("hook_registry.go not generated: %v", err)
 	} else {
 		hookRegStr := string(hookReg)
-		// 5 hooks declared in fleet-manager spec
 		for _, hookName := range []string{
 			"audit-logger",
 			"tenant-isolation-check",
 			"cluster-status-enricher",
-			"event-schema-validator",
-			"graph-sync-consumer",
 		} {
 			if !strings.Contains(hookRegStr, hookName) {
 				t.Errorf("hook_registry.go missing hook %q", hookName)
@@ -198,14 +187,10 @@ func TestE2E_FleetManager(t *testing.T) {
 	}
 
 	// Assert: hook implementation files are copied into the output directory.
-	// The compiler resolves hook paths relative to the spec file's directory,
-	// so all 5 fleet-manager hooks should be present.
 	for _, hookFile := range []string{
 		"hooks/audit_logger.go",
 		"hooks/tenant_isolation.go",
 		"hooks/cluster_status_enricher.go",
-		"hooks/event_schema_validator.go",
-		"hooks/graph_sync_consumer.go",
 	} {
 		hookPath := filepath.Join(outDir, hookFile)
 		if _, err := os.Stat(hookPath); err != nil {

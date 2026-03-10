@@ -68,10 +68,8 @@ func renderScaffold(name, version string, resourceNames []string) string {
 	sb.WriteString("  foundry-http:     v1.0.0\n")
 	sb.WriteString("  foundry-postgres: v1.0.0\n")
 	sb.WriteString("  foundry-auth-jwt: v1.0.0\n")
-	sb.WriteString("  foundry-grpc:     v1.0.0\n")
 	sb.WriteString("  foundry-health:   v1.0.0\n")
-	sb.WriteString("  foundry-metrics:  v1.0.0\n")
-	sb.WriteString("  foundry-events:   v1.0.0\n\n")
+	sb.WriteString("  foundry-metrics:  v1.0.0\n\n")
 
 	sb.WriteString("# Data resources — what the application stores and manages.\n")
 	sb.WriteString("resources:\n")
@@ -101,17 +99,13 @@ func renderScaffold(name, version string, resourceNames []string) string {
 		sb.WriteString("      - name: deleted_at\n")
 		sb.WriteString("        type: timestamp\n")
 		sb.WriteString("        soft_delete: true\n")
-		sb.WriteString("    operations: [create, read, update, delete, list]\n")
-		sb.WriteString("    events: true\n\n")
+		sb.WriteString("    operations: [create, read, update, delete, list]\n\n")
 	}
 
 	sb.WriteString("api:\n")
 	sb.WriteString("  rest:\n")
 	sb.WriteString("    base_path: /api/v1\n")
-	sb.WriteString("    version_header: true\n")
-	sb.WriteString("  grpc:\n")
-	sb.WriteString("    enabled: true\n")
-	sb.WriteString("    port: 9000\n\n")
+	sb.WriteString("    version_header: true\n\n")
 
 	sb.WriteString("auth:\n")
 	sb.WriteString("  type: jwt\n")
