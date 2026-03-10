@@ -656,6 +656,36 @@ func TestList_Error(t *testing.T) {
 	}
 }
 
+// Count
+
+func TestCount_Success(t *testing.T) {
+	dao, mock := newDAO(t, dinoResource)
+	mock.ExpectQuery("SELECT COUNT\\(\\*\\) FROM dinosaurs WHERE deleted_at IS NULL").
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(42))
+
+	total, err := dao.Count(context.Background())
+	if err != nil {
+		t.Fatalf("Count: %v", err)
+	}
+	if total != 42 {
+		t.Errorf("Count() = %d, want 42", total)
+	}
+}
+
+func TestCount_Error(t *testing.T) {
+	dao, mock := newDAO(t, dinoResource)
+	mock.ExpectQuery("SELECT COUNT\\(\\*\\) FROM dinosaurs WHERE deleted_at IS NULL").
+		WillReturnError(sql.ErrConnDone)
+
+	_, err := dao.Count(context.Background())
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "count dinosaurs") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
 // notify
 
 func TestNotify_Success(t *testing.T) {

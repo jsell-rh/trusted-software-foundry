@@ -149,6 +149,9 @@ func TestWriteError(t *testing.T) {
 
 func TestCollectionHandler_List_Success(t *testing.T) {
 	dao, mock := newTestDAO(t)
+	// Count query runs before List query.
+	mock.ExpectQuery("SELECT COUNT\\(\\*\\) FROM dinosaurs WHERE deleted_at IS NULL").
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
 	mock.ExpectQuery("SELECT .* FROM dinosaurs WHERE deleted_at IS NULL").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "species"}).
 			AddRow("id-1", "T-Rex").AddRow("id-2", "Raptor"))
@@ -168,10 +171,16 @@ func TestCollectionHandler_List_Success(t *testing.T) {
 	if len(items) != 2 {
 		t.Errorf("items len = %d, want 2", len(items))
 	}
+	if m["total"] != float64(2) {
+		t.Errorf("total = %v, want 2", m["total"])
+	}
 }
 
 func TestCollectionHandler_List_Pagination(t *testing.T) {
 	dao, mock := newTestDAO(t)
+	// Count query runs before List query.
+	mock.ExpectQuery("SELECT COUNT\\(\\*\\) FROM dinosaurs WHERE deleted_at IS NULL").
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(100))
 	mock.ExpectQuery("SELECT .* FROM dinosaurs WHERE deleted_at IS NULL").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}))
 
@@ -188,6 +197,9 @@ func TestCollectionHandler_List_Pagination(t *testing.T) {
 	}
 	if m["size"] != float64(5) {
 		t.Errorf("size = %v, want 5", m["size"])
+	}
+	if m["total"] != float64(100) {
+		t.Errorf("total = %v, want 100", m["total"])
 	}
 }
 
