@@ -520,6 +520,61 @@ func TestWriteMigrations_SkipsAutoAndSoftDeleteFields(t *testing.T) {
 	}
 }
 
+// ---- goStr template function tests ----
+
+// TestGoStr_SafelyEscapesSpecialChars verifies that string values with special
+// characters (backslashes, quotes, newlines) produce valid Go source when
+// embedded in the generated main.go via the goStr template function.
+func TestGoStr_SafelyEscapesSpecialChars(t *testing.T) {
+	ir := &spec.IRSpec{
+		APIVersion: "foundry/v1",
+		Kind:       "Application",
+		Metadata:   spec.IRMetadata{Name: "test-app", Version: "1.0.0"},
+		Components: map[string]string{
+			"foundry-postgres": "v1.0.0",
+			"foundry-http":     "v1.0.0",
+		},
+		Resources: []spec.IRResource{
+			{
+				Name:   "Widget",
+				Plural: "widgets",
+				Fields: []spec.IRField{{Name: "name", Type: "string"}},
+				Operations: []string{"create", "read"},
+			},
+		},
+		Database: &spec.IRDatabase{Type: "postgres", Migrations: "migrations"},
+		API: &spec.IRAPI{
+			REST: &spec.IRRESTConfig{
+				// BasePath contains a backslash and a tab — would produce invalid
+				// Go syntax if embedded without %q escaping.
+				BasePath: `/api\v1`,
+			},
+		},
+	}
+
+	resolver := NewResolver(NewStubRegistry(), "")
+	components, err := resolver.ResolveAll(ir.Components)
+	if err != nil {
+		t.Fatalf("ResolveAll: %v", err)
+	}
+
+	outDir := t.TempDir()
+	g := NewGenerator(outDir, "")
+	// Generate must succeed — format.Source validates the output Go syntax.
+	if err := g.writeMainGo(ir, components); err != nil {
+		t.Fatalf("writeMainGo failed with special-char BasePath: %v", err)
+	}
+
+	mainGo, err := os.ReadFile(filepath.Join(outDir, "main.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The backslash should appear properly escaped in the generated Go source.
+	if !strings.Contains(string(mainGo), `\\`) {
+		t.Errorf("generated main.go should contain escaped backslash (\\\\); got:\n%s", string(mainGo))
+	}
+}
+
 // ---- expandEnvVar tests ----
 
 func TestExpandEnvVar_EnvVarRef(t *testing.T) {
