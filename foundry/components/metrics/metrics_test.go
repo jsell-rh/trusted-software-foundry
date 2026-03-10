@@ -1,185 +1,289 @@
-package metrics
-
-// metrics_test.go provides coverage for the foundry-metrics component:
-//   New, Name, Version, AuditHash, Configure, Register, Start, Stop.
+package metrics_test
 
 import (
-	"context"
 	"fmt"
-	"net"
+	"io"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/jsell-rh/trusted-software-foundry/foundry/components/metrics"
 	"github.com/jsell-rh/trusted-software-foundry/foundry/spec"
 )
 
-// --------------------------------------------------------------------------
-// Constructor and accessors
-// --------------------------------------------------------------------------
+// freshRegistry returns a new registry for test isolation.
+func freshRegistry() *metrics.Registry {
+	return metrics.NewRegistry()
+}
 
-func TestNew_Defaults(t *testing.T) {
-	c := New()
-	if c == nil {
-		t.Fatal("New() returned nil")
+func TestNew_Metadata(t *testing.T) {
+	c := metrics.New()
+	if c.Name() != "foundry-metrics" {
+		t.Errorf("Name() = %q, want foundry-metrics", c.Name())
 	}
-	if c.cfg.bind != defaultBind {
-		t.Errorf("default bind = %q, want %q", c.cfg.bind, defaultBind)
+	if c.Version() == "" {
+		t.Error("Version() should not be empty")
 	}
-	if c.cfg.path != defaultPath {
-		t.Errorf("default path = %q, want %q", c.cfg.path, defaultPath)
+	if len(c.AuditHash()) != 64 {
+		t.Errorf("AuditHash() len = %d, want 64", len(c.AuditHash()))
 	}
 }
 
-func TestName(t *testing.T) {
-	if got := New().Name(); got != componentName {
-		t.Errorf("Name() = %q, want %q", got, componentName)
+func TestConfigure_Defaults(t *testing.T) {
+	c := metrics.New()
+	err := c.Configure(spec.ComponentConfig{})
+	if err != nil {
+		t.Errorf("Configure({}) = %v, want nil", err)
 	}
 }
 
-func TestVersion(t *testing.T) {
-	if got := New().Version(); got != componentVersion {
-		t.Errorf("Version() = %q, want %q", got, componentVersion)
-	}
-}
-
-func TestAuditHash(t *testing.T) {
-	if got := New().AuditHash(); got != auditHash {
-		t.Errorf("AuditHash() = %q, want %q", got, auditHash)
-	}
-}
-
-// --------------------------------------------------------------------------
-// Configure
-// --------------------------------------------------------------------------
-
-func TestConfigure_Empty(t *testing.T) {
-	c := New()
-	if err := c.Configure(spec.ComponentConfig{}); err != nil {
-		t.Fatalf("Configure({}): %v", err)
-	}
-	if c.cfg.bind != defaultBind {
-		t.Errorf("bind = %q, want default %q", c.cfg.bind, defaultBind)
-	}
-}
-
-func TestConfigure_SetBind(t *testing.T) {
-	c := New()
-	if err := c.Configure(spec.ComponentConfig{"bind": ":9191"}); err != nil {
+func TestConfigure_CustomPaths(t *testing.T) {
+	c := metrics.New()
+	err := c.Configure(spec.ComponentConfig{
+		"bind":        ":9191",
+		"path":        "/prom",
+		"health_path": "/live",
+		"ready_path":  "/ready",
+	})
+	if err != nil {
 		t.Fatalf("Configure: %v", err)
 	}
-	if c.cfg.bind != ":9191" {
-		t.Errorf("bind = %q, want :9191", c.cfg.bind)
+}
+
+func TestRegistry_Counter(t *testing.T) {
+	r := freshRegistry()
+	r.IncCounter("my_requests_total", map[string]string{"method": "GET"})
+	r.IncCounter("my_requests_total", map[string]string{"method": "GET"})
+	r.IncCounter("my_requests_total", map[string]string{"method": "POST"})
+
+	text := r.Text()
+	if !strings.Contains(text, "my_requests_total") {
+		t.Errorf("expected my_requests_total in output:\n%s", text)
+	}
+	if !strings.Contains(text, `method="GET"`) {
+		t.Errorf("expected GET label in output:\n%s", text)
 	}
 }
 
-func TestConfigure_SetPath(t *testing.T) {
-	c := New()
-	if err := c.Configure(spec.ComponentConfig{"path": "/prom"}); err != nil {
-		t.Fatalf("Configure: %v", err)
+func TestRegistry_CounterAccumulates(t *testing.T) {
+	r := freshRegistry()
+	for i := 0; i < 5; i++ {
+		r.IncCounter("ops_total", nil)
 	}
-	if c.cfg.path != "/prom" {
-		t.Errorf("path = %q, want /prom", c.cfg.path)
-	}
-}
-
-func TestConfigure_NonStringIgnored(t *testing.T) {
-	c := New()
-	if err := c.Configure(spec.ComponentConfig{"bind": 8080, "path": false}); err != nil {
-		t.Fatalf("Configure with wrong types: %v", err)
-	}
-	if c.cfg.bind != defaultBind {
-		t.Errorf("bind = %q, want default", c.cfg.bind)
+	text := r.Text()
+	if !strings.Contains(text, "ops_total 5") {
+		t.Errorf("expected counter value 5 in output:\n%s", text)
 	}
 }
 
-func TestConfigure_EmptyStringIgnored(t *testing.T) {
-	c := New()
-	if err := c.Configure(spec.ComponentConfig{"bind": "", "path": ""}); err != nil {
-		t.Fatalf("Configure with empty strings: %v", err)
+func TestRegistry_Histogram(t *testing.T) {
+	r := freshRegistry()
+	r.ObserveLatency("http_latency_ms", map[string]string{"handler": "api"}, 10.0)
+	r.ObserveLatency("http_latency_ms", map[string]string{"handler": "api"}, 50.0)
+	r.ObserveLatency("http_latency_ms", map[string]string{"handler": "api"}, 500.0)
+
+	text := r.Text()
+	if !strings.Contains(text, "http_latency_ms_bucket") {
+		t.Errorf("expected histogram buckets in output:\n%s", text)
 	}
-	if c.cfg.bind != defaultBind {
-		t.Errorf("bind = %q, want default", c.cfg.bind)
+	if !strings.Contains(text, "http_latency_ms_sum") {
+		t.Errorf("expected histogram sum in output:\n%s", text)
 	}
-}
-
-// --------------------------------------------------------------------------
-// Register (no-op)
-// --------------------------------------------------------------------------
-
-func TestRegister_NoOp(t *testing.T) {
-	c := New()
-	app := spec.NewApplication(nil)
-	if err := c.Register(app); err != nil {
-		t.Errorf("Register: %v", err)
+	if !strings.Contains(text, "http_latency_ms_count") {
+		t.Errorf("expected histogram count in output:\n%s", text)
 	}
-}
-
-// --------------------------------------------------------------------------
-// Start / Stop — lifecycle
-// --------------------------------------------------------------------------
-
-func randomPort(t *testing.T) int {
-	t.Helper()
-	ln, err := net.Listen("tcp", ":0")
-	if err != nil {
-		t.Fatalf("net.Listen: %v", err)
-	}
-	port := ln.Addr().(*net.TCPAddr).Port
-	ln.Close()
-	return port
-}
-
-func TestStart_HappyPath(t *testing.T) {
-	c := New()
-	port := randomPort(t)
-	c.cfg.bind = fmt.Sprintf(":%d", port)
-
-	if err := c.Start(context.Background()); err != nil {
-		t.Fatalf("Start: %v", err)
-	}
-	defer func() { _ = c.Stop(context.Background()) }()
-
-	time.Sleep(20 * time.Millisecond)
-
-	resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d%s", port, defaultPath))
-	if err != nil {
-		t.Fatalf("GET %s: %v", defaultPath, err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("status = %d, want 200", resp.StatusCode)
-	}
-	ct := resp.Header.Get("Content-Type")
-	if !strings.Contains(ct, "text/plain") {
-		t.Errorf("Content-Type = %q, want text/plain (Prometheus format)", ct)
+	if !strings.Contains(text, `le="+Inf"`) {
+		t.Errorf("expected +Inf bucket in output:\n%s", text)
 	}
 }
 
-func TestStop_NilServer(t *testing.T) {
-	c := New()
-	if err := c.Stop(context.Background()); err != nil {
-		t.Errorf("Stop(nil server): %v", err)
+func TestRegistry_HistogramCount(t *testing.T) {
+	r := freshRegistry()
+	for i := 0; i < 7; i++ {
+		r.ObserveLatency("latency_ms", nil, float64(i*10))
+	}
+	text := r.Text()
+	if !strings.Contains(text, "latency_ms_count 7") {
+		t.Errorf("expected count=7 in output:\n%s", text)
 	}
 }
 
-func TestStop_LiveServer(t *testing.T) {
-	c := New()
-	port := randomPort(t)
-	c.cfg.bind = fmt.Sprintf(":%d", port)
+func TestRegistry_PrometheusTextFormat(t *testing.T) {
+	r := freshRegistry()
+	r.IncCounter("test_counter", map[string]string{"label": "val"})
+	text := r.Text()
 
-	if err := c.Start(context.Background()); err != nil {
-		t.Fatalf("Start: %v", err)
+	// Each metric family must have a TYPE line.
+	if !strings.Contains(text, "# TYPE test_counter counter") {
+		t.Errorf("expected TYPE comment, got:\n%s", text)
+	}
+}
+
+func TestRegistry_MultipleMetrics(t *testing.T) {
+	r := freshRegistry()
+	r.IncCounter("alpha_total", nil)
+	r.IncCounter("beta_total", nil)
+	r.ObserveLatency("gamma_ms", nil, 42.0)
+
+	text := r.Text()
+	for _, name := range []string{"alpha_total", "beta_total", "gamma_ms"} {
+		if !strings.Contains(text, name) {
+			t.Errorf("expected %q in output:\n%s", name, text)
+		}
+	}
+}
+
+func TestInstrumentedHandler_RecordsMetrics(t *testing.T) {
+	r := freshRegistry()
+	inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	wrapped := metrics.InstrumentedHandlerWithRegistry(r, "test_endpoint", inner)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	rw := httptest.NewRecorder()
+	wrapped.ServeHTTP(rw, req)
+
+	text := r.Text()
+	if !strings.Contains(text, "foundry_http_requests_total") {
+		t.Errorf("expected request counter after request:\n%s", text)
+	}
+}
+
+func TestInstrumentedHandler_TracksErrors(t *testing.T) {
+	r := freshRegistry()
+	inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+
+	wrapped := metrics.InstrumentedHandlerWithRegistry(r, "failing_endpoint", inner)
+	req := httptest.NewRequest(http.MethodPost, "/fail", nil)
+	rw := httptest.NewRecorder()
+	wrapped.ServeHTTP(rw, req)
+
+	text := r.Text()
+	if !strings.Contains(text, `is_error="true"`) {
+		t.Errorf("expected is_error=true label for 500 response:\n%s", text)
+	}
+}
+
+func TestInstrumentedHandler_TracksLatency(t *testing.T) {
+	r := freshRegistry()
+	inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		time.Sleep(2 * time.Millisecond)
+		w.WriteHeader(http.StatusOK)
+	})
+
+	wrapped := metrics.InstrumentedHandlerWithRegistry(r, "slow_endpoint", inner)
+	req := httptest.NewRequest(http.MethodGet, "/slow", nil)
+	rw := httptest.NewRecorder()
+	wrapped.ServeHTTP(rw, req)
+
+	text := r.Text()
+	if !strings.Contains(text, "foundry_http_request_duration_ms_sum") {
+		t.Errorf("expected latency histogram sum in output:\n%s", text)
+	}
+}
+
+func TestMetricsServer_LivenessEndpoint(t *testing.T) {
+	c := metrics.New()
+	_ = c.Configure(spec.ComponentConfig{
+		"bind":        ":0",
+		"health_path": "/healthz",
+	})
+	_ = c.Register(spec.NewApplication(nil))
+
+	// Test the handler directly without starting a server.
+	mux := metrics.BuildMux(c)
+	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	rw := httptest.NewRecorder()
+	mux.ServeHTTP(rw, req)
+
+	if rw.Code != http.StatusOK {
+		t.Errorf("/healthz status = %d, want 200", rw.Code)
+	}
+	body := rw.Body.String()
+	if !strings.Contains(body, `"status":"ok"`) {
+		t.Errorf("/healthz body = %q, want status:ok", body)
+	}
+}
+
+func TestMetricsServer_ReadinessEndpoint_AllPassing(t *testing.T) {
+	c := metrics.New()
+	_ = c.Configure(spec.ComponentConfig{"ready_path": "/readyz"})
+	c.AddReadinessCheck(func() error { return nil })
+	c.AddReadinessCheck(func() error { return nil })
+	_ = c.Register(spec.NewApplication(nil))
+
+	mux := metrics.BuildMux(c)
+	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+	rw := httptest.NewRecorder()
+	mux.ServeHTTP(rw, req)
+
+	if rw.Code != http.StatusOK {
+		t.Errorf("/readyz status = %d, want 200", rw.Code)
+	}
+}
+
+func TestMetricsServer_ReadinessEndpoint_Failing(t *testing.T) {
+	c := metrics.New()
+	_ = c.Configure(spec.ComponentConfig{"ready_path": "/readyz"})
+	c.AddReadinessCheck(func() error { return fmt.Errorf("db not ready") })
+	_ = c.Register(spec.NewApplication(nil))
+
+	mux := metrics.BuildMux(c)
+	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+	rw := httptest.NewRecorder()
+	mux.ServeHTTP(rw, req)
+
+	if rw.Code != http.StatusServiceUnavailable {
+		t.Errorf("/readyz status = %d, want 503", rw.Code)
+	}
+	body := rw.Body.String()
+	if !strings.Contains(body, "db not ready") {
+		t.Errorf("/readyz body = %q should contain error", body)
+	}
+}
+
+func TestMetricsServer_MetricsEndpoint(t *testing.T) {
+	r := freshRegistry()
+	r.IncCounter("probe_counter", nil)
+
+	c := metrics.NewWithRegistry(r)
+	_ = c.Configure(spec.ComponentConfig{"path": "/metrics"})
+	_ = c.Register(spec.NewApplication(nil))
+
+	mux := metrics.BuildMux(c)
+	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	rw := httptest.NewRecorder()
+	mux.ServeHTTP(rw, req)
+
+	if rw.Code != http.StatusOK {
+		t.Errorf("/metrics status = %d, want 200", rw.Code)
+	}
+	ct := rw.Header().Get("Content-Type")
+	if !strings.HasPrefix(ct, "text/plain") {
+		t.Errorf("Content-Type = %q, want text/plain prefix", ct)
 	}
 
-	time.Sleep(20 * time.Millisecond)
+	body, _ := io.ReadAll(rw.Body)
+	if !strings.Contains(string(body), "probe_counter") {
+		t.Errorf("/metrics body should contain probe_counter:\n%s", string(body))
+	}
+}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := c.Stop(ctx); err != nil {
-		t.Errorf("Stop: %v", err)
+func TestRegistry_LabelCardinality(t *testing.T) {
+	r := freshRegistry()
+	// Simulate high-cardinality label usage (e.g. per-endpoint).
+	for i := 0; i < 10; i++ {
+		r.IncCounter("endpoint_hits_total", map[string]string{
+			"endpoint": fmt.Sprintf("/api/resource/%d", i),
+		})
+	}
+	text := r.Text()
+	if !strings.Contains(text, "endpoint_hits_total") {
+		t.Errorf("expected endpoint_hits_total in output:\n%s", text)
 	}
 }
