@@ -627,3 +627,52 @@ func TestStartup_LogsRoutes(t *testing.T) {
 	}
 	defer c.Stop(ctx) //nolint:errcheck
 }
+
+func TestConfigure_DefaultTimeouts(t *testing.T) {
+	c := New()
+	if err := c.Configure(spec.ComponentConfig{}); err != nil {
+		t.Fatal(err)
+	}
+	if c.cfg.readTimeout != defaultReadTimeout {
+		t.Errorf("readTimeout = %v, want %v", c.cfg.readTimeout, defaultReadTimeout)
+	}
+	if c.cfg.writeTimeout != defaultWriteTimeout {
+		t.Errorf("writeTimeout = %v, want %v", c.cfg.writeTimeout, defaultWriteTimeout)
+	}
+	if c.cfg.idleTimeout != defaultIdleTimeout {
+		t.Errorf("idleTimeout = %v, want %v", c.cfg.idleTimeout, defaultIdleTimeout)
+	}
+}
+
+func TestConfigure_CustomTimeouts(t *testing.T) {
+	c := New()
+	if err := c.Configure(spec.ComponentConfig{
+		"read_timeout_sec":  60,
+		"write_timeout_sec": 120,
+		"idle_timeout_sec":  300,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if c.cfg.readTimeout != 60*time.Second {
+		t.Errorf("readTimeout = %v, want 60s", c.cfg.readTimeout)
+	}
+	if c.cfg.writeTimeout != 120*time.Second {
+		t.Errorf("writeTimeout = %v, want 120s", c.cfg.writeTimeout)
+	}
+	if c.cfg.idleTimeout != 300*time.Second {
+		t.Errorf("idleTimeout = %v, want 300s", c.cfg.idleTimeout)
+	}
+}
+
+func TestConfigure_ZeroTimeoutIgnored(t *testing.T) {
+	c := New()
+	if err := c.Configure(spec.ComponentConfig{
+		"read_timeout_sec": 0,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	// Zero value should be ignored; default should persist.
+	if c.cfg.readTimeout != defaultReadTimeout {
+		t.Errorf("readTimeout = %v, want default %v (zero should be ignored)", c.cfg.readTimeout, defaultReadTimeout)
+	}
+}
