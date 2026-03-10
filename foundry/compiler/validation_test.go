@@ -86,6 +86,7 @@ func TestParse_BiTemporalDisabled_NoRequirements(t *testing.T) {
 		t.Fatalf("expected no error for disabled bi_temporal, got: %v", err)
 	}
 }
+
 // --------------------------------------------------------------------------
 // workflows block
 // --------------------------------------------------------------------------
@@ -183,6 +184,7 @@ workflows:
 		t.Errorf("expected error to mention 'worker_queue', got: %v", err)
 	}
 }
+
 // --------------------------------------------------------------------------
 // Component cross-reference: advanced feature blocks
 // --------------------------------------------------------------------------
@@ -662,6 +664,7 @@ graph:
 		t.Errorf("expected error to mention 'to', got: %v", err)
 	}
 }
+
 // --------------------------------------------------------------------------
 // Resource naming and structure validation
 // --------------------------------------------------------------------------
