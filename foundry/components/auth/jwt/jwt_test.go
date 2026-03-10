@@ -210,7 +210,7 @@ func TestErrorResponse_ValidJSON(t *testing.T) {
 		t.Fatalf("expected 401, got %d", fw.code)
 	}
 	// The response body must be valid JSON.
-	var out map[string]string
+	var out map[string]any
 	if err := json.Unmarshal(fw.body, &out); err != nil {
 		t.Errorf("error response is not valid JSON: %v\nbody: %s", err, fw.body)
 	}

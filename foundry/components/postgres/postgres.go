@@ -625,3 +625,42 @@ func scanRows(rows *sql.Rows) ([]map[string]any, error) {
 	}
 	return results, rows.Err()
 }
+
+// ListCursor returns up to (size+1) non-deleted rows with id > afterID, ordered by id.
+// Fetching size+1 rows lets the caller detect whether a next page exists:
+// if len(rows) > size, there are more results and the caller should truncate to size
+// and encode the last row's id as the next cursor.
+//
+// afterID is the decoded cursor (last-seen id from the previous page). An empty string
+// means "from the beginning".
+func (d *resourceDAO) ListCursor(ctx context.Context, afterID string, size int) ([]map[string]any, error) {
+	table := strings.ToLower(d.resource.Plural)
+	if size <= 0 {
+		size = 20
+	}
+
+	var args []any
+	var whereExtra string
+
+	if afterID != "" {
+		args = append(args, afterID)
+		whereExtra = fmt.Sprintf(" AND id > $%d", len(args))
+	}
+
+	tenantSQL, tenantVals := d.tenantClause(ctx, len(args)+1)
+	args = append(args, tenantVals...)
+
+	limitIdx := len(args) + 1
+	args = append(args, size+1) // fetch one extra to detect next page
+
+	query := fmt.Sprintf(
+		"SELECT * FROM %s WHERE deleted_at IS NULL%s%s ORDER BY id LIMIT $%d",
+		table, whereExtra, tenantSQL, limitIdx,
+	)
+	rows, err := d.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list-cursor %s: %w", d.resource.Plural, err)
+	}
+	defer rows.Close()
+	return scanRows(rows)
+}

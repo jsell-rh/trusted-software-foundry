@@ -50,7 +50,7 @@ func (c *Component) registerCRUDHandlers(app *spec.Application) {
 		app.AddHTTPHandler("/"+plural, &collectionHandler{dao: dao, ops: ops, resource: res})
 
 		// Item endpoint: GET /<plural>/<id>, PUT /<plural>/<id>, DELETE /<plural>/<id>
-		app.AddHTTPHandler("/"+plural+"/", &itemHandler{dao: dao, ops: ops, plural: plural})
+		app.AddHTTPHandler("/"+plural+"/", &itemHandler{dao: dao, ops: ops, plural: plural, resource: res})
 	}
 }
 
@@ -74,18 +74,22 @@ func (h *collectionHandler) ServeHTTP(w spec.ResponseWriter, r *spec.Request) {
 	switch r.Method {
 	case "GET":
 		if !h.ops["list"] {
-			writeError(w, 405, "list not allowed for this resource")
+			spec.NewNotImplementedError("list").WriteHTTP(w)
 			return
 		}
-		h.handleList(w, r)
+		if hasQueryParam(r.URL, "cursor") {
+			h.handleListCursor(w, r)
+		} else {
+			h.handleList(w, r)
+		}
 	case "POST":
 		if !h.ops["create"] {
-			writeError(w, 405, "create not allowed for this resource")
+			spec.NewNotImplementedError("create").WriteHTTP(w)
 			return
 		}
 		h.handleCreate(w, r)
 	default:
-		writeError(w, 405, "method not allowed")
+		spec.NewNotImplementedError(r.Method).WriteHTTP(w)
 	}
 }
 
@@ -114,7 +118,7 @@ func (h *collectionHandler) handleList(w spec.ResponseWriter, r *spec.Request) {
 		var err error
 		whereSQL, whereArgs, err = filter.BuildWhere(decoded, h.dao.allowedFilterFields())
 		if err != nil {
-			writeError(w, 400, "invalid search filter: "+err.Error())
+			spec.NewValidationError("invalid search filter: " + err.Error()).WriteHTTP(w)
 			return
 		}
 	}
@@ -130,7 +134,7 @@ func (h *collectionHandler) handleList(w spec.ResponseWriter, r *spec.Request) {
 		total, err = h.dao.CountSearch(c, whereSQL, whereArgs)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "foundry-postgres: count search %s: %v\n", h.resource.Plural, err)
-			writeError(w, 500, "internal server error")
+			spec.NewInternalError(err).WriteHTTP(w)
 			return
 		}
 		items, err = h.dao.Search(c, whereSQL, whereArgs, page, size)
@@ -138,14 +142,14 @@ func (h *collectionHandler) handleList(w spec.ResponseWriter, r *spec.Request) {
 		total, err = h.dao.Count(c)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "foundry-postgres: count %s: %v\n", h.resource.Plural, err)
-			writeError(w, 500, "internal server error")
+			spec.NewInternalError(err).WriteHTTP(w)
 			return
 		}
 		items, err = h.dao.List(c, page, size)
 	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "foundry-postgres: list %s: %v\n", h.resource.Plural, err)
-		writeError(w, 500, "internal server error")
+		spec.NewInternalError(err).WriteHTTP(w)
 		return
 	}
 
@@ -200,7 +204,7 @@ func hexNibble(c byte) int {
 func (h *collectionHandler) handleCreate(w spec.ResponseWriter, r *spec.Request) {
 	var obj map[string]any
 	if err := json.Unmarshal(r.Body, &obj); err != nil {
-		writeError(w, 400, "invalid JSON: "+err.Error())
+		spec.NewMalformedRequestError(err).WriteHTTP(w)
 		return
 	}
 
@@ -211,19 +215,19 @@ func (h *collectionHandler) handleCreate(w spec.ResponseWriter, r *spec.Request)
 	}
 
 	if missing := validateRequired(h.resource.Fields, normalised); len(missing) > 0 {
-		writeError(w, 400, "missing required fields: "+strings.Join(missing, ", "))
+		spec.NewValidationError("missing required fields: " + strings.Join(missing, ", ")).WriteHTTP(w)
 		return
 	}
 
 	if errs := validateFieldLengths(h.resource.Fields, normalised); len(errs) > 0 {
-		writeError(w, 400, "field validation failed: "+strings.Join(errs, "; "))
+		spec.NewValidationError("field validation failed: " + strings.Join(errs, "; ")).WriteHTTP(w)
 		return
 	}
 
 	id, err := h.dao.Create(ctx(r), normalised)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "foundry-postgres: create %s: %v\n", h.resource.Name, err)
-		writeError(w, 500, "internal server error")
+		spec.NewInternalError(err).WriteHTTP(w)
 		return
 	}
 
@@ -239,31 +243,32 @@ func (h *collectionHandler) handleCreate(w spec.ResponseWriter, r *spec.Request)
 
 // itemHandler handles GET/PUT/DELETE on /<plural>/<id>.
 type itemHandler struct {
-	dao    *resourceDAO
-	ops    map[string]bool
-	plural string
+	dao      *resourceDAO
+	ops      map[string]bool
+	plural   string
+	resource spec.ResourceDefinition
 }
 
 func (h *itemHandler) ServeHTTP(w spec.ResponseWriter, r *spec.Request) {
 	id := extractID(r.URL, h.plural)
 	if id == "" {
-		writeError(w, 400, "missing resource id")
+		spec.NewBadRequestError("missing resource id").WriteHTTP(w)
 		return
 	}
 
 	switch r.Method {
 	case "GET":
 		if !h.ops["read"] {
-			writeError(w, 405, "read not allowed for this resource")
+			spec.NewNotImplementedError("read").WriteHTTP(w)
 			return
 		}
 		obj, err := h.dao.Get(ctx(r), id)
 		if err != nil {
 			if strings.Contains(err.Error(), "not found") {
-				writeError(w, 404, "not found")
+				spec.NewNotFoundError(h.resource.Name, id).WriteHTTP(w)
 			} else {
 				fmt.Fprintf(os.Stderr, "foundry-postgres: get %s %s: %v\n", h.plural, id, err)
-				writeError(w, 500, "internal server error")
+				spec.NewInternalError(err).WriteHTTP(w)
 			}
 			return
 		}
@@ -271,22 +276,22 @@ func (h *itemHandler) ServeHTTP(w spec.ResponseWriter, r *spec.Request) {
 
 	case "PUT":
 		if !h.ops["update"] {
-			writeError(w, 405, "update not allowed for this resource")
+			spec.NewNotImplementedError("update").WriteHTTP(w)
 			return
 		}
 		var patch map[string]any
 		if err := json.Unmarshal(r.Body, &patch); err != nil {
-			writeError(w, 400, "invalid JSON: "+err.Error())
+			spec.NewMalformedRequestError(err).WriteHTTP(w)
 			return
 		}
 		if err := h.dao.Update(ctx(r), id, patch); err != nil {
 			if strings.Contains(err.Error(), "not found") {
-				writeError(w, 404, "not found")
+				spec.NewNotFoundError(h.resource.Name, id).WriteHTTP(w)
 			} else if strings.Contains(err.Error(), "no writable fields") {
-				writeError(w, 400, err.Error())
+				spec.NewBadRequestError(err.Error()).WriteHTTP(w)
 			} else {
 				fmt.Fprintf(os.Stderr, "foundry-postgres: update %s %s: %v\n", h.plural, id, err)
-				writeError(w, 500, "internal server error")
+				spec.NewInternalError(err).WriteHTTP(w)
 			}
 			return
 		}
@@ -299,22 +304,22 @@ func (h *itemHandler) ServeHTTP(w spec.ResponseWriter, r *spec.Request) {
 
 	case "DELETE":
 		if !h.ops["delete"] {
-			writeError(w, 405, "delete not allowed for this resource")
+			spec.NewNotImplementedError("delete").WriteHTTP(w)
 			return
 		}
 		if err := h.dao.Delete(ctx(r), id); err != nil {
 			if strings.Contains(err.Error(), "not found") {
-				writeError(w, 404, "not found")
+				spec.NewNotFoundError(h.resource.Name, id).WriteHTTP(w)
 			} else {
 				fmt.Fprintf(os.Stderr, "foundry-postgres: delete %s %s: %v\n", h.plural, id, err)
-				writeError(w, 500, "internal server error")
+				spec.NewInternalError(err).WriteHTTP(w)
 			}
 			return
 		}
 		w.WriteHeader(204)
 
 	default:
-		writeError(w, 405, "method not allowed")
+		spec.NewNotImplementedError(r.Method).WriteHTTP(w)
 	}
 }
 
@@ -364,21 +369,13 @@ func validateFieldLengths(fields []spec.FieldDefinition, input map[string]any) [
 func writeJSON(w spec.ResponseWriter, status int, v any) {
 	data, err := json.Marshal(v)
 	if err != nil {
-		// Log internally; write a static error body to avoid calling back into
-		// writeJSON (which would recurse) and to avoid leaking Go type details.
 		fmt.Fprintf(os.Stderr, "foundry-postgres: marshal response: %v\n", err)
-		w.Header()["Content-Type"] = []string{"application/json"}
-		w.WriteHeader(500)
-		w.Write([]byte(`{"error":"internal server error","status":500}`)) //nolint:errcheck
+		spec.NewInternalError(err).WriteHTTP(w)
 		return
 	}
 	w.Header()["Content-Type"] = []string{"application/json"}
 	w.WriteHeader(status)
 	w.Write(data) //nolint:errcheck
-}
-
-func writeError(w spec.ResponseWriter, status int, msg string) {
-	writeJSON(w, status, map[string]any{"error": msg, "status": status})
 }
 
 // extractID pulls the id segment from a URL like /dinosaurs/abc-123.
@@ -415,4 +412,21 @@ func queryParam(rawURL, key string) string {
 		}
 	}
 	return ""
+}
+
+// hasQueryParam reports whether the given key is present in the URL query string,
+// even if its value is empty. Used to detect ?cursor= (first-page cursor request).
+func hasQueryParam(rawURL, key string) bool {
+	i := strings.Index(rawURL, "?")
+	if i < 0 {
+		return false
+	}
+	query := rawURL[i+1:]
+	for _, part := range strings.Split(query, "&") {
+		kv := strings.SplitN(part, "=", 2)
+		if kv[0] == key {
+			return true
+		}
+	}
+	return false
 }

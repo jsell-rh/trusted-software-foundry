@@ -194,7 +194,7 @@ func (c *Component) middleware() spec.HTTPMiddleware {
 
 			claims, err := c.validate(r)
 			if err != nil {
-				writeJWTError(w, http.StatusUnauthorized, "unauthorized", err.Error())
+				spec.NewUnauthenticatedError(err.Error()).WriteHTTP(w)
 				return
 			}
 
@@ -220,15 +220,6 @@ func pathMatchesSkip(rawURL, prefix string) bool {
 	}
 	rest := rawURL[len(prefix):]
 	return rest == "" || rest[0] == '/' || rest[0] == '?'
-}
-
-// writeJWTError writes a JSON error response using encoding/json to handle all
-// control characters and special characters correctly.
-func writeJWTError(w spec.ResponseWriter, status int, errCode, message string) {
-	body, _ := json.Marshal(map[string]string{"error": errCode, "message": message})
-	w.Header()["Content-Type"] = []string{"application/json"}
-	w.WriteHeader(status)
-	_, _ = w.Write(body)
 }
 
 // validate extracts and validates the JWT from the Authorization header.
@@ -441,8 +432,7 @@ func RequireRole(roles ...string) spec.HTTPMiddleware {
 		return handlerFunc(func(w spec.ResponseWriter, r *spec.Request) {
 			claims := ClaimsFromContext(r.Context)
 			if claims == nil {
-				w.WriteHeader(http.StatusForbidden)
-				_, _ = w.Write([]byte(`{"error":"forbidden","message":"no authenticated identity"}`))
+				spec.NewForbiddenError("no authenticated identity").WriteHTTP(w)
 				return
 			}
 			for _, required := range roles {
@@ -453,8 +443,7 @@ func RequireRole(roles ...string) spec.HTTPMiddleware {
 					}
 				}
 			}
-			w.WriteHeader(http.StatusForbidden)
-			_, _ = w.Write([]byte(`{"error":"forbidden","message":"insufficient role"}`))
+			spec.NewForbiddenError("insufficient role").WriteHTTP(w)
 		})
 	}
 }
