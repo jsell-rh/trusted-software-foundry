@@ -17,13 +17,13 @@ type fakeComponent struct {
 	auditHash string
 }
 
-func (f *fakeComponent) Name() string                               { return f.name }
-func (f *fakeComponent) Version() string                           { return f.version }
-func (f *fakeComponent) AuditHash() string                         { return f.auditHash }
-func (f *fakeComponent) Configure(_ spec.ComponentConfig) error    { return nil }
-func (f *fakeComponent) Register(_ *spec.Application) error        { return nil }
-func (f *fakeComponent) Start(_ context.Context) error             { return nil }
-func (f *fakeComponent) Stop(_ context.Context) error              { return nil }
+func (f *fakeComponent) Name() string                           { return f.name }
+func (f *fakeComponent) Version() string                        { return f.version }
+func (f *fakeComponent) AuditHash() string                      { return f.auditHash }
+func (f *fakeComponent) Configure(_ spec.ComponentConfig) error { return nil }
+func (f *fakeComponent) Register(_ *spec.Application) error     { return nil }
+func (f *fakeComponent) Start(_ context.Context) error          { return nil }
+func (f *fakeComponent) Stop(_ context.Context) error           { return nil }
 
 func newFake(name, version, hash string) *fakeComponent {
 	return &fakeComponent{name: name, version: version, auditHash: hash}

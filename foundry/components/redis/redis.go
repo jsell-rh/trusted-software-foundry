@@ -54,11 +54,11 @@ var ErrLockNotAcquired = errors.New("foundry-redis: lock not acquired")
 
 // Component is the foundry-redis trusted component implementation.
 type Component struct {
-	mu         sync.Mutex
-	cfg        config
-	cacheDB    *redis.Client
+	mu          sync.Mutex
+	cfg         config
+	cacheDB     *redis.Client
 	ratelimitDB *redis.Client
-	lockDB     *redis.Client
+	lockDB      *redis.Client
 }
 
 type config struct {

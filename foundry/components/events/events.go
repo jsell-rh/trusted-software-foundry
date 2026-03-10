@@ -63,8 +63,8 @@ func (c *Component) Subscribe(resourceName string, h Handler) {
 
 // --- spec.Component interface ---
 
-func (c *Component) Name() string    { return componentName }
-func (c *Component) Version() string { return componentVersion }
+func (c *Component) Name() string      { return componentName }
+func (c *Component) Version() string   { return componentVersion }
 func (c *Component) AuditHash() string { return auditHash }
 
 // Configure reads the DSN from the IR spec section.

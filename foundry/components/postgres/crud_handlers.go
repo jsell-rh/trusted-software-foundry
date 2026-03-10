@@ -13,11 +13,12 @@ import (
 // declared in the IR spec. Called from Register() after DAOs are created.
 //
 // Routes registered per resource (example: resource "Dinosaur", plural "dinosaurs"):
-//   GET    /<basePath>/dinosaurs          → list (paginated, ?page=1&size=20)
-//   POST   /<basePath>/dinosaurs          → create
-//   GET    /<basePath>/dinosaurs/<id>     → read by id
-//   PUT    /<basePath>/dinosaurs/<id>     → update by id
-//   DELETE /<basePath>/dinosaurs/<id>     → delete by id
+//
+//	GET    /<basePath>/dinosaurs          → list (paginated, ?page=1&size=20)
+//	POST   /<basePath>/dinosaurs          → create
+//	GET    /<basePath>/dinosaurs/<id>     → read by id
+//	PUT    /<basePath>/dinosaurs/<id>     → update by id
+//	DELETE /<basePath>/dinosaurs/<id>     → delete by id
 //
 // Routes are registered on the spec.Application; foundry-http wires them into
 // the HTTP server with the configured base_path prefix.

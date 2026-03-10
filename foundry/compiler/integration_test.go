@@ -100,7 +100,7 @@ func TestE2E_DinosaurRegistry(t *testing.T) {
 	for _, want := range []string{
 		"CREATE TABLE IF NOT EXISTS",
 		"dinosaurs",
-		"VARCHAR(255)",  // species field with max_length: 255
+		"VARCHAR(255)", // species field with max_length: 255
 		"PRIMARY KEY",
 		"deleted_at",
 	} {

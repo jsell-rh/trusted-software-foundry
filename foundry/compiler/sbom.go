@@ -63,12 +63,12 @@ func SBOMToWriter(ir *spec.IRSpec) (*bytes.Buffer, error) {
 // --------------------------------------------------------------------------
 
 type cdxBOM struct {
-	BOMFormat   string       `json:"bomFormat"`
-	SpecVersion string       `json:"specVersion"`
-	SerialNumber string      `json:"serialNumber,omitempty"`
-	Version     int          `json:"version"`
-	Metadata    cdxMetadata  `json:"metadata"`
-	Components  []cdxComponent `json:"components"`
+	BOMFormat    string         `json:"bomFormat"`
+	SpecVersion  string         `json:"specVersion"`
+	SerialNumber string         `json:"serialNumber,omitempty"`
+	Version      int            `json:"version"`
+	Metadata     cdxMetadata    `json:"metadata"`
+	Components   []cdxComponent `json:"components"`
 }
 
 type cdxMetadata struct {
@@ -84,13 +84,13 @@ type cdxTool struct {
 }
 
 type cdxComponent struct {
-	Type        string          `json:"type"`
-	BOMRef      string          `json:"bom-ref,omitempty"`
-	Name        string          `json:"name"`
-	Version     string          `json:"version,omitempty"`
-	Description string          `json:"description,omitempty"`
-	PackageURL  string          `json:"purl,omitempty"`
-	Properties  []cdxProperty   `json:"properties,omitempty"`
+	Type        string        `json:"type"`
+	BOMRef      string        `json:"bom-ref,omitempty"`
+	Name        string        `json:"name"`
+	Version     string        `json:"version,omitempty"`
+	Description string        `json:"description,omitempty"`
+	PackageURL  string        `json:"purl,omitempty"`
+	Properties  []cdxProperty `json:"properties,omitempty"`
 }
 
 type cdxProperty struct {
@@ -110,10 +110,10 @@ func buildCycloneDX(ir *spec.IRSpec) cdxBOM {
 	for _, name := range names {
 		version := ir.Components[name]
 		c := cdxComponent{
-			Type:    "library",
-			BOMRef:  name + "@" + version,
-			Name:    name,
-			Version: version,
+			Type:       "library",
+			BOMRef:     name + "@" + version,
+			Name:       name,
+			Version:    version,
 			PackageURL: buildPURL(name, version),
 			Properties: []cdxProperty{
 				{Name: "foundry:type", Value: "trusted-component"},

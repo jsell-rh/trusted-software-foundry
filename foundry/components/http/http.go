@@ -35,11 +35,11 @@ const (
 // HTTPComponent implements spec.Component for the HTTP layer.
 // It owns the net/http server and wires all registered HTTPHandlers into it.
 type HTTPComponent struct {
-	mu      sync.Mutex
-	cfg     config
-	app     *spec.Application
-	server  *http.Server
-	mux     *http.ServeMux
+	mu     sync.Mutex
+	cfg    config
+	app    *spec.Application
+	server *http.Server
+	mux    *http.ServeMux
 }
 
 type config struct {

@@ -41,8 +41,8 @@ func startedComponent(t *testing.T, mr *miniredis.Miniredis) *Component {
 	t.Helper()
 	c := New()
 	if err := c.Configure(map[string]any{
-		"url":        "redis://" + mr.Addr(),
-		"key_prefix": "test",
+		"url":         "redis://" + mr.Addr(),
+		"key_prefix":  "test",
 		"default_ttl": 60,
 	}); err != nil {
 		t.Fatalf("Configure: %v", err)
@@ -462,7 +462,7 @@ func TestStop_CloseError(t *testing.T) {
 	addr := mr.Addr()
 	opts, _ := goredis.ParseURL("redis://" + addr)
 	client := goredis.NewClient(opts)
-	client.Close()   // pre-close
+	client.Close() // pre-close
 	mr.Close()
 
 	c.cacheDB = client

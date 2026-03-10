@@ -61,10 +61,10 @@ func TestHMACFlow(t *testing.T) {
 	defer c.Stop(context.Background())
 
 	tok := makeToken(t, secret, gojwt.MapClaims{
-		"sub": "user-123",
-		"iss": "test-issuer",
-		"aud": "test-audience",
-		"exp": time.Now().Add(time.Hour).Unix(),
+		"sub":   "user-123",
+		"iss":   "test-issuer",
+		"aud":   "test-audience",
+		"exp":   time.Now().Add(time.Hour).Unix(),
 		"roles": []interface{}{"admin"},
 	})
 
