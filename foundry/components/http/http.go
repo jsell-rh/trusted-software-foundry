@@ -48,14 +48,27 @@ type config struct {
 	basePath       string
 	versionHeader  bool
 	allowedOrigins []string
+	readTimeout    time.Duration
+	writeTimeout   time.Duration
+	idleTimeout    time.Duration
 }
+
+// defaultReadTimeout and friends are conservative production-safe defaults.
+const (
+	defaultReadTimeout  = 30 * time.Second
+	defaultWriteTimeout = 30 * time.Second
+	defaultIdleTimeout  = 120 * time.Second
+)
 
 // New returns a new HTTPComponent with defaults.
 func New() *HTTPComponent {
 	return &HTTPComponent{
 		cfg: config{
-			bind:     ":8000",
-			basePath: "",
+			bind:         ":8000",
+			basePath:     "",
+			readTimeout:  defaultReadTimeout,
+			writeTimeout: defaultWriteTimeout,
+			idleTimeout:  defaultIdleTimeout,
 		},
 	}
 }
@@ -83,6 +96,16 @@ func (c *HTTPComponent) Configure(cfg spec.ComponentConfig) error {
 				}
 			}
 		}
+	}
+	// Timeout overrides (values in seconds).
+	if v, ok := cfg["read_timeout_sec"].(int); ok && v > 0 {
+		c.cfg.readTimeout = time.Duration(v) * time.Second
+	}
+	if v, ok := cfg["write_timeout_sec"].(int); ok && v > 0 {
+		c.cfg.writeTimeout = time.Duration(v) * time.Second
+	}
+	if v, ok := cfg["idle_timeout_sec"].(int); ok && v > 0 {
+		c.cfg.idleTimeout = time.Duration(v) * time.Second
 	}
 	return nil
 }
@@ -128,8 +151,11 @@ func (c *HTTPComponent) Start(ctx context.Context) error {
 	}
 
 	c.server = &http.Server{
-		Addr:    c.cfg.bind,
-		Handler: handler,
+		Addr:         c.cfg.bind,
+		Handler:      handler,
+		ReadTimeout:  c.cfg.readTimeout,
+		WriteTimeout: c.cfg.writeTimeout,
+		IdleTimeout:  c.cfg.idleTimeout,
 	}
 
 	// Log registered routes on startup.
