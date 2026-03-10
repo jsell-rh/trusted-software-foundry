@@ -213,7 +213,7 @@ type stubRows struct {
 	index int
 }
 
-func (r *stubRows) Next() bool  { r.index++; return r.index <= len(r.rows) }
+func (r *stubRows) Next() bool { r.index++; return r.index <= len(r.rows) }
 func (r *stubRows) Scan(dest ...any) error {
 	if len(dest) > 0 {
 		if sp, ok := dest[0].(*string); ok {
@@ -233,7 +233,7 @@ type testWriter struct {
 
 func (w *testWriter) Header() map[string][]string { return w.headers }
 func (w *testWriter) Write(b []byte) (int, error) { w.body = append(w.body, b...); return len(b), nil }
-func (w *testWriter) WriteHeader(code int)         { w.statusCode = code }
+func (w *testWriter) WriteHeader(code int)        { w.statusCode = code }
 
 // suppress "io" import warning — io is used in the main file.
 var _ = io.EOF

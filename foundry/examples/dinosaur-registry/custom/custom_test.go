@@ -166,4 +166,4 @@ type nopWriter struct {
 
 func (n *nopWriter) Header() map[string][]string { return make(map[string][]string) }
 func (n *nopWriter) Write(b []byte) (int, error) { n.body = append(n.body, b...); return len(b), nil }
-func (n *nopWriter) WriteHeader(code int)         { n.statusCode = code }
+func (n *nopWriter) WriteHeader(code int)        { n.statusCode = code }

@@ -568,3 +568,111 @@ func TestStart_WithBasePath(t *testing.T) {
 		t.Errorf("body = %q, want items", string(body))
 	}
 }
+
+func TestLoggingResponseWriter_DefaultCode(t *testing.T) {
+	// When WriteHeader is never called, status defaults to 200.
+	lw := &loggingResponseWriter{
+		ResponseWriter: httptest.NewRecorder(),
+		code:           http.StatusOK,
+	}
+	if lw.code != http.StatusOK {
+		t.Errorf("default code = %d, want 200", lw.code)
+	}
+}
+
+func TestLoggingResponseWriter_CapturessStatusCode(t *testing.T) {
+	rec := httptest.NewRecorder()
+	lw := &loggingResponseWriter{ResponseWriter: rec, code: http.StatusOK}
+	lw.WriteHeader(http.StatusNotFound)
+	if lw.code != http.StatusNotFound {
+		t.Errorf("code = %d, want 404", lw.code)
+	}
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("recorder code = %d, want 404", rec.Code)
+	}
+}
+
+func TestRequestLogMiddleware_CapturesStatus(t *testing.T) {
+	c := New()
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+	})
+	handler := c.requestLogMiddleware(inner)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/items", nil)
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Errorf("status = %d, want 201", rec.Code)
+	}
+}
+
+func TestStartup_LogsRoutes(t *testing.T) {
+	// Verify that Start does not panic when routes are present.
+	app := spec.NewApplication(nil)
+	app.AddHTTPHandler("/health", &simpleHandler{body: "ok", code: http.StatusOK})
+
+	c := New()
+	if err := c.Configure(spec.ComponentConfig{"bind": ":0"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Register(app); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := context.Background()
+	if err := c.Start(ctx); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	defer c.Stop(ctx) //nolint:errcheck
+}
+
+func TestConfigure_DefaultTimeouts(t *testing.T) {
+	c := New()
+	if err := c.Configure(spec.ComponentConfig{}); err != nil {
+		t.Fatal(err)
+	}
+	if c.cfg.readTimeout != defaultReadTimeout {
+		t.Errorf("readTimeout = %v, want %v", c.cfg.readTimeout, defaultReadTimeout)
+	}
+	if c.cfg.writeTimeout != defaultWriteTimeout {
+		t.Errorf("writeTimeout = %v, want %v", c.cfg.writeTimeout, defaultWriteTimeout)
+	}
+	if c.cfg.idleTimeout != defaultIdleTimeout {
+		t.Errorf("idleTimeout = %v, want %v", c.cfg.idleTimeout, defaultIdleTimeout)
+	}
+}
+
+func TestConfigure_CustomTimeouts(t *testing.T) {
+	c := New()
+	if err := c.Configure(spec.ComponentConfig{
+		"read_timeout_sec":  60,
+		"write_timeout_sec": 120,
+		"idle_timeout_sec":  300,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if c.cfg.readTimeout != 60*time.Second {
+		t.Errorf("readTimeout = %v, want 60s", c.cfg.readTimeout)
+	}
+	if c.cfg.writeTimeout != 120*time.Second {
+		t.Errorf("writeTimeout = %v, want 120s", c.cfg.writeTimeout)
+	}
+	if c.cfg.idleTimeout != 300*time.Second {
+		t.Errorf("idleTimeout = %v, want 300s", c.cfg.idleTimeout)
+	}
+}
+
+func TestConfigure_ZeroTimeoutIgnored(t *testing.T) {
+	c := New()
+	if err := c.Configure(spec.ComponentConfig{
+		"read_timeout_sec": 0,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	// Zero value should be ignored; default should persist.
+	if c.cfg.readTimeout != defaultReadTimeout {
+		t.Errorf("readTimeout = %v, want default %v (zero should be ignored)", c.cfg.readTimeout, defaultReadTimeout)
+	}
+}

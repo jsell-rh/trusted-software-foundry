@@ -119,10 +119,10 @@ func (s *StubRegistry) Lookup(name, version string) (*RegistryEntry, error) {
 	entry, ok := knownComponents[name]
 	if !ok {
 		known := make([]string, 0, len(knownComponents))
-	for k := range knownComponents {
-		known = append(known, k)
-	}
-	return nil, fmt.Errorf("unknown component %q — not in stub registry (known: %v)", name, known)
+		for k := range knownComponents {
+			known = append(known, k)
+		}
+		return nil, fmt.Errorf("unknown component %q — not in stub registry (known: %v)", name, known)
 	}
 	if entry.Version != version {
 		return nil, fmt.Errorf("component %q: requested version %q but stub registry only has %q", name, version, entry.Version)

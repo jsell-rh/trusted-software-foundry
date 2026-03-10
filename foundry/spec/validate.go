@@ -81,18 +81,18 @@ type IRGraphMutations struct {
 
 // IRGraphQueries configures the query language and API exposure.
 type IRGraphQueries struct {
-	Language   string `yaml:"language"   json:"language"`
-	MaxDepth   int    `yaml:"max_depth"  json:"max_depth"`
-	ExposeAPI  bool   `yaml:"expose_api" json:"expose_api"`
+	Language  string `yaml:"language"   json:"language"`
+	MaxDepth  int    `yaml:"max_depth"  json:"max_depth"`
+	ExposeAPI bool   `yaml:"expose_api" json:"expose_api"`
 }
 
 // IRService describes one service in a multi-service application.
 type IRService struct {
-	Name       string            `yaml:"name"       json:"name"`
-	Role       string            `yaml:"role"       json:"role"`
-	Port       int               `yaml:"port"       json:"port,omitempty"`
-	Components []string          `yaml:"components" json:"components,omitempty"`
-	Resources  interface{}       `yaml:"resources"  json:"resources,omitempty"` // "all" or []string
+	Name       string             `yaml:"name"       json:"name"`
+	Role       string             `yaml:"role"       json:"role"`
+	Port       int                `yaml:"port"       json:"port,omitempty"`
+	Components []string           `yaml:"components" json:"components,omitempty"`
+	Resources  interface{}        `yaml:"resources"  json:"resources,omitempty"` // "all" or []string
 	Triggers   []IRServiceTrigger `yaml:"triggers"  json:"triggers,omitempty"`
 }
 
@@ -153,12 +153,12 @@ type IREventConsumer struct {
 
 // IRAuthzConfig configures external authorization.
 type IRAuthzConfig struct {
-	Backend     string             `yaml:"backend"     json:"backend"`
-	SpiceDB     *IRSpiceDB         `yaml:"spicedb"     json:"spicedb,omitempty"`
-	SchemaFile  string             `yaml:"schema_file" json:"schema_file,omitempty"`
-	Enforcement *IREnforcement     `yaml:"enforcement" json:"enforcement,omitempty"`
-	Relations   []IRAuthzRelation  `yaml:"relations"   json:"relations,omitempty"`
-	Policies    []IRAuthzPolicy    `yaml:"policies"    json:"policies,omitempty"`
+	Backend     string            `yaml:"backend"     json:"backend"`
+	SpiceDB     *IRSpiceDB        `yaml:"spicedb"     json:"spicedb,omitempty"`
+	SchemaFile  string            `yaml:"schema_file" json:"schema_file,omitempty"`
+	Enforcement *IREnforcement    `yaml:"enforcement" json:"enforcement,omitempty"`
+	Relations   []IRAuthzRelation `yaml:"relations"   json:"relations,omitempty"`
+	Policies    []IRAuthzPolicy   `yaml:"policies"    json:"policies,omitempty"`
 }
 
 // IRAuthzRelation declares a SpiceDB relation between a resource and a subject type.
@@ -191,11 +191,11 @@ type IRAuthzPolicy struct {
 // IRStateConfig configures external state backends (Redis).
 // Backend/URL/Keys are the short-form fields. Backends/Uses are the long-form.
 type IRStateConfig struct {
-	Backend  string          `yaml:"backend"  json:"backend,omitempty"`  // "redis"
-	URL      string          `yaml:"url"      json:"url,omitempty"`       // Redis URL
-	Keys     []IRStateKey    `yaml:"keys"     json:"keys,omitempty"`      // named state entries
+	Backend  string           `yaml:"backend"  json:"backend,omitempty"` // "redis"
+	URL      string           `yaml:"url"      json:"url,omitempty"`     // Redis URL
+	Keys     []IRStateKey     `yaml:"keys"     json:"keys,omitempty"`    // named state entries
 	Backends []IRStateBackend `yaml:"backends" json:"backends,omitempty"`
-	Uses     []IRStateUse    `yaml:"uses"     json:"uses,omitempty"`
+	Uses     []IRStateUse     `yaml:"uses"     json:"uses,omitempty"`
 }
 
 // IRStateKey is a named state entry with a strategy.
@@ -216,23 +216,23 @@ type IRStateBackend struct {
 
 // IRStateUse declares how a backend is used (cache, rate limit, lock).
 type IRStateUse struct {
-	Cache              string      `yaml:"cache"                json:"cache,omitempty"`
-	RateLimit          string      `yaml:"rate_limit"           json:"rate_limit,omitempty"`
-	DistributedLock    string      `yaml:"distributed_lock"     json:"distributed_lock,omitempty"`
-	Resources          interface{} `yaml:"resources"            json:"resources,omitempty"`
-	Routes             []string    `yaml:"routes"               json:"routes,omitempty"`
-	RequestsPerSecond  int         `yaml:"requests_per_second"  json:"requests_per_second,omitempty"`
-	Burst              int         `yaml:"burst"                json:"burst,omitempty"`
-	Operations         []string    `yaml:"operations"           json:"operations,omitempty"`
+	Cache             string      `yaml:"cache"                json:"cache,omitempty"`
+	RateLimit         string      `yaml:"rate_limit"           json:"rate_limit,omitempty"`
+	DistributedLock   string      `yaml:"distributed_lock"     json:"distributed_lock,omitempty"`
+	Resources         interface{} `yaml:"resources"            json:"resources,omitempty"`
+	Routes            []string    `yaml:"routes"               json:"routes,omitempty"`
+	RequestsPerSecond int         `yaml:"requests_per_second"  json:"requests_per_second,omitempty"`
+	Burst             int         `yaml:"burst"                json:"burst,omitempty"`
+	Operations        []string    `yaml:"operations"           json:"operations,omitempty"`
 }
 
 // IRBiTemporalConfig configures bi-temporal data tracking (valid time + transaction time).
 // Use the workflows block for Temporal.io workflow engine configuration.
 type IRBiTemporalConfig struct {
-	Enabled         bool                `yaml:"enabled"          json:"enabled"`
-	ValidTime       *IRValidTime        `yaml:"valid_time"       json:"valid_time,omitempty"`
-	TransactionTime *IRTransactionTime  `yaml:"transaction_time" json:"transaction_time,omitempty"`
-	Resources       interface{}         `yaml:"resources"        json:"resources,omitempty"`
+	Enabled         bool                  `yaml:"enabled"          json:"enabled"`
+	ValidTime       *IRValidTime          `yaml:"valid_time"       json:"valid_time,omitempty"`
+	TransactionTime *IRTransactionTime    `yaml:"transaction_time" json:"transaction_time,omitempty"`
+	Resources       interface{}           `yaml:"resources"        json:"resources,omitempty"`
 	QueryAPI        *IRBiTemporalQueryAPI `yaml:"query_api"       json:"query_api,omitempty"`
 }
 
@@ -254,10 +254,10 @@ type IRBiTemporalQueryAPI struct {
 
 // IRWorkflowsConfig configures Temporal.io durable workflow execution.
 type IRWorkflowsConfig struct {
-	Namespace   string               `yaml:"namespace"    json:"namespace"`
-	WorkerQueue string               `yaml:"worker_queue" json:"worker_queue"`
-	Host        string               `yaml:"host"         json:"host,omitempty"`
-	Workflows   []IRWorkflowDef      `yaml:"workflows"    json:"workflows,omitempty"`
+	Namespace   string          `yaml:"namespace"    json:"namespace"`
+	WorkerQueue string          `yaml:"worker_queue" json:"worker_queue"`
+	Host        string          `yaml:"host"         json:"host,omitempty"`
+	Workflows   []IRWorkflowDef `yaml:"workflows"    json:"workflows,omitempty"`
 }
 
 // IRWorkflowDef declares a single Temporal.io workflow.
@@ -272,14 +272,14 @@ type IRWorkflowDef struct {
 // Strategy, Field, and Header are the preferred short-form fields.
 // Model is kept for compatibility with the longer form.
 type IRTenancyConfig struct {
-	Strategy           string                `yaml:"strategy"            json:"strategy,omitempty"`
-	Field              string                `yaml:"field"               json:"field,omitempty"`
-	Header             string                `yaml:"header"              json:"header,omitempty"`
-	Claim              string                `yaml:"claim"               json:"claim,omitempty"`
-	Model              string                `yaml:"model"               json:"model,omitempty"`
-	TenantIdentifier   *IRTenantIdentifier   `yaml:"tenant_identifier"   json:"tenant_identifier,omitempty"`
-	Resources          interface{}           `yaml:"resources"           json:"resources,omitempty"`
-	AdminBypass        *IRAdminBypass        `yaml:"admin_bypass"        json:"admin_bypass,omitempty"`
+	Strategy         string              `yaml:"strategy"            json:"strategy,omitempty"`
+	Field            string              `yaml:"field"               json:"field,omitempty"`
+	Header           string              `yaml:"header"              json:"header,omitempty"`
+	Claim            string              `yaml:"claim"               json:"claim,omitempty"`
+	Model            string              `yaml:"model"               json:"model,omitempty"`
+	TenantIdentifier *IRTenantIdentifier `yaml:"tenant_identifier"   json:"tenant_identifier,omitempty"`
+	Resources        interface{}         `yaml:"resources"           json:"resources,omitempty"`
+	AdminBypass      *IRAdminBypass      `yaml:"admin_bypass"        json:"admin_bypass,omitempty"`
 }
 
 // IRTenantIdentifier specifies how tenant identity is extracted from requests.
@@ -303,11 +303,11 @@ type IRMetadata struct {
 
 // IRResource describes a data resource in the spec.
 type IRResource struct {
-	Name       string      `yaml:"name"       json:"name"`
-	Plural     string      `yaml:"plural"     json:"plural"`
-	Fields     []IRField   `yaml:"fields"     json:"fields"`
-	Operations []string    `yaml:"operations" json:"operations"`
-	Events     bool        `yaml:"events"     json:"events"`
+	Name       string    `yaml:"name"       json:"name"`
+	Plural     string    `yaml:"plural"     json:"plural"`
+	Fields     []IRField `yaml:"fields"     json:"fields"`
+	Operations []string  `yaml:"operations" json:"operations"`
+	Events     bool      `yaml:"events"     json:"events"`
 }
 
 // IRField is a single field within a resource.
@@ -381,14 +381,14 @@ var (
 		"foundry-metrics":  true,
 		"foundry-events":   true,
 		// Advanced components
-		"foundry-auth-spicedb":  true,
-		"foundry-graph-age":     true,
-		"foundry-kafka":         true,
-		"foundry-nats":          true,
-		"foundry-redis":         true,
-		"foundry-redis-streams": true,
-		"foundry-temporal":      true,
-		"foundry-tenancy":       true,
+		"foundry-auth-spicedb":   true,
+		"foundry-graph-age":      true,
+		"foundry-kafka":          true,
+		"foundry-nats":           true,
+		"foundry-redis":          true,
+		"foundry-redis-streams":  true,
+		"foundry-temporal":       true,
+		"foundry-tenancy":        true,
 		"foundry-service-router": true,
 	}
 	validFieldTypes = map[string]bool{
@@ -398,11 +398,11 @@ var (
 	validOperations = map[string]bool{
 		"create": true, "read": true, "update": true, "delete": true, "list": true,
 	}
-	reKebab   = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
-	rePascal  = regexp.MustCompile(`^[A-Z][a-zA-Z0-9]*$`)
-	reSnake   = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
-	reSemver  = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+$`)
-	reAppVer  = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+$`)
+	reKebab  = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
+	rePascal = regexp.MustCompile(`^[A-Z][a-zA-Z0-9]*$`)
+	reSnake  = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
+	reSemver = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+$`)
+	reAppVer = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+$`)
 )
 
 // Validate performs semantic validation of a parsed IRSpec.

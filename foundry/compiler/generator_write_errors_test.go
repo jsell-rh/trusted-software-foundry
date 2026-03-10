@@ -65,9 +65,9 @@ func TestWriteMigrations_MkdirAllError(t *testing.T) {
 		Metadata: spec.IRMetadata{Name: "test-app", Version: "1.0.0"},
 		Resources: []spec.IRResource{
 			{
-				Name:   "Widget",
-				Plural: "widgets",
-				Fields: []spec.IRField{{Name: "id", Type: "uuid", Required: true}},
+				Name:       "Widget",
+				Plural:     "widgets",
+				Fields:     []spec.IRField{{Name: "id", Type: "uuid", Required: true}},
 				Operations: []string{"create"},
 			},
 		},
@@ -127,9 +127,9 @@ func TestWriteMigrations_WriteFileError(t *testing.T) {
 		Metadata: spec.IRMetadata{Name: "test-app", Version: "1.0.0"},
 		Resources: []spec.IRResource{
 			{
-				Name:   "Widget",
-				Plural: "widgets",
-				Fields: []spec.IRField{{Name: "id", Type: "uuid", Required: true}},
+				Name:       "Widget",
+				Plural:     "widgets",
+				Fields:     []spec.IRField{{Name: "id", Type: "uuid", Required: true}},
 				Operations: []string{"create"},
 			},
 		},
