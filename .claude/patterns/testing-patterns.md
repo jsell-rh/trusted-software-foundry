@@ -36,10 +36,10 @@ import (
     "github.com/stretchr/testify/mock"
     "github.com/stretchr/testify/require"
     
-    "github.com/openshift-online/rh-trex-ai/pkg/api"
-    "github.com/openshift-online/rh-trex-ai/pkg/dao/mocks"
-    "github.com/openshift-online/rh-trex-ai/pkg/errors"
-    "github.com/openshift-online/rh-trex-ai/test/factories"
+    "github.com/jsell-rh/trusted-software-foundry/pkg/api"
+    "github.com/jsell-rh/trusted-software-foundry/pkg/dao/mocks"
+    "github.com/jsell-rh/trusted-software-foundry/pkg/errors"
+    "github.com/jsell-rh/trusted-software-foundry/test/factories"
 )
 
 func TestDinosaurService_Create(t *testing.T) {
@@ -202,8 +202,8 @@ import (
     "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/require"
     
-    "github.com/openshift-online/rh-trex-ai/pkg/api"
-    "github.com/openshift-online/rh-trex-ai/test/factories"
+    "github.com/jsell-rh/trusted-software-foundry/pkg/api"
+    "github.com/jsell-rh/trusted-software-foundry/test/factories"
 )
 
 func TestDinosaurAPI_CreateDinosaur(t *testing.T) {
@@ -405,10 +405,10 @@ import (
     
     "gorm.io/gorm"
     
-    "github.com/openshift-online/rh-trex-ai/cmd/trex/environments"
-    "github.com/openshift-online/rh-trex-ai/pkg/api"
-    "github.com/openshift-online/rh-trex-ai/pkg/config"
-    "github.com/openshift-online/rh-trex-ai/test/factories"
+    "github.com/jsell-rh/trusted-software-foundry/cmd/trex/environments"
+    "github.com/jsell-rh/trusted-software-foundry/pkg/api"
+    "github.com/jsell-rh/trusted-software-foundry/pkg/config"
+    "github.com/jsell-rh/trusted-software-foundry/test/factories"
 )
 
 type TestEnvironment struct {
@@ -536,7 +536,7 @@ import (
     
     "github.com/google/uuid"
     
-    "github.com/openshift-online/rh-trex-ai/pkg/api"
+    "github.com/jsell-rh/trusted-software-foundry/pkg/api"
 )
 
 type DinosaurConfig struct {
@@ -682,8 +682,8 @@ import (
     "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/require"
     
-    rhtrexv1 "github.com/openshift-online/rh-trex-ai/pkg/api/grpc"
-    "github.com/openshift-online/rh-trex-ai/test/factories"
+    rhtrexv1 "github.com/jsell-rh/trusted-software-foundry/pkg/api/grpc"
+    "github.com/jsell-rh/trusted-software-foundry/test/factories"
 )
 
 func TestGRPCDinosaurService_CreateDinosaur(t *testing.T) {
@@ -812,8 +812,8 @@ import (
     
     "github.com/stretchr/testify/assert"
     
-    "github.com/openshift-online/rh-trex-ai/test/integration"
-    "github.com/openshift-online/rh-trex-ai/test/factories"
+    "github.com/jsell-rh/trusted-software-foundry/test/integration"
+    "github.com/jsell-rh/trusted-software-foundry/test/factories"
 )
 
 func TestDinosaurAPI_ConcurrentCreation(t *testing.T) {
@@ -914,7 +914,7 @@ import (
     "gorm.io/gorm"
     "gorm.io/gorm/logger"
     
-    "github.com/openshift-online/rh-trex-ai/pkg/db/migrations"
+    "github.com/jsell-rh/trusted-software-foundry/pkg/db/migrations"
 )
 
 func NewTestDB(t *testing.T) *gorm.DB {

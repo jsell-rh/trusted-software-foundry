@@ -12,7 +12,7 @@ package migrations
 import (
     "github.com/go-gormigrate/gormigrate/v2"
     "gorm.io/gorm"
-    "github.com/openshift-online/rh-trex-ai/pkg/api"
+    "github.com/jsell-rh/trusted-software-foundry/pkg/api"
 )
 
 func addEntities() *gormigrate.Migration {

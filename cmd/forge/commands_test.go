@@ -5,7 +5,7 @@ package main
 //
 //   - scaffoldCmd: missing --name, stdout output, file output, write error
 //   - explainCmd: parse-error path
-//   - compileCmd: --rh-trex-ai flag (alternate success message)
+//   - compileCmd: --foundry-path flag (alternate success message)
 //
 // lintCmd's os.Exit(1) path is intentionally omitted — os.Exit terminates
 // the test binary and cannot be exercised with a unit test.
@@ -269,7 +269,7 @@ components:
 }
 
 // --------------------------------------------------------------------------
-// compileCmd — compile failure error path and --rh-trex-ai alternate message
+// compileCmd — compile failure error path and --foundry-path alternate message
 // --------------------------------------------------------------------------
 
 // TestCompileCmd_CompileFailure verifies that compileCmd returns an error
@@ -300,7 +300,7 @@ func TestCompileCmd_WithRhTrexAI(t *testing.T) {
 	// This file is at cmd/forge/commands_test.go; two levels up is the module root.
 	rhTrexAIPath, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
-		t.Fatalf("resolving rh-trex-ai path: %v", err)
+		t.Fatalf("resolving foundry path: %v", err)
 	}
 
 	outDir := t.TempDir()
@@ -314,10 +314,10 @@ func TestCompileCmd_WithRhTrexAI(t *testing.T) {
 	os.Stdout = w
 
 	cmd := compileCmd()
-	// Provide the real --rh-trex-ai path to trigger the alternate message branch.
+	// Provide the real --foundry-path path to trigger the alternate message branch.
 	cmd.SetArgs([]string{
 		"--output", outDir,
-		"--rh-trex-ai", rhTrexAIPath,
+		"--foundry-path", rhTrexAIPath,
 		specPath,
 	})
 	runErr := cmd.Execute()
@@ -330,15 +330,15 @@ func TestCompileCmd_WithRhTrexAI(t *testing.T) {
 	r.Close()
 
 	if runErr != nil {
-		t.Fatalf("compileCmd with --rh-trex-ai failed: %v", runErr)
+		t.Fatalf("compileCmd with --foundry-path failed: %v", runErr)
 	}
 
 	out := buf.String()
 	if !strings.Contains(out, "Compiled") {
 		t.Errorf("expected 'Compiled' in output, got: %q", out)
 	}
-	// The --rh-trex-ai branch prints "go build -o app ." without the disclaimer.
+	// The --foundry-path branch prints "go build -o app ." without the disclaimer.
 	if !strings.Contains(out, "go build -o app .") {
-		t.Errorf("expected 'go build -o app .' in output with --rh-trex-ai, got: %q", out)
+		t.Errorf("expected 'go build -o app .' in output with --foundry-path, got: %q", out)
 	}
 }

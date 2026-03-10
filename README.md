@@ -96,7 +96,7 @@ go build -o /usr/local/bin/forge ./cmd/forge
 
 # Compile your spec into a runnable Go project
 forge compile app.foundry.yaml \
-  --rh-trex-ai ~/code/scratch/rh-trex-ai \
+  --trusted-software-foundry ~/code/scratch/trusted-software-foundry \
   -o ./my-service-out
 ```
 
@@ -133,7 +133,7 @@ REST API on `:8000`, health check on `:8083`, metrics on `:8080`.
 
 ```bash
 # Recompile — the compiler handles everything
-forge compile app.foundry.yaml --rh-trex-ai . -o ./my-service-out
+forge compile app.foundry.yaml --trusted-software-foundry . -o ./my-service-out
 cd my-service-out && go build -o app .
 # /api/v1/fossils endpoints now work. No code written.
 ```

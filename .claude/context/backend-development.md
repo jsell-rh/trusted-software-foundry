@@ -59,8 +59,8 @@ All entities use the plugin system for auto-discovery:
 package entities
 
 import (
-    "github.com/openshift-online/rh-trex-ai/cmd/trex/environments"
-    "github.com/openshift-online/rh-trex-ai/pkg/handlers"
+    "github.com/jsell-rh/trusted-software-foundry/cmd/trex/environments"
+    "github.com/jsell-rh/trusted-software-foundry/pkg/handlers"
 )
 
 func init() {
@@ -415,7 +415,7 @@ func (s *service) ProcessLargeDataset(ctx context.Context) error {
 
 ### Structured Logging
 ```go
-import "github.com/openshift-online/rh-trex-ai/pkg/logger"
+import "github.com/jsell-rh/trusted-software-foundry/pkg/logger"
 
 func (s *service) ProcessEntity(ctx context.Context, id string) error {
     logger := logger.NewOCMLogger(ctx)
