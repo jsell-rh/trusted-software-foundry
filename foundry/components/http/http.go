@@ -258,15 +258,41 @@ func (l *loggingResponseWriter) WriteHeader(code int) {
 }
 
 func (c *HTTPComponent) corsMiddleware(next http.Handler) http.Handler {
-	origins := strings.Join(c.cfg.allowedOrigins, ", ")
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", origins)
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusNoContent)
-			return
+	// Build an O(1) lookup set; track whether wildcard is configured.
+	wildcard := false
+	allowed := make(map[string]bool, len(c.cfg.allowedOrigins))
+	for _, o := range c.cfg.allowedOrigins {
+		if o == "*" {
+			wildcard = true
+		} else {
+			allowed[strings.ToLower(o)] = true
 		}
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		var matchedOrigin string
+		if wildcard {
+			// Access-Control-Allow-Origin: * cannot be used with credentials;
+			// return "*" unconditionally — credentials must be excluded by callers.
+			matchedOrigin = "*"
+		} else if origin != "" && allowed[strings.ToLower(origin)] {
+			// Reflect the specific matching origin so the browser trusts it.
+			// Per-origin responses must vary by Origin for correct cache behaviour.
+			matchedOrigin = origin
+			w.Header().Add("Vary", "Origin")
+		}
+
+		if matchedOrigin != "" {
+			w.Header().Set("Access-Control-Allow-Origin", matchedOrigin)
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			if r.Method == http.MethodOptions {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+		}
+
 		next.ServeHTTP(w, r)
 	})
 }
