@@ -29,11 +29,25 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 	"sync"
 
 	"github.com/jsell-rh/trusted-software-foundry/foundry/spec"
 )
+
+// reValidLabel matches safe Cypher node/edge type labels: must start with a letter,
+// followed by letters, digits, or underscores only.
+// This prevents Cypher injection when label names are interpolated into queries.
+var reValidLabel = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*$`)
+
+// validateLabel returns an error if label is not a safe Cypher identifier.
+func validateLabel(label string) error {
+	if !reValidLabel.MatchString(label) {
+		return fmt.Errorf("foundry-graph-age: invalid graph label %q: must match ^[A-Za-z][A-Za-z0-9_]*$", label)
+	}
+	return nil
+}
 
 const (
 	componentName    = "foundry-graph-age"
@@ -179,6 +193,9 @@ func (c *Component) Stop(_ context.Context) error { return nil }
 
 // CreateNode creates a typed node in the AGE graph.
 func (c *Component) CreateNode(ctx context.Context, nodeType, id string, props map[string]any) error {
+	if err := validateLabel(nodeType); err != nil {
+		return err
+	}
 	propsJSON, err := json.Marshal(props)
 	if err != nil {
 		return fmt.Errorf("foundry-graph-age: marshal node props: %w", err)
@@ -192,6 +209,9 @@ func (c *Component) CreateNode(ctx context.Context, nodeType, id string, props m
 
 // GetNode retrieves a node by type and ID, scanning props into dest.
 func (c *Component) GetNode(ctx context.Context, nodeType, id string) (map[string]any, error) {
+	if err := validateLabel(nodeType); err != nil {
+		return nil, err
+	}
 	cypher := fmt.Sprintf(
 		"SELECT * FROM cypher('%s', $$ MATCH (n:%s {id: '%s'}) RETURN n $$) AS (n agtype)",
 		c.cfg.graphName, nodeType, escapeCypher(id),
@@ -218,6 +238,9 @@ func (c *Component) GetNode(ctx context.Context, nodeType, id string) (map[strin
 
 // DeleteNode removes a node and all its edges.
 func (c *Component) DeleteNode(ctx context.Context, nodeType, id string) error {
+	if err := validateLabel(nodeType); err != nil {
+		return err
+	}
 	cypher := fmt.Sprintf(
 		"SELECT * FROM cypher('%s', $$ MATCH (n:%s {id: '%s'}) DETACH DELETE n $$) AS (v agtype)",
 		c.cfg.graphName, nodeType, escapeCypher(id),
@@ -227,6 +250,9 @@ func (c *Component) DeleteNode(ctx context.Context, nodeType, id string) error {
 
 // CreateEdge creates a directed edge between two nodes.
 func (c *Component) CreateEdge(ctx context.Context, edgeType, fromID, toID string, props map[string]any) error {
+	if err := validateLabel(edgeType); err != nil {
+		return err
+	}
 	propsJSON, err := json.Marshal(props)
 	if err != nil {
 		return fmt.Errorf("foundry-graph-age: marshal edge props: %w", err)
@@ -240,6 +266,9 @@ func (c *Component) CreateEdge(ctx context.Context, edgeType, fromID, toID strin
 
 // DeleteEdge removes all edges of the given type between two nodes.
 func (c *Component) DeleteEdge(ctx context.Context, edgeType, fromID, toID string) error {
+	if err := validateLabel(edgeType); err != nil {
+		return err
+	}
 	cypher := fmt.Sprintf(
 		"SELECT * FROM cypher('%s', $$ MATCH (a {id: '%s'})-[e:%s]->(b {id: '%s'}) DELETE e $$) AS (v agtype)",
 		c.cfg.graphName, escapeCypher(fromID), edgeType, escapeCypher(toID),
@@ -316,6 +345,10 @@ func (c *Component) applyMutation(ctx context.Context, m Mutation) error {
 
 // --- HTTP handlers (mounted when expose_api / bulk_loading is true) ---
 
+// handleQuery executes a caller-supplied Cypher query against the graph.
+// SECURITY: This endpoint accepts arbitrary Cypher and must only be exposed to
+// trusted, authenticated callers (e.g., behind foundry-auth-jwt with an admin role).
+// Never expose it publicly without authentication middleware.
 func (c *Component) handleQuery(w spec.ResponseWriter, r *spec.Request) {
 	if r.Method != "POST" {
 		writeJSON(w, 405, map[string]string{"error": "method not allowed"})
@@ -348,6 +381,10 @@ func (c *Component) handleNodeCRUD(w spec.ResponseWriter, r *spec.Request) {
 			writeJSON(w, 400, map[string]string{"error": "invalid request body"})
 			return
 		}
+		if err := validateLabel(req.Type); err != nil {
+			writeJSON(w, 400, map[string]string{"error": err.Error()})
+			return
+		}
 		if err := c.CreateNode(r.Context, req.Type, req.ID, req.Props); err != nil {
 			writeJSON(w, 500, map[string]string{"error": err.Error()})
 			return
@@ -360,6 +397,10 @@ func (c *Component) handleNodeCRUD(w spec.ResponseWriter, r *spec.Request) {
 		}
 		if err := json.Unmarshal(r.Body, &req); err != nil {
 			writeJSON(w, 400, map[string]string{"error": "invalid request body"})
+			return
+		}
+		if err := validateLabel(req.Type); err != nil {
+			writeJSON(w, 400, map[string]string{"error": err.Error()})
 			return
 		}
 		if err := c.DeleteNode(r.Context, req.Type, req.ID); err != nil {
@@ -385,6 +426,10 @@ func (c *Component) handleEdgeCRUD(w spec.ResponseWriter, r *spec.Request) {
 			writeJSON(w, 400, map[string]string{"error": "invalid request body"})
 			return
 		}
+		if err := validateLabel(req.Type); err != nil {
+			writeJSON(w, 400, map[string]string{"error": err.Error()})
+			return
+		}
 		if err := c.CreateEdge(r.Context, req.Type, req.From, req.To, req.Props); err != nil {
 			writeJSON(w, 500, map[string]string{"error": err.Error()})
 			return
@@ -398,6 +443,10 @@ func (c *Component) handleEdgeCRUD(w spec.ResponseWriter, r *spec.Request) {
 		}
 		if err := json.Unmarshal(r.Body, &req); err != nil {
 			writeJSON(w, 400, map[string]string{"error": "invalid request body"})
+			return
+		}
+		if err := validateLabel(req.Type); err != nil {
+			writeJSON(w, 400, map[string]string{"error": err.Error()})
 			return
 		}
 		if err := c.DeleteEdge(r.Context, req.Type, req.From, req.To); err != nil {
