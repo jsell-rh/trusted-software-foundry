@@ -413,3 +413,20 @@ func queryParam(rawURL, key string) string {
 	}
 	return ""
 }
+
+// hasQueryParam reports whether the given key is present in the URL query string,
+// even if its value is empty. Used to detect ?cursor= (first-page cursor request).
+func hasQueryParam(rawURL, key string) bool {
+	i := strings.Index(rawURL, "?")
+	if i < 0 {
+		return false
+	}
+	query := rawURL[i+1:]
+	for _, part := range strings.Split(query, "&") {
+		kv := strings.SplitN(part, "=", 2)
+		if kv[0] == key {
+			return true
+		}
+	}
+	return false
+}

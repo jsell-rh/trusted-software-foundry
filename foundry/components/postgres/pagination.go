@@ -55,7 +55,7 @@ func (h *collectionHandler) handleListCursor(w spec.ResponseWriter, r *spec.Requ
 	// Detect whether there is a next page.
 	var nextCursor string
 	if len(rows) > size {
-		rows = rows[:size]                           // truncate to requested size
+		rows = rows[:size] // truncate to requested size
 		lastID := fmt.Sprintf("%v", rows[len(rows)-1]["id"])
 		nextCursor = base64.StdEncoding.EncodeToString([]byte(lastID))
 	}
