@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/jsell-rh/trusted-software-foundry/foundry/spec"
 )
@@ -75,9 +76,14 @@ func (c *HealthComponent) Start(_ context.Context) error {
 	// Kubernetes readiness probe alias.
 	mux.HandleFunc("/readyz", healthHandler)
 
+	// Health probes are short-lived; conservative timeouts guard against
+	// slow-loris attacks on this low-traffic port.
 	c.server = &http.Server{
-		Addr:    c.cfg.bind,
-		Handler: mux,
+		Addr:         c.cfg.bind,
+		Handler:      mux,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 5 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
 
 	errCh := make(chan error, 1)
