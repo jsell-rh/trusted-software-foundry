@@ -398,7 +398,20 @@ func (d *resourceDAO) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-// List returns all non-deleted rows with optional pagination.
+// Count returns the total number of non-deleted rows (tenant-scoped when applicable).
+// Used by List to populate the total field in paginated responses.
+func (d *resourceDAO) Count(ctx context.Context) (int64, error) {
+	table := strings.ToLower(d.resource.Plural)
+	tenantSQL, tenantVals := d.tenantClause(ctx, 1)
+	query := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE deleted_at IS NULL%s", table, tenantSQL)
+	var total int64
+	if err := d.db.QueryRowContext(ctx, query, tenantVals...).Scan(&total); err != nil {
+		return 0, fmt.Errorf("count %s: %w", d.resource.Plural, err)
+	}
+	return total, nil
+}
+
+// List returns paginated non-deleted rows. Page is 1-based.
 func (d *resourceDAO) List(ctx context.Context, page, size int) ([]map[string]any, error) {
 	table := strings.ToLower(d.resource.Plural)
 	if size <= 0 {
