@@ -293,7 +293,12 @@ func validateFieldLengths(fields []spec.FieldDefinition, input map[string]any) [
 func writeJSON(w spec.ResponseWriter, status int, v any) {
 	data, err := json.Marshal(v)
 	if err != nil {
-		writeError(w, 500, "marshal error: "+err.Error())
+		// Log internally; write a static error body to avoid calling back into
+		// writeJSON (which would recurse) and to avoid leaking Go type details.
+		fmt.Fprintf(os.Stderr, "foundry-postgres: marshal response: %v\n", err)
+		w.Header()["Content-Type"] = []string{"application/json"}
+		w.WriteHeader(500)
+		w.Write([]byte(`{"error":"internal server error","status":500}`)) //nolint:errcheck
 		return
 	}
 	w.Header()["Content-Type"] = []string{"application/json"}
