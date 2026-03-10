@@ -29,6 +29,8 @@ package redis
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"sync"
@@ -232,7 +234,11 @@ func (c *Component) RateLimit(ctx context.Context, route, clientID string, reque
 // The returned token must be passed to Unlock to release the lock.
 func (c *Component) Lock(ctx context.Context, resource, id string, ttl time.Duration) (token string, err error) {
 	key := fmt.Sprintf("%s:lock:%s:%s", c.cfg.keyPrefix, resource, id)
-	token = fmt.Sprintf("%d", time.Now().UnixNano())
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return "", fmt.Errorf("foundry-redis: generate lock token: %w", err)
+	}
+	token = hex.EncodeToString(b[:])
 
 	ok, err := c.lockDB.SetNX(ctx, key, token, ttl).Result()
 	if err != nil {

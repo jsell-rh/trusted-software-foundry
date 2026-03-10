@@ -348,6 +348,35 @@ func TestLock_Success(t *testing.T) {
 	}
 }
 
+// TestLock_Token_IsRandomHex verifies that the lock token is a 32-character hex
+// string (16 random bytes) and that two locks on different keys produce distinct tokens.
+func TestLock_Token_IsRandomHex(t *testing.T) {
+	mr := startMini(t)
+	c := startedComponent(t, mr)
+
+	tok1, err := c.Lock(context.Background(), "resource", "rand-a", 30*time.Second)
+	if err != nil {
+		t.Fatalf("Lock rand-a: %v", err)
+	}
+	tok2, err := c.Lock(context.Background(), "resource", "rand-b", 30*time.Second)
+	if err != nil {
+		t.Fatalf("Lock rand-b: %v", err)
+	}
+
+	// Token must be 32 hex chars (16 random bytes).
+	if len(tok1) != 32 {
+		t.Errorf("token1 length = %d, want 32 (hex of 16 bytes)", len(tok1))
+	}
+	if len(tok2) != 32 {
+		t.Errorf("token2 length = %d, want 32 (hex of 16 bytes)", len(tok2))
+	}
+
+	// Two tokens must be distinct (collision probability ≈ 2^-128).
+	if tok1 == tok2 {
+		t.Error("two lock tokens are identical — rand.Read is not producing unique values")
+	}
+}
+
 func TestLock_AlreadyHeld(t *testing.T) {
 	mr := startMini(t)
 	c := startedComponent(t, mr)
