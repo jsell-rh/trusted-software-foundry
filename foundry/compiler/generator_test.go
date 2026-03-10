@@ -519,3 +519,66 @@ func TestWriteMigrations_SkipsAutoAndSoftDeleteFields(t *testing.T) {
 		}
 	}
 }
+
+// ---- expandEnvVar tests ----
+
+func TestExpandEnvVar_EnvVarRef(t *testing.T) {
+	got := expandEnvVar("${MY_SECRET_KEY}")
+	want := `env("MY_SECRET_KEY", "")`
+	if got != want {
+		t.Errorf("expandEnvVar(%q) = %q, want %q", "${MY_SECRET_KEY}", got, want)
+	}
+}
+
+func TestExpandEnvVar_LiteralURL(t *testing.T) {
+	got := expandEnvVar("http://localhost:9092")
+	want := `"http://localhost:9092"`
+	if got != want {
+		t.Errorf("expandEnvVar(%q) = %q, want %q", "http://localhost:9092", got, want)
+	}
+}
+
+func TestExpandEnvVar_EmptyString(t *testing.T) {
+	got := expandEnvVar("")
+	want := `""`
+	if got != want {
+		t.Errorf("expandEnvVar(%q) = %q, want %q", "", got, want)
+	}
+}
+
+func TestGenerateMainGo_DatabaseDSNFromEnv(t *testing.T) {
+	outDir, _ := generateFromExample(t)
+	mainGo, err := os.ReadFile(filepath.Join(outDir, "main.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(mainGo)
+	if !strings.Contains(s, `env("DATABASE_DSN"`) {
+		t.Errorf("generated main.go should read DATABASE_DSN from env; got:\n%s", s)
+	}
+}
+
+func TestGenerateMainGo_KafkaBrokerFromEnv(t *testing.T) {
+	ir, err := Parse("../examples/kartograph/app.foundry.yaml")
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	resolver := NewResolver(NewStubRegistry(), "")
+	components, err := resolver.ResolveAll(ir.Components)
+	if err != nil {
+		t.Fatalf("ResolveAll: %v", err)
+	}
+	outDir := t.TempDir()
+	if err := NewGenerator(outDir, "").Generate(ir, components); err != nil {
+		t.Fatalf("Generate: %v", err)
+	}
+	mainGo, err := os.ReadFile(filepath.Join(outDir, "main.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(mainGo)
+	// The spec uses ${KARTOGRAPH_EVENTS_BROKER_URL} which should be expanded to env(...)
+	if !strings.Contains(s, `env("KARTOGRAPH_EVENTS_BROKER_URL"`) {
+		t.Errorf("generated main.go should expand ${KARTOGRAPH_EVENTS_BROKER_URL} to env(...); got snippet:\n%s", s)
+	}
+}
