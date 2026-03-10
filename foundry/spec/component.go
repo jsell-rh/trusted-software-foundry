@@ -176,3 +176,33 @@ func TenantIDFromContext(ctx context.Context) (string, bool) {
 func WithTenantID(ctx context.Context, tenantID string) context.Context {
 	return context.WithValue(ctx, TenantIDKey, tenantID)
 }
+
+// ---------------------------------------------------------------------------
+// Error tracking
+// ---------------------------------------------------------------------------
+
+// ErrorTracker is the interface for reporting unexpected errors to an external
+// tracking service (e.g. Sentry, Rollbar). The platform core uses this interface
+// so it stays decoupled from any specific service — teams plug in their preferred
+// tracker via Application.SetErrorTracker.
+//
+// All methods must be safe for concurrent use.
+type ErrorTracker interface {
+	// ReportError sends an error event with optional structured tags.
+	// tags is a flat map of key=value strings for additional context
+	// (e.g. "component", "foundry-postgres", "operation", "db.query").
+	// Implementations must not panic on nil err.
+	ReportError(ctx context.Context, err error, tags map[string]string)
+
+	// Flush blocks until all pending error events have been delivered,
+	// or until the context is cancelled.
+	// Call this during graceful shutdown so events are not lost.
+	Flush(ctx context.Context)
+}
+
+// NoopErrorTracker silently discards all errors. It is the default tracker
+// used when no external tracker is configured.
+type NoopErrorTracker struct{}
+
+func (NoopErrorTracker) ReportError(_ context.Context, _ error, _ map[string]string) {}
+func (NoopErrorTracker) Flush(_ context.Context)                                     {}
