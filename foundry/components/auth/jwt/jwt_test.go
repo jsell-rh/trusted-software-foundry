@@ -2,6 +2,7 @@ package jwt_test
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -177,6 +178,65 @@ func TestMissingAuthHeader(t *testing.T) {
 	wrapped.ServeHTTP(fw, req)
 	if fw.code != 401 {
 		t.Errorf("expected 401, got %d", fw.code)
+	}
+}
+
+func TestErrorResponse_ValidJSON(t *testing.T) {
+	// Error messages containing control characters (newlines, tabs, etc.) must
+	// produce valid JSON — not malformed output from hand-rolled string concat.
+	const secret = "test-secret-key"
+	c := authjwt.New()
+	_ = c.Configure(spec.ComponentConfig{"secret": secret})
+	_ = c.Start(context.Background())
+	defer c.Stop(context.Background())
+
+	fw := &fakeResponseWriter{}
+	mw := c.Middleware()
+	wrapped := mw(handlerFunc(func(w spec.ResponseWriter, r *spec.Request) {
+		t.Error("handler should not be called")
+	}))
+
+	// Send a token with a newline in it to trigger an error whose message
+	// contains control characters that would break hand-crafted JSON.
+	req := &spec.Request{
+		Method:  "GET",
+		URL:     "/api/v1/data",
+		Headers: map[string][]string{"Authorization": {"Bearer bad\ntoken"}},
+		Context: context.Background(),
+	}
+	wrapped.ServeHTTP(fw, req)
+
+	if fw.code != 401 {
+		t.Fatalf("expected 401, got %d", fw.code)
+	}
+	// The response body must be valid JSON.
+	var out map[string]string
+	if err := json.Unmarshal(fw.body, &out); err != nil {
+		t.Errorf("error response is not valid JSON: %v\nbody: %s", err, fw.body)
+	}
+}
+
+func TestErrorResponse_ContentTypeHeader(t *testing.T) {
+	c := authjwt.New()
+	_ = c.Configure(spec.ComponentConfig{"secret": "s"})
+	_ = c.Start(context.Background())
+	defer c.Stop(context.Background())
+
+	fw := &fakeResponseWriter{}
+	mw := c.Middleware()
+	wrapped := mw(handlerFunc(func(w spec.ResponseWriter, r *spec.Request) {}))
+
+	req := &spec.Request{
+		Method:  "GET",
+		URL:     "/api/v1/data",
+		Headers: map[string][]string{},
+		Context: context.Background(),
+	}
+	wrapped.ServeHTTP(fw, req)
+
+	ct := fw.headers["Content-Type"]
+	if len(ct) == 0 || ct[0] != "application/json" {
+		t.Errorf("expected Content-Type: application/json, got %v", ct)
 	}
 }
 
