@@ -109,7 +109,7 @@ func TestCopyHookFiles_MkdirAllError(t *testing.T) {
 	outDir := t.TempDir()
 	defer makeReadOnly(t, outDir)()
 
-	err := copyHookFiles(ir, outDir, specDir)
+	_, err := copyHookFiles(ir, outDir, specDir)
 	if err == nil {
 		t.Fatal("expected error when outDir is read-only, got nil")
 	}
@@ -430,7 +430,7 @@ func TestCopyHookFiles_WriteFileError(t *testing.T) {
 	}
 	defer os.Chmod(destHooksDir, 0755)
 
-	err := copyHookFiles(ir, outDir, specDir)
+	_, err := copyHookFiles(ir, outDir, specDir)
 	if err == nil {
 		t.Fatal("expected error when hooks/ dir is read-only, got nil")
 	}
