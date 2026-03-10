@@ -1829,3 +1829,355 @@ func TestParseWithSchema_GoyamlUnmarshalError(t *testing.T) {
 		t.Errorf("expected 'parsing YAML' in error, got: %v", err)
 	}
 }
+
+// --------------------------------------------------------------------------
+// Tenancy — empty strategy (omitted) is valid (strategy is optional)
+// --------------------------------------------------------------------------
+
+func TestParse_TenancyEmptyStrategyValid(t *testing.T) {
+	// strategy is optional — omitting it is valid
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http:    v1.0.0
+  foundry-tenancy: v1.0.0
+tenancy: {}
+`)
+	if _, err := Parse(spec); err != nil {
+		t.Errorf("empty tenancy strategy: unexpected error: %v", err)
+	}
+}
+
+// --------------------------------------------------------------------------
+// Services — component cross-check
+// --------------------------------------------------------------------------
+
+func TestParse_ServiceComponentNotInSBOM(t *testing.T) {
+	spec := writeTempSpec(t, baseMinimal+`services:
+  - name: api-service
+    role: rest-api
+    components: [foundry-postgres]
+`)
+	_, err := Parse(spec)
+	if err == nil {
+		t.Fatal("expected error for service referencing undeclared component, got nil")
+	}
+	if !strings.Contains(err.Error(), "foundry-postgres") {
+		t.Errorf("expected error to mention 'foundry-postgres', got: %v", err)
+	}
+}
+
+func TestParse_ServiceComponentInSBOM_Valid(t *testing.T) {
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http:     v1.0.0
+  foundry-postgres: v1.0.0
+database:
+  type: postgres
+services:
+  - name: api-service
+    role: rest-api
+    components: [foundry-http, foundry-postgres]
+`)
+	if _, err := Parse(spec); err != nil {
+		t.Errorf("service with declared components: unexpected error: %v", err)
+	}
+}
+
+func TestParse_ServiceMultipleComponentsOneUndeclared(t *testing.T) {
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http: v1.0.0
+services:
+  - name: worker
+    role: worker
+    components: [foundry-http, foundry-kafka]
+`)
+	_, err := Parse(spec)
+	if err == nil {
+		t.Fatal("expected error for undeclared component in service, got nil")
+	}
+	if !strings.Contains(err.Error(), "foundry-kafka") {
+		t.Errorf("expected error to mention 'foundry-kafka', got: %v", err)
+	}
+}
+
+// --------------------------------------------------------------------------
+// Events — pg-notify requires no component
+// --------------------------------------------------------------------------
+
+func TestParse_EventsPgNotifyNoComponentRequired(t *testing.T) {
+	// pg-notify uses the existing postgres connection — no events component needed
+	spec := writeTempSpec(t, baseWithPostgres+`events:
+  backend: pg-notify
+`)
+	if _, err := Parse(spec); err != nil {
+		t.Errorf("events.backend=pg-notify: unexpected error: %v", err)
+	}
+}
+
+func TestParse_EventsKafkaNoComponentFails(t *testing.T) {
+	// kafka backend without foundry-kafka should fail
+	spec := writeTempSpec(t, baseMinimal+`events:
+  backend: kafka
+  broker_url: ${KAFKA_URL}
+`)
+	_, err := Parse(spec)
+	if err == nil {
+		t.Fatal("expected error for kafka backend without foundry-kafka, got nil")
+	}
+	if !strings.Contains(err.Error(), "foundry-kafka") {
+		t.Errorf("expected 'foundry-kafka' in error, got: %v", err)
+	}
+}
+
+// --------------------------------------------------------------------------
+// Authz — opa and casbin backends (no component required)
+// --------------------------------------------------------------------------
+
+func TestParse_AuthzOPANoComponentRequired(t *testing.T) {
+	spec := writeTempSpec(t, baseMinimal+`authz:
+  backend: opa
+`)
+	if _, err := Parse(spec); err != nil {
+		t.Errorf("authz.backend=opa: unexpected error: %v", err)
+	}
+}
+
+func TestParse_AuthzCasbinNoComponentRequired(t *testing.T) {
+	spec := writeTempSpec(t, baseMinimal+`authz:
+  backend: casbin
+`)
+	if _, err := Parse(spec); err != nil {
+		t.Errorf("authz.backend=casbin: unexpected error: %v", err)
+	}
+}
+
+func TestParse_AuthzSpiceDBMissingComponent(t *testing.T) {
+	spec := writeTempSpec(t, baseMinimal+`authz:
+  backend: spicedb
+`)
+	_, err := Parse(spec)
+	if err == nil {
+		t.Fatal("expected error for spicedb without foundry-auth-spicedb, got nil")
+	}
+	if !strings.Contains(err.Error(), "foundry-auth-spicedb") {
+		t.Errorf("expected 'foundry-auth-spicedb' in error, got: %v", err)
+	}
+}
+
+// --------------------------------------------------------------------------
+// Graph — edge cross-reference with no node_types declared
+// --------------------------------------------------------------------------
+
+func TestParse_GraphEdgesWithNoNodeTypes_Valid(t *testing.T) {
+	// When no node_types are declared, from/to validation is skipped
+	spec2 := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-postgres:  v1.0.0
+  foundry-http:      v1.0.0
+  foundry-graph-age: v1.0.0
+database:
+  type: postgres
+graph:
+  backend: age
+  edge_types:
+    - label: CONNECTS_TO
+      from: NodeA
+      to: NodeB
+`)
+	if _, err := Parse(spec2); err != nil {
+		t.Errorf("edges with no node_types declared: unexpected error: %v", err)
+	}
+}
+
+// --------------------------------------------------------------------------
+// Hook — name must be kebab-case
+// --------------------------------------------------------------------------
+
+func TestParse_HookNameNotKebabCase(t *testing.T) {
+	spec := writeTempSpec(t, baseMinimal+`hooks:
+  - name: MyHookHandler
+    point: pre-handler
+    implementation: hooks/my_hook.go
+`)
+	_, err := Parse(spec)
+	if err == nil {
+		t.Fatal("expected error for hook name not in kebab-case, got nil")
+	}
+	if !strings.Contains(err.Error(), "MyHookHandler") {
+		t.Errorf("expected hook name in error, got: %v", err)
+	}
+}
+
+func TestParse_HookNameWithNumbers_Valid(t *testing.T) {
+	spec := writeTempSpec(t, baseMinimal+`hooks:
+  - name: auth-v2-handler
+    point: pre-handler
+    implementation: hooks/auth_v2.go
+`)
+	if _, err := Parse(spec); err != nil {
+		t.Errorf("hook name with numbers: unexpected error: %v", err)
+	}
+}
+
+// --------------------------------------------------------------------------
+// Bi-temporal — disabled block requires no components
+// --------------------------------------------------------------------------
+
+func TestParse_BiTemporalDisabledNoTemporal_Valid(t *testing.T) {
+	// bi_temporal block present but enabled=false → no temporal component required
+	spec := writeTempSpec(t, baseWithPostgres+`bi_temporal:
+  enabled: false
+`)
+	if _, err := Parse(spec); err != nil {
+		t.Errorf("bi_temporal.enabled=false: unexpected error: %v", err)
+	}
+}
+
+// --------------------------------------------------------------------------
+// Workflows — valid workflow definition
+// --------------------------------------------------------------------------
+
+func TestParse_WorkflowValidDefinition(t *testing.T) {
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http:     v1.0.0
+  foundry-temporal: v1.0.0
+workflows:
+  namespace: test-app
+  worker_queue: test-queue
+  workflows:
+    - name: ProvisionCluster
+      trigger: create
+      activities: [ValidateRequest, AllocateResources, NotifyUser]
+`)
+	if _, err := Parse(spec); err != nil {
+		t.Errorf("workflows with activities: unexpected error: %v", err)
+	}
+}
+
+func TestParse_WorkflowScheduleTrigger_Valid(t *testing.T) {
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http:     v1.0.0
+  foundry-temporal: v1.0.0
+workflows:
+  namespace: test-app
+  worker_queue: cleanup-queue
+  workflows:
+    - name: NightlyCleanup
+      trigger: schedule
+      activities: [PurgeOldRecords]
+`)
+	if _, err := Parse(spec); err != nil {
+		t.Errorf("workflow with schedule trigger: unexpected error: %v", err)
+	}
+}
+
+// --------------------------------------------------------------------------
+// State — Redis key strategies
+// --------------------------------------------------------------------------
+
+func TestParse_StateWithCacheKey_Valid(t *testing.T) {
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http:  v1.0.0
+  foundry-redis: v1.0.0
+state:
+  url: ${REDIS_URL}
+  keys:
+    - name: session_cache
+      strategy: cache
+      ttl_seconds: 3600
+    - name: api_rate_limit
+      strategy: rate_limit
+`)
+	if _, err := Parse(spec); err != nil {
+		t.Errorf("state with cache key: unexpected error: %v", err)
+	}
+}
+
+func TestParse_StateWithDistributedLock_Valid(t *testing.T) {
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http:  v1.0.0
+  foundry-redis: v1.0.0
+state:
+  url: ${REDIS_URL}
+  keys:
+    - name: job_lock
+      strategy: distributed_lock
+      ttl_seconds: 30
+`)
+	if _, err := Parse(spec); err != nil {
+		t.Errorf("state with distributed lock: unexpected error: %v", err)
+	}
+}
+
+// --------------------------------------------------------------------------
+// Authz — relations and policies
+// --------------------------------------------------------------------------
+
+func TestParse_AuthzWithRelationsAndPolicies_Valid(t *testing.T) {
+	spec := writeTempSpec(t, `apiVersion: foundry/v1
+kind: Application
+metadata:
+  name: test-app
+  version: 1.0.0
+components:
+  foundry-http:         v1.0.0
+  foundry-auth-spicedb: v1.0.0
+authz:
+  backend: spicedb
+  spicedb:
+    endpoint: ${SPICEDB_ENDPOINT}
+    token: ${SPICEDB_TOKEN}
+  enforcement:
+    default: deny
+  relations:
+    - resource: Cluster
+      relation: owner
+      subject: User
+  policies:
+    - resource: Cluster
+      operations:
+        read: can_view
+        update: can_edit
+        delete: can_delete
+`)
+	if _, err := Parse(spec); err != nil {
+		t.Errorf("authz with relations and policies: unexpected error: %v", err)
+	}
+}
