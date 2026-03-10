@@ -289,6 +289,23 @@ func TestCollectionHandler_Create_InvalidJSON(t *testing.T) {
 	}
 }
 
+func TestCollectionHandler_Create_MissingRequiredField(t *testing.T) {
+	dao, _ := newTestDAO(t) // dinoResource has species: required=true
+	h := &collectionHandler{dao: dao, ops: opsSet([]string{"create"}), resource: dao.resource}
+	w := newMockRW()
+	// Send description but omit the required 'species' field.
+	body, _ := json.Marshal(map[string]any{"description": "big"})
+	h.ServeHTTP(w, newRequest("POST", "/dinosaurs", body))
+	if w.code != 400 {
+		t.Errorf("code = %d, want 400 (missing required field)", w.code)
+	}
+	m := w.bodyMap()
+	errMsg, _ := m["error"].(string)
+	if !strings.Contains(errMsg, "species") {
+		t.Errorf("error = %q, should mention missing field 'species'", errMsg)
+	}
+}
+
 func TestCollectionHandler_Create_NotAllowed(t *testing.T) {
 	dao, _ := newTestDAO(t)
 	h := &collectionHandler{dao: dao, ops: opsSet(nil), resource: dao.resource}
@@ -567,6 +584,44 @@ func TestRegisterCRUDHandlers_EmptyPluralFallback(t *testing.T) {
 	}
 	if !patterns["/widgets"] {
 		t.Errorf("expected /widgets route from fallback; got: %v", patterns)
+	}
+}
+
+// --------------------------------------------------------------------------
+// validateRequired
+// --------------------------------------------------------------------------
+
+func TestValidateRequired_AllPresent(t *testing.T) {
+	fields := []spec.FieldDefinition{
+		{Name: "species", Type: "string", Required: true},
+		{Name: "description", Type: "string", Required: false},
+	}
+	missing := validateRequired(fields, map[string]any{"species": "T-Rex", "description": "big"})
+	if len(missing) != 0 {
+		t.Errorf("expected no missing fields, got: %v", missing)
+	}
+}
+
+func TestValidateRequired_MissingOne(t *testing.T) {
+	fields := []spec.FieldDefinition{
+		{Name: "species", Type: "string", Required: true},
+		{Name: "region", Type: "string", Required: true},
+	}
+	missing := validateRequired(fields, map[string]any{"species": "T-Rex"})
+	if len(missing) != 1 || missing[0] != "region" {
+		t.Errorf("expected [region], got %v", missing)
+	}
+}
+
+func TestValidateRequired_AutoFieldExcluded(t *testing.T) {
+	// Auto-managed fields should not be treated as required for input.
+	fields := []spec.FieldDefinition{
+		{Name: "species", Type: "string", Required: true},
+		{Name: "created_at", Type: "timestamp", Required: true, Auto: "created"},
+	}
+	missing := validateRequired(fields, map[string]any{"species": "T-Rex"})
+	if len(missing) != 0 {
+		t.Errorf("auto fields should not be required in input, missing: %v", missing)
 	}
 }
 
