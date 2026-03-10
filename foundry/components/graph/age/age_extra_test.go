@@ -1032,3 +1032,160 @@ func TestSqlDB_QueryContext_Error(t *testing.T) {
 		t.Fatal("expected error, got nil")
 	}
 }
+
+// --------------------------------------------------------------------------
+// validateLabel — Cypher injection prevention
+// --------------------------------------------------------------------------
+
+func TestValidateLabel_ValidLabels(t *testing.T) {
+	valid := []string{
+		"Node", "Resource", "DataSource", "MyType123", "A", "z", "Type_Name",
+		"Owns", "RELATES_TO", "abc123",
+	}
+	for _, label := range valid {
+		if err := validateLabel(label); err != nil {
+			t.Errorf("validateLabel(%q) returned unexpected error: %v", label, err)
+		}
+	}
+}
+
+func TestValidateLabel_InvalidLabels(t *testing.T) {
+	invalid := []string{
+		"",
+		"123Node",        // starts with digit
+		"Node Type",      // contains space
+		"Node; DROP",     // semicolon injection
+		"Node$",          // dollar sign
+		"Node\nLabel",    // newline
+		"'quoted'",       // single quotes
+		"Node--comment",  // double-dash
+	}
+	for _, label := range invalid {
+		if err := validateLabel(label); err == nil {
+			t.Errorf("validateLabel(%q) expected error, got nil", label)
+		}
+	}
+}
+
+func TestCreateNode_InvalidLabel(t *testing.T) {
+	c := New()
+	c.cfg.graphName = "test"
+	c.db = &stubDB{}
+	err := c.CreateNode(context.Background(), "Bad Label!", "id1", nil)
+	if err == nil {
+		t.Fatal("expected label validation error, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid graph label") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestGetNode_InvalidLabel(t *testing.T) {
+	c := New()
+	c.cfg.graphName = "test"
+	c.db = &stubDB{}
+	_, err := c.GetNode(context.Background(), "Bad; DROP", "id1")
+	if err == nil {
+		t.Fatal("expected label validation error, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid graph label") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestDeleteNode_InvalidLabel(t *testing.T) {
+	c := New()
+	c.cfg.graphName = "test"
+	c.db = &stubDB{}
+	err := c.DeleteNode(context.Background(), "'; DROP GRAPH foundry_graph; --", "id1")
+	if err == nil {
+		t.Fatal("expected label validation error, got nil")
+	}
+}
+
+func TestCreateEdge_InvalidLabel(t *testing.T) {
+	c := New()
+	c.cfg.graphName = "test"
+	c.db = &stubDB{}
+	err := c.CreateEdge(context.Background(), "Bad Edge!", "a", "b", nil)
+	if err == nil {
+		t.Fatal("expected label validation error, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid graph label") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestDeleteEdge_InvalidLabel(t *testing.T) {
+	c := New()
+	c.cfg.graphName = "test"
+	c.db = &stubDB{}
+	err := c.DeleteEdge(context.Background(), "'; --", "a", "b")
+	if err == nil {
+		t.Fatal("expected label validation error, got nil")
+	}
+}
+
+func TestHandleNodeCRUD_POST_InvalidLabel_Returns400(t *testing.T) {
+	c := New()
+	c.cfg.graphName = "test"
+	c.db = &stubDB{}
+	rw := newTestWriter()
+	body, _ := json.Marshal(map[string]any{"type": "Bad Label!", "id": "r1"})
+	c.handleNodeCRUD(rw, &spec.Request{
+		Method: "POST", URL: "/graph/nodes",
+		Body:    body,
+		Context: context.Background(),
+	})
+	if rw.statusCode != 400 {
+		t.Errorf("expected 400 for invalid label, got %d; body: %s", rw.statusCode, rw.body)
+	}
+}
+
+func TestHandleNodeCRUD_DELETE_InvalidLabel_Returns400(t *testing.T) {
+	c := New()
+	c.cfg.graphName = "test"
+	c.db = &stubDB{}
+	rw := newTestWriter()
+	body, _ := json.Marshal(map[string]string{"type": "'; DROP GRAPH --", "id": "r1"})
+	c.handleNodeCRUD(rw, &spec.Request{
+		Method: "DELETE", URL: "/graph/nodes",
+		Body:    body,
+		Context: context.Background(),
+	})
+	if rw.statusCode != 400 {
+		t.Errorf("expected 400 for invalid label, got %d; body: %s", rw.statusCode, rw.body)
+	}
+}
+
+func TestHandleEdgeCRUD_POST_InvalidLabel_Returns400(t *testing.T) {
+	c := New()
+	c.cfg.graphName = "test"
+	c.db = &stubDB{}
+	rw := newTestWriter()
+	body, _ := json.Marshal(map[string]any{"type": "Bad; DROP", "from": "a", "to": "b"})
+	c.handleEdgeCRUD(rw, &spec.Request{
+		Method: "POST", URL: "/graph/edges",
+		Body:    body,
+		Context: context.Background(),
+	})
+	if rw.statusCode != 400 {
+		t.Errorf("expected 400 for invalid edge label, got %d; body: %s", rw.statusCode, rw.body)
+	}
+}
+
+func TestHandleEdgeCRUD_DELETE_InvalidLabel_Returns400(t *testing.T) {
+	c := New()
+	c.cfg.graphName = "test"
+	c.db = &stubDB{}
+	rw := newTestWriter()
+	body, _ := json.Marshal(map[string]string{"type": "'; DROP --", "from": "a", "to": "b"})
+	c.handleEdgeCRUD(rw, &spec.Request{
+		Method: "DELETE", URL: "/graph/edges",
+		Body:    body,
+		Context: context.Background(),
+	})
+	if rw.statusCode != 400 {
+		t.Errorf("expected 400 for invalid edge label, got %d; body: %s", rw.statusCode, rw.body)
+	}
+}
