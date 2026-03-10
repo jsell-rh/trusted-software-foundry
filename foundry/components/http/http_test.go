@@ -437,6 +437,47 @@ func TestAdapt_BodyAndStatusPassthrough(t *testing.T) {
 	}
 }
 
+func TestAdapt_BodyTooLarge_Returns413(t *testing.T) {
+	c := New()
+	c.cfg.maxBodyBytes = 10 // tiny limit for testing
+
+	h := &simpleHandler{body: "ok", code: http.StatusOK}
+	adapted := c.adapt(h)
+
+	// Send a body that exceeds the 10-byte limit.
+	body := strings.NewReader(strings.Repeat("x", 100))
+	req := httptest.NewRequest(http.MethodPost, "/test", body)
+	rr := httptest.NewRecorder()
+	adapted(rr, req)
+
+	if rr.Code != http.StatusRequestEntityTooLarge {
+		t.Errorf("expected 413 for oversized body, got %d", rr.Code)
+	}
+}
+
+func TestAdaptMiddleware_BodyTooLarge_Returns413(t *testing.T) {
+	c := New()
+	c.cfg.maxBodyBytes = 10 // tiny limit for testing
+
+	mw := spec.HTTPMiddleware(func(next spec.HTTPHandler) spec.HTTPHandler {
+		return next
+	})
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	adapted := c.adaptMiddleware(mw, inner)
+
+	body := strings.NewReader(strings.Repeat("x", 100))
+	req := httptest.NewRequest(http.MethodPost, "/test", body)
+	rr := httptest.NewRecorder()
+	adapted.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusRequestEntityTooLarge {
+		t.Errorf("expected 413 for oversized body in middleware, got %d", rr.Code)
+	}
+}
+
 // --------------------------------------------------------------------------
 // adaptMiddleware
 // --------------------------------------------------------------------------

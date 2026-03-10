@@ -12,6 +12,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -476,10 +477,15 @@ func (d *resourceDAO) List(ctx context.Context, page, size int) ([]map[string]an
 }
 
 // notify emits a PostgreSQL NOTIFY event for this resource mutation.
+// The payload is built with encoding/json to correctly escape IDs that may
+// contain special characters (e.g. quotes from URL path extraction).
 func (d *resourceDAO) notify(ctx context.Context, action, id string) error {
 	channel := strings.ToLower(d.resource.Name) + "_events"
-	payload := fmt.Sprintf(`{"action":"%s","id":"%s"}`, action, id)
-	_, err := d.db.ExecContext(ctx, "SELECT pg_notify($1, $2)", channel, payload)
+	payloadBytes, err := json.Marshal(map[string]string{"action": action, "id": id})
+	if err != nil {
+		return fmt.Errorf("notify marshal: %w", err)
+	}
+	_, err = d.db.ExecContext(ctx, "SELECT pg_notify($1, $2)", channel, string(payloadBytes))
 	return err
 }
 
