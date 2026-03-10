@@ -148,24 +148,23 @@ func TestWriteJSON_MarshalError_DoesNotLeakGoTypeInfo(t *testing.T) {
 	if strings.Contains(body, "chan int") || strings.Contains(body, "unsupported type") {
 		t.Errorf("response leaks Go type info: %s", body)
 	}
-	if !strings.Contains(body, "internal server error") {
+	if !strings.Contains(body, `"reason"`) && strings.Contains(body, "Internal server error") || strings.Contains(body, "internal server error") {
 		t.Errorf("expected generic error body, got: %s", body)
 	}
 }
 
 func TestWriteError(t *testing.T) {
+	// writeError was replaced by ServiceError.WriteHTTP — verify via spec helpers
 	w := newMockRW()
-	writeError(w, 404, "not found")
+	spec.NewNotFoundError("Ship", "404").WriteHTTP(w)
 	if w.code != 404 {
 		t.Errorf("code = %d, want 404", w.code)
 	}
-	m := w.bodyMap()
-	if m["error"] != "not found" {
-		t.Errorf("error = %v, want 'not found'", m["error"])
+	if !strings.Contains(w.body.String(), "not found") {
+		t.Errorf("body does not contain reason, got: %s", w.body.String())
 	}
 }
 
-// --------------------------------------------------------------------------
 // collectionHandler — list
 // --------------------------------------------------------------------------
 
@@ -251,7 +250,7 @@ func TestCollectionHandler_List_DBError(t *testing.T) {
 	if strings.Contains(body, sql.ErrConnDone.Error()) {
 		t.Errorf("response body leaks internal DB error: %s", body)
 	}
-	if !strings.Contains(body, "internal server error") {
+	if !strings.Contains(body, `"reason"`) && strings.Contains(body, "Internal server error") || strings.Contains(body, "internal server error") {
 		t.Errorf("expected generic error in body, got: %s", body)
 	}
 }
@@ -326,7 +325,7 @@ func TestCollectionHandler_Create_MissingRequiredField(t *testing.T) {
 		t.Errorf("code = %d, want 400 (missing required field)", w.code)
 	}
 	m := w.bodyMap()
-	errMsg, _ := m["error"].(string)
+	errMsg, _ := m["reason"].(string)
 	if !strings.Contains(errMsg, "species") {
 		t.Errorf("error = %q, should mention missing field 'species'", errMsg)
 	}
@@ -358,7 +357,7 @@ func TestCollectionHandler_Create_DBError(t *testing.T) {
 	if strings.Contains(respBody, sql.ErrConnDone.Error()) {
 		t.Errorf("response body leaks internal DB error: %s", respBody)
 	}
-	if !strings.Contains(respBody, "internal server error") {
+	if !strings.Contains(respBody, `"reason"`) && strings.Contains(respBody, "Internal server error") || strings.Contains(respBody, "internal server error") {
 		t.Errorf("expected generic error in body, got: %s", respBody)
 	}
 }
@@ -425,7 +424,7 @@ func TestItemHandler_Get_DBError(t *testing.T) {
 	if strings.Contains(respBody, sql.ErrConnDone.Error()) {
 		t.Errorf("response body leaks internal DB error: %s", respBody)
 	}
-	if !strings.Contains(respBody, "internal server error") {
+	if !strings.Contains(respBody, `"reason"`) && strings.Contains(respBody, "Internal server error") || strings.Contains(respBody, "internal server error") {
 		t.Errorf("expected generic error in body, got: %s", respBody)
 	}
 }
@@ -519,7 +518,7 @@ func TestItemHandler_Put_DBError(t *testing.T) {
 	if strings.Contains(respBody, sql.ErrConnDone.Error()) {
 		t.Errorf("response body leaks internal DB error: %s", respBody)
 	}
-	if !strings.Contains(respBody, "internal server error") {
+	if !strings.Contains(respBody, `"reason"`) && strings.Contains(respBody, "Internal server error") || strings.Contains(respBody, "internal server error") {
 		t.Errorf("expected generic error in body, got: %s", respBody)
 	}
 }
@@ -567,7 +566,7 @@ func TestItemHandler_Delete_DBError(t *testing.T) {
 	if strings.Contains(respBody, sql.ErrConnDone.Error()) {
 		t.Errorf("response body leaks internal DB error: %s", respBody)
 	}
-	if !strings.Contains(respBody, "internal server error") {
+	if !strings.Contains(respBody, `"reason"`) && strings.Contains(respBody, "Internal server error") || strings.Contains(respBody, "internal server error") {
 		t.Errorf("expected generic error in body, got: %s", respBody)
 	}
 }

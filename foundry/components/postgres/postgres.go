@@ -476,6 +476,75 @@ func (d *resourceDAO) List(ctx context.Context, page, size int) ([]map[string]an
 	return scanRows(rows)
 }
 
+// Search returns paginated non-deleted rows filtered by a pre-built WHERE
+// fragment and its parameterized args (produced by filter.BuildWhere).
+// extraClause must not contain a leading AND; it is appended after the
+// deleted_at IS NULL check.
+func (d *resourceDAO) Search(ctx context.Context, extraClause string, extraArgs []any, page, size int) ([]map[string]any, error) {
+	table := strings.ToLower(d.resource.Plural)
+	if size <= 0 {
+		size = 100
+	}
+	offset := (page - 1) * size
+
+	baseArgCount := len(extraArgs)
+	tenantSQL, tenantVals := d.tenantClause(ctx, baseArgCount+1)
+	allArgs := append(append([]any{}, extraArgs...), tenantVals...)
+
+	limitIdx := len(allArgs) + 1
+	offsetIdx := limitIdx + 1
+	allArgs = append(allArgs, size, offset)
+
+	where := "deleted_at IS NULL"
+	if extraClause != "" {
+		where += " AND " + extraClause
+	}
+	where += tenantSQL
+
+	query := fmt.Sprintf(
+		"SELECT * FROM %s WHERE %s ORDER BY id LIMIT $%d OFFSET $%d",
+		table, where, limitIdx, offsetIdx,
+	)
+	rows, err := d.db.QueryContext(ctx, query, allArgs...)
+	if err != nil {
+		return nil, fmt.Errorf("search %s: %w", d.resource.Plural, err)
+	}
+	defer rows.Close()
+	return scanRows(rows)
+}
+
+// CountSearch returns the total rows matching extraClause (tenant-scoped).
+func (d *resourceDAO) CountSearch(ctx context.Context, extraClause string, extraArgs []any) (int64, error) {
+	table := strings.ToLower(d.resource.Plural)
+	baseArgCount := len(extraArgs)
+	tenantSQL, tenantVals := d.tenantClause(ctx, baseArgCount+1)
+	allArgs := append(append([]any{}, extraArgs...), tenantVals...)
+
+	where := "deleted_at IS NULL"
+	if extraClause != "" {
+		where += " AND " + extraClause
+	}
+	where += tenantSQL
+
+	query := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s", table, where)
+	var total int64
+	if err := d.db.QueryRowContext(ctx, query, allArgs...).Scan(&total); err != nil {
+		return 0, fmt.Errorf("count search %s: %w", d.resource.Plural, err)
+	}
+	return total, nil
+}
+
+// allowedFilterFields returns the set of field names permitted in ?search= filters.
+// Only IR-declared field names are permitted; id, created_at, updated_at, deleted_at
+// are also included as they are part of every resource's schema.
+func (d *resourceDAO) allowedFilterFields() map[string]bool {
+	allowed := map[string]bool{"id": true, "created_at": true, "updated_at": true}
+	for _, f := range d.resource.Fields {
+		allowed[strings.ToLower(f.Name)] = true
+	}
+	return allowed
+}
+
 // notify emits a PostgreSQL NOTIFY event for this resource mutation.
 // The payload is built with encoding/json to correctly escape IDs that may
 // contain special characters (e.g. quotes from URL path extraction).
@@ -555,4 +624,43 @@ func scanRows(rows *sql.Rows) ([]map[string]any, error) {
 		results = append(results, row)
 	}
 	return results, rows.Err()
+}
+
+// ListCursor returns up to (size+1) non-deleted rows with id > afterID, ordered by id.
+// Fetching size+1 rows lets the caller detect whether a next page exists:
+// if len(rows) > size, there are more results and the caller should truncate to size
+// and encode the last row's id as the next cursor.
+//
+// afterID is the decoded cursor (last-seen id from the previous page). An empty string
+// means "from the beginning".
+func (d *resourceDAO) ListCursor(ctx context.Context, afterID string, size int) ([]map[string]any, error) {
+	table := strings.ToLower(d.resource.Plural)
+	if size <= 0 {
+		size = 20
+	}
+
+	var args []any
+	var whereExtra string
+
+	if afterID != "" {
+		args = append(args, afterID)
+		whereExtra = fmt.Sprintf(" AND id > $%d", len(args))
+	}
+
+	tenantSQL, tenantVals := d.tenantClause(ctx, len(args)+1)
+	args = append(args, tenantVals...)
+
+	limitIdx := len(args) + 1
+	args = append(args, size+1) // fetch one extra to detect next page
+
+	query := fmt.Sprintf(
+		"SELECT * FROM %s WHERE deleted_at IS NULL%s%s ORDER BY id LIMIT $%d",
+		table, whereExtra, tenantSQL, limitIdx,
+	)
+	rows, err := d.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list-cursor %s: %w", d.resource.Plural, err)
+	}
+	defer rows.Close()
+	return scanRows(rows)
 }

@@ -24,6 +24,12 @@ var knownComponents = map[string]*RegistryEntry{
 		Module:    "github.com/jsell-rh/trusted-software-foundry/foundry/components/auth/jwt",
 		AuditHash: "stub-not-verified",
 	},
+	"foundry-auth-ocm": {
+		Name:      "foundry-auth-ocm",
+		Version:   "v1.0.0",
+		Module:    "github.com/jsell-rh/trusted-software-foundry/foundry/components/auth/ocm",
+		AuditHash: "stub-not-verified",
+	},
 	"foundry-grpc": {
 		Name:      "foundry-grpc",
 		Version:   "v1.0.0",

@@ -18,7 +18,8 @@ type Application struct {
 	grpcServices []GRPCServiceEntry
 	db           DB
 	resources    []ResourceDefinition
-	tenantField  string // column name for tenant isolation; set by foundry-tenancy
+	tenantField  string       // column name for tenant isolation; set by foundry-tenancy
+	errorTracker ErrorTracker // pluggable error tracker; defaults to NoopErrorTracker
 }
 
 // HTTPHandlerEntry holds a registered HTTP handler and its URL pattern.
@@ -179,4 +180,22 @@ func (a *Application) GRPCServices() []GRPCServiceEntry {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	return a.grpcServices
+}
+
+// SetErrorTracker installs an error tracker. If not called, the application
+// uses a NoopErrorTracker that silently discards all errors.
+func (a *Application) SetErrorTracker(t ErrorTracker) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.errorTracker = t
+}
+
+// ErrorTracker returns the active error tracker. Never returns nil.
+func (a *Application) ErrorTracker() ErrorTracker {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	if a.errorTracker == nil {
+		return NoopErrorTracker{}
+	}
+	return a.errorTracker
 }
