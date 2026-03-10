@@ -676,3 +676,30 @@ func TestConfigure_ZeroTimeoutIgnored(t *testing.T) {
 		t.Errorf("readTimeout = %v, want default %v (zero should be ignored)", c.cfg.readTimeout, defaultReadTimeout)
 	}
 }
+
+func TestConfigure_DefaultMaxBodyBytes(t *testing.T) {
+	c := New()
+	if c.cfg.maxBodyBytes != defaultMaxBodyBytes {
+		t.Errorf("maxBodyBytes = %d, want %d", c.cfg.maxBodyBytes, defaultMaxBodyBytes)
+	}
+}
+
+func TestConfigure_CustomMaxBodyBytes(t *testing.T) {
+	c := New()
+	if err := c.Configure(spec.ComponentConfig{"max_body_bytes": 1024}); err != nil {
+		t.Fatal(err)
+	}
+	if c.cfg.maxBodyBytes != 1024 {
+		t.Errorf("maxBodyBytes = %d, want 1024", c.cfg.maxBodyBytes)
+	}
+}
+
+func TestConfigure_ZeroMaxBodyBytesIgnored(t *testing.T) {
+	c := New()
+	if err := c.Configure(spec.ComponentConfig{"max_body_bytes": 0}); err != nil {
+		t.Fatal(err)
+	}
+	if c.cfg.maxBodyBytes != defaultMaxBodyBytes {
+		t.Errorf("maxBodyBytes = %d, want default %d", c.cfg.maxBodyBytes, defaultMaxBodyBytes)
+	}
+}

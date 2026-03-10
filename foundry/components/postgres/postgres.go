@@ -336,7 +336,7 @@ func (d *resourceDAO) List(ctx context.Context, page, size int) ([]map[string]an
 	if size <= 0 {
 		size = 100
 	}
-	offset := page * size
+	offset := (page - 1) * size
 
 	query := fmt.Sprintf(
 		"SELECT * FROM %s WHERE deleted_at IS NULL ORDER BY id LIMIT $1 OFFSET $2",
