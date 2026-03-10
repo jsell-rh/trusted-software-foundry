@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache: true
+
+      - name: go build
+        run: go build ./...
+
+      - name: go test (unit + fast integration)
+        run: go test -race -short ./...
+
+      - name: go test (E2E compile + go build)
+        run: go test -race ./foundry/compiler/... -run 'TestE2E'
+        # E2E tests compile example specs and run go build on the output.
+        # -short is NOT set so the go build tests run.
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache: true
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: gofmt check
+        run: |
+          UNFORMATTED=$(gofmt -l .)
+          if [ -n "$UNFORMATTED" ]; then
+            echo "The following files are not gofmt-clean:"
+            echo "$UNFORMATTED"
+            exit 1
+          fi
+
+  forge-demo:
+    name: forge compile demo
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache: true
+
+      - name: Build forge
+        run: go build -o /tmp/forge ./cmd/forge
+
+      - name: forge lint all examples
+        run: |
+          /tmp/forge lint foundry/examples/dinosaur-registry/app.foundry.yaml
+          /tmp/forge lint foundry/examples/fleet-manager/app.foundry.yaml
+          /tmp/forge lint foundry/examples/kartograph/app.foundry.yaml
+
+      - name: forge compile dinosaur-registry
+        run: |
+          /tmp/forge compile foundry/examples/dinosaur-registry/app.foundry.yaml \
+            --foundry-path $(pwd) \
+            -o /tmp/dinosaur-out
+          cd /tmp/dinosaur-out && go build -o dinosaur-registry .
+
+      - name: forge compile fleet-manager
+        run: |
+          /tmp/forge compile foundry/examples/fleet-manager/app.foundry.yaml \
+            --foundry-path $(pwd) \
+            -o /tmp/fleet-out
+          cd /tmp/fleet-out && go build -o fleet-manager .
+
+      - name: forge compile kartograph (hook stubs)
+        run: |
+          /tmp/forge compile foundry/examples/kartograph/app.foundry.yaml \
+            --foundry-path $(pwd) \
+            -o /tmp/kartograph-out
+          cd /tmp/kartograph-out && go build -o kartograph .
