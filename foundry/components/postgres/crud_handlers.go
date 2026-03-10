@@ -77,7 +77,11 @@ func (h *collectionHandler) ServeHTTP(w spec.ResponseWriter, r *spec.Request) {
 			spec.NewNotImplementedError("list").WriteHTTP(w)
 			return
 		}
-		h.handleList(w, r)
+		if hasQueryParam(r.URL, "cursor") {
+			h.handleListCursor(w, r)
+		} else {
+			h.handleList(w, r)
+		}
 	case "POST":
 		if !h.ops["create"] {
 			spec.NewNotImplementedError("create").WriteHTTP(w)
