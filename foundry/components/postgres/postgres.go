@@ -120,6 +120,9 @@ func (c *Component) Register(app *spec.Application) error {
 		c.daos[res.Name] = &resourceDAO{db: sqldb, resource: res}
 	}
 
+	// Register REST CRUD handlers for each resource.
+	c.registerCRUDHandlers(app)
+
 	return nil
 }
 
