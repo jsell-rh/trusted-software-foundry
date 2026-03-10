@@ -181,8 +181,12 @@ func (c *Component) middleware() spec.HTTPMiddleware {
 	return func(next spec.HTTPHandler) spec.HTTPHandler {
 		return handlerFunc(func(w spec.ResponseWriter, r *spec.Request) {
 			// Skip configured paths (e.g. /healthz, /readyz).
+			// pathMatchesSkip ensures the URL is exactly the prefix, a sub-path
+			// (next char is '/'), or has a query string ('?'). This prevents the
+			// path-confusion bypass where /healthzmypath would incorrectly match
+			// the skip prefix /healthz.
 			for _, prefix := range c.skipPaths {
-				if strings.HasPrefix(r.URL, prefix) {
+				if pathMatchesSkip(r.URL, prefix) {
 					next.ServeHTTP(w, r)
 					return
 				}
@@ -200,6 +204,22 @@ func (c *Component) middleware() spec.HTTPMiddleware {
 			next.ServeHTTP(w, &enriched)
 		})
 	}
+}
+
+// pathMatchesSkip returns true if rawURL should bypass authentication for the
+// given skip prefix. The URL matches when it:
+//   - equals the prefix exactly (e.g. "/healthz" matches "/healthz")
+//   - is a sub-path of the prefix (next char is '/') (e.g. "/healthz/live")
+//   - has a query string immediately after the prefix (e.g. "/healthz?foo=bar")
+//
+// Plain strings.HasPrefix would incorrectly match "/healthzmypath" against the
+// prefix "/healthz", allowing an auth bypass on unintended routes.
+func pathMatchesSkip(rawURL, prefix string) bool {
+	if !strings.HasPrefix(rawURL, prefix) {
+		return false
+	}
+	rest := rawURL[len(prefix):]
+	return rest == "" || rest[0] == '/' || rest[0] == '?'
 }
 
 // writeJWTError writes a JSON error response using encoding/json to handle all
