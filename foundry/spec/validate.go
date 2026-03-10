@@ -638,6 +638,11 @@ func Validate(spec *IRSpec) []error {
 		if spec.Tenancy.Strategy != "" && !validTenancyStrategies[spec.Tenancy.Strategy] {
 			add("tenancy.strategy must be one of row/schema/database, got %q", spec.Tenancy.Strategy)
 		}
+		// tenancy.field is used directly as a SQL column identifier in DDL and queries;
+		// it must be snake_case to prevent SQL injection via identifier interpolation.
+		if spec.Tenancy.Field != "" && !reSnake.MatchString(spec.Tenancy.Field) {
+			add("tenancy.field must be snake_case (e.g. org_id), got %q", spec.Tenancy.Field)
+		}
 	}
 
 	// Services cross-checks — components referenced must be declared in the global SBOM.

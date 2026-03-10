@@ -1305,3 +1305,37 @@ func TestValidate_FullValidSpec(t *testing.T) {
 		t.Errorf("expected no errors for full valid spec, got: %v", errs)
 	}
 }
+
+func TestValidate_TenancyField_ValidSnakeCase(t *testing.T) {
+	s := minimalValidSpec()
+	s.Components["foundry-tenancy"] = "v1.0.0"
+	s.Tenancy = &IRTenancyConfig{Field: "org_id"}
+	errs := Validate(s)
+	if errContains(errs, "tenancy.field") {
+		t.Errorf("valid snake_case field should not produce error, got: %v", errs)
+	}
+}
+
+func TestValidate_TenancyField_InvalidChars(t *testing.T) {
+	// A field name with SQL-special characters must be rejected.
+	// Without this validation, tenancy.field is interpolated directly into
+	// DDL SQL identifiers (CREATE TABLE / ALTER TABLE), enabling SQL injection.
+	s := minimalValidSpec()
+	s.Components["foundry-tenancy"] = "v1.0.0"
+	s.Tenancy = &IRTenancyConfig{Field: "org; DROP TABLE dinosaurs; --"}
+	errs := Validate(s)
+	if !errContains(errs, "tenancy.field") {
+		t.Errorf("expected tenancy.field validation error for non-snake_case value, got: %v", errs)
+	}
+}
+
+func TestValidate_TenancyField_EmptyAllowed(t *testing.T) {
+	// empty field means use the component default ("org_id")
+	s := minimalValidSpec()
+	s.Components["foundry-tenancy"] = "v1.0.0"
+	s.Tenancy = &IRTenancyConfig{Field: ""}
+	errs := Validate(s)
+	if errContains(errs, "tenancy.field") {
+		t.Errorf("empty tenancy.field should not produce error, got: %v", errs)
+	}
+}
