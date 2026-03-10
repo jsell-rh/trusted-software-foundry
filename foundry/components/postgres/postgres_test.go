@@ -909,6 +909,85 @@ func TestBuildUpdate_OnlyID(t *testing.T) {
 }
 
 // --------------------------------------------------------------------------
+// filterWritable / writableFieldSet — SQL injection protection
+// --------------------------------------------------------------------------
+
+func TestFilterWritable_AllowsDeclaredFields(t *testing.T) {
+	dao := &resourceDAO{
+		resource: spec.ResourceDefinition{
+			Name:   "Dinosaur",
+			Plural: "dinosaurs",
+			Fields: []spec.FieldDefinition{
+				{Name: "species", Type: "string"},
+				{Name: "description", Type: "string"},
+			},
+		},
+	}
+	input := map[string]any{"species": "T-Rex", "description": "big", "evil': DROP TABLE dinosaurs; --": "x"}
+	got := dao.filterWritable(input)
+	if _, ok := got["species"]; !ok {
+		t.Error("filterWritable: should allow 'species'")
+	}
+	if _, ok := got["evil': DROP TABLE dinosaurs; --"]; ok {
+		t.Error("filterWritable: should reject SQL injection key")
+	}
+}
+
+func TestFilterWritable_BlocksSystemColumns(t *testing.T) {
+	dao := &resourceDAO{
+		resource: spec.ResourceDefinition{
+			Name:   "Record",
+			Plural: "records",
+			Fields: []spec.FieldDefinition{
+				{Name: "name", Type: "string"},
+			},
+		},
+	}
+	input := map[string]any{
+		"name":       "ok",
+		"id":         "injected-id",
+		"created_at": "2000-01-01",
+		"updated_at": "2000-01-01",
+		"deleted_at": "2000-01-01",
+	}
+	got := dao.filterWritable(input)
+	for _, blocked := range []string{"id", "created_at", "updated_at", "deleted_at"} {
+		if _, ok := got[blocked]; ok {
+			t.Errorf("filterWritable: should block system column %q", blocked)
+		}
+	}
+	if got["name"] != "ok" {
+		t.Error("filterWritable: should allow declared field 'name'")
+	}
+}
+
+func TestFilterWritable_BlocksAutoAndSoftDeleteFields(t *testing.T) {
+	dao := &resourceDAO{
+		resource: spec.ResourceDefinition{
+			Name:   "Thing",
+			Plural: "things",
+			Fields: []spec.FieldDefinition{
+				{Name: "title", Type: "string"},
+				{Name: "ts", Type: "timestamp", Auto: "created"},
+				{Name: "removed_at", Type: "timestamp", SoftDelete: true},
+			},
+		},
+	}
+	got := dao.filterWritable(map[string]any{
+		"title": "ok", "ts": "injected", "removed_at": "injected",
+	})
+	if _, ok := got["ts"]; ok {
+		t.Error("filterWritable: should block auto-managed field 'ts'")
+	}
+	if _, ok := got["removed_at"]; ok {
+		t.Error("filterWritable: should block soft-delete field 'removed_at'")
+	}
+	if got["title"] != "ok" {
+		t.Error("filterWritable: should allow 'title'")
+	}
+}
+
+// --------------------------------------------------------------------------
 // fieldToColumn
 // --------------------------------------------------------------------------
 
