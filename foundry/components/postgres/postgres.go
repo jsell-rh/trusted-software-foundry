@@ -13,6 +13,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -493,26 +494,35 @@ func (d *resourceDAO) hasSoftDelete() bool {
 
 // --- SQL helpers ---
 
+// buildInsert builds the column, placeholder, and value slices for an INSERT statement.
+// Keys are sorted alphabetically to produce deterministic SQL regardless of map iteration order.
 func buildInsert(obj map[string]any) (cols, placeholders []string, vals []any) {
-	i := 1
-	for k, v := range obj {
+	keys := make([]string, 0, len(obj))
+	for k := range obj {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for i, k := range keys {
 		cols = append(cols, k)
-		placeholders = append(placeholders, fmt.Sprintf("$%d", i))
-		vals = append(vals, v)
-		i++
+		placeholders = append(placeholders, fmt.Sprintf("$%d", i+1))
+		vals = append(vals, obj[k])
 	}
 	return
 }
 
+// buildUpdate builds the SET clause and value slice for an UPDATE statement.
+// Keys are sorted alphabetically to produce deterministic SQL regardless of map iteration order.
 func buildUpdate(obj map[string]any) (sets []string, vals []any) {
-	i := 1
-	for k, v := range obj {
-		if k == "id" {
-			continue
+	keys := make([]string, 0, len(obj))
+	for k := range obj {
+		if k != "id" {
+			keys = append(keys, k)
 		}
-		sets = append(sets, fmt.Sprintf("%s = $%d", k, i))
-		vals = append(vals, v)
-		i++
+	}
+	sort.Strings(keys)
+	for i, k := range keys {
+		sets = append(sets, fmt.Sprintf("%s = $%d", k, i+1))
+		vals = append(vals, obj[k])
 	}
 	return
 }
