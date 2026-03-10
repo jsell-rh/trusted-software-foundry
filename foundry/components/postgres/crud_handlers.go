@@ -9,6 +9,15 @@ import (
 	"github.com/jsell-rh/trusted-software-foundry/foundry/spec"
 )
 
+// ctx returns r.Context if non-nil, otherwise context.Background().
+// Protects against requests created without a context (e.g. in tests).
+func ctx(r *spec.Request) context.Context {
+	if c := r.Context; c != nil {
+		return c
+	}
+	return context.Background()
+}
+
 // registerCRUDHandlers registers REST CRUD handlers for all resource operations
 // declared in the IR spec. Called from Register() after DAOs are created.
 //
@@ -90,7 +99,7 @@ func (h *collectionHandler) handleList(w spec.ResponseWriter, r *spec.Request) {
 		}
 	}
 
-	items, err := h.dao.List(context.Background(), page, size)
+	items, err := h.dao.List(ctx(r), page, size)
 	if err != nil {
 		writeError(w, 500, "list failed: "+err.Error())
 		return
@@ -113,14 +122,14 @@ func (h *collectionHandler) handleCreate(w spec.ResponseWriter, r *spec.Request)
 		return
 	}
 
-	id, err := h.dao.Create(context.Background(), obj)
+	id, err := h.dao.Create(ctx(r), obj)
 	if err != nil {
 		writeError(w, 500, "create failed: "+err.Error())
 		return
 	}
 
 	// Return the created resource by id.
-	created, err := h.dao.Get(context.Background(), id)
+	created, err := h.dao.Get(ctx(r), id)
 	if err != nil {
 		// Return minimal response if re-fetch fails.
 		writeJSON(w, 201, map[string]any{"id": id})
@@ -149,7 +158,7 @@ func (h *itemHandler) ServeHTTP(w spec.ResponseWriter, r *spec.Request) {
 			writeError(w, 405, "read not allowed for this resource")
 			return
 		}
-		obj, err := h.dao.Get(context.Background(), id)
+		obj, err := h.dao.Get(ctx(r), id)
 		if err != nil {
 			if strings.Contains(err.Error(), "not found") {
 				writeError(w, 404, "not found")
@@ -170,7 +179,7 @@ func (h *itemHandler) ServeHTTP(w spec.ResponseWriter, r *spec.Request) {
 			writeError(w, 400, "invalid JSON: "+err.Error())
 			return
 		}
-		if err := h.dao.Update(context.Background(), id, patch); err != nil {
+		if err := h.dao.Update(ctx(r), id, patch); err != nil {
 			if strings.Contains(err.Error(), "not found") {
 				writeError(w, 404, "not found")
 			} else {
@@ -178,7 +187,7 @@ func (h *itemHandler) ServeHTTP(w spec.ResponseWriter, r *spec.Request) {
 			}
 			return
 		}
-		obj, err := h.dao.Get(context.Background(), id)
+		obj, err := h.dao.Get(ctx(r), id)
 		if err != nil {
 			writeJSON(w, 200, map[string]any{"id": id})
 			return
@@ -190,7 +199,7 @@ func (h *itemHandler) ServeHTTP(w spec.ResponseWriter, r *spec.Request) {
 			writeError(w, 405, "delete not allowed for this resource")
 			return
 		}
-		if err := h.dao.Delete(context.Background(), id); err != nil {
+		if err := h.dao.Delete(ctx(r), id); err != nil {
 			if strings.Contains(err.Error(), "not found") {
 				writeError(w, 404, "not found")
 			} else {
