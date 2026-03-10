@@ -308,6 +308,7 @@ func TestCORSMiddleware_OptionsRequest(t *testing.T) {
 	handler := c.corsMiddleware(inner)
 
 	req := httptest.NewRequest(http.MethodOptions, "/", nil)
+	req.Header.Set("Origin", "https://example.com")
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 
@@ -317,8 +318,58 @@ func TestCORSMiddleware_OptionsRequest(t *testing.T) {
 	if rr.Code != http.StatusNoContent {
 		t.Errorf("OPTIONS status = %d, want 204", rr.Code)
 	}
-	if !strings.Contains(rr.Header().Get("Access-Control-Allow-Origin"), "https://example.com") {
-		t.Error("CORS origin header not set for OPTIONS")
+	if rr.Header().Get("Access-Control-Allow-Origin") != "https://example.com" {
+		t.Errorf("CORS origin header = %q, want %q", rr.Header().Get("Access-Control-Allow-Origin"), "https://example.com")
+	}
+	if rr.Header().Get("Vary") != "Origin" {
+		t.Error("CORS specific-origin response must include Vary: Origin")
+	}
+}
+
+func TestCORSMiddleware_OriginNotInWhitelist(t *testing.T) {
+	c := New()
+	c.cfg.allowedOrigins = []string{"https://example.com"}
+
+	nextCalled := false
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		nextCalled = true
+		w.WriteHeader(http.StatusOK)
+	})
+	handler := c.corsMiddleware(inner)
+
+	req := httptest.NewRequest(http.MethodGet, "/api", nil)
+	req.Header.Set("Origin", "https://evil.example.org")
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	// Next handler still serves the request; CORS headers are simply absent.
+	if !nextCalled {
+		t.Error("next handler should be called even when origin not whitelisted")
+	}
+	if got := rr.Header().Get("Access-Control-Allow-Origin"); got != "" {
+		t.Errorf("CORS header should not be set for rejected origin, got %q", got)
+	}
+}
+
+func TestCORSMiddleware_WildcardDoesNotReflectOrigin(t *testing.T) {
+	c := New()
+	c.cfg.allowedOrigins = []string{"*"}
+
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200) })
+	handler := c.corsMiddleware(inner)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Origin", "https://any.example.com")
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	// Wildcard must be literal "*", not the reflected origin.
+	if got := rr.Header().Get("Access-Control-Allow-Origin"); got != "*" {
+		t.Errorf("wildcard CORS: Access-Control-Allow-Origin = %q, want *", got)
+	}
+	// Vary: Origin must NOT be set for wildcard responses.
+	if vary := rr.Header().Get("Vary"); strings.Contains(vary, "Origin") {
+		t.Errorf("wildcard CORS: should not set Vary: Origin, got Vary: %q", vary)
 	}
 }
 
