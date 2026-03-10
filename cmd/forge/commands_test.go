@@ -342,3 +342,73 @@ func TestCompileCmd_WithRhTrexAI(t *testing.T) {
 		t.Errorf("expected 'go build -o app .' in output with --foundry-path, got: %q", out)
 	}
 }
+
+// --------------------------------------------------------------------------
+// initCmd
+// --------------------------------------------------------------------------
+
+func TestInitCmd_CreatesProjectStructure(t *testing.T) {
+	dir := t.TempDir()
+	projectName := "my-service"
+	projectDir := filepath.Join(dir, projectName)
+
+	cmd := initCmd()
+	cmd.SetArgs([]string{projectName, "--resource", "Widget"})
+	// Run from temp dir so project is created inside it.
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir("/") })
+
+	var out strings.Builder
+	cmd.SetOut(&out)
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("initCmd: %v", err)
+	}
+
+	// Check app.foundry.yaml exists and contains the project name.
+	specPath := filepath.Join(projectDir, "app.foundry.yaml")
+	data, err := os.ReadFile(specPath)
+	if err != nil {
+		t.Fatalf("app.foundry.yaml not found: %v", err)
+	}
+	if !strings.Contains(string(data), "name: "+projectName) {
+		t.Errorf("spec missing project name, got:\n%s", data)
+	}
+	if !strings.Contains(string(data), "Widget") {
+		t.Errorf("spec missing Widget resource, got:\n%s", data)
+	}
+
+	// Check hooks/README.md exists.
+	if _, err := os.Stat(filepath.Join(projectDir, "hooks", "README.md")); err != nil {
+		t.Errorf("hooks/README.md not found: %v", err)
+	}
+
+	// Check .gitignore exists.
+	if _, err := os.Stat(filepath.Join(projectDir, ".gitignore")); err != nil {
+		t.Errorf(".gitignore not found: %v", err)
+	}
+}
+
+func TestInitCmd_ExistingDirectoryErrors(t *testing.T) {
+	dir := t.TempDir()
+	projectName := "existing"
+	if err := os.MkdirAll(filepath.Join(dir, projectName), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir("/") })
+
+	cmd := initCmd()
+	cmd.SetArgs([]string{projectName})
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected error for existing directory, got nil")
+	}
+	if !strings.Contains(err.Error(), "already exists") {
+		t.Errorf("expected 'already exists' in error, got: %v", err)
+	}
+}
