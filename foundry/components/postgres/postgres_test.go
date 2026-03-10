@@ -698,7 +698,7 @@ func TestGenerateMigrationSQL(t *testing.T) {
 		},
 	}
 
-	got := GenerateMigrationSQL(resources)
+	got := GenerateMigrationSQL(resources, "")
 	if got == "" {
 		t.Fatal("GenerateMigrationSQL() returned empty string")
 	}
@@ -709,8 +709,44 @@ func TestGenerateMigrationSQL(t *testing.T) {
 	}
 }
 
+func TestGenerateMigrationSQL_WithTenantField(t *testing.T) {
+	resources := []spec.ResourceDefinition{
+		{
+			Name:   "Cluster",
+			Plural: "clusters",
+			Fields: []spec.FieldDefinition{
+				{Name: "name", Type: "string", Required: true},
+			},
+		},
+	}
+	got := GenerateMigrationSQL(resources, "org_id")
+	if !strings.Contains(got, "org_id TEXT NOT NULL DEFAULT ''") {
+		t.Errorf("SQL missing tenant column\nSQL:\n%s", got)
+	}
+}
+
+func TestGenerateMigrationSQL_TenantFieldAlreadyDeclared(t *testing.T) {
+	// If org_id is already in the resource fields, it must not be duplicated.
+	resources := []spec.ResourceDefinition{
+		{
+			Name:   "Cluster",
+			Plural: "clusters",
+			Fields: []spec.FieldDefinition{
+				{Name: "org_id", Type: "string", Required: true},
+				{Name: "name", Type: "string", Required: true},
+			},
+		},
+	}
+	got := GenerateMigrationSQL(resources, "org_id")
+	// Should appear exactly once.
+	count := strings.Count(got, "org_id")
+	if count != 1 {
+		t.Errorf("org_id appears %d times, want 1\nSQL:\n%s", count, got)
+	}
+}
+
 func TestGenerateMigrationSQL_Empty(t *testing.T) {
-	if got := GenerateMigrationSQL(nil); got != "" {
+	if got := GenerateMigrationSQL(nil, ""); got != "" {
 		t.Errorf("GenerateMigrationSQL(nil) = %q, want empty", got)
 	}
 }
@@ -720,7 +756,7 @@ func TestGenerateMigrationSQL_MultipleResources(t *testing.T) {
 		{Name: "Dinosaur", Plural: "dinosaurs"},
 		{Name: "Plant", Plural: "plants"},
 	}
-	got := GenerateMigrationSQL(resources)
+	got := GenerateMigrationSQL(resources, "")
 	if !strings.Contains(got, "dinosaurs") {
 		t.Error("missing dinosaurs table")
 	}
