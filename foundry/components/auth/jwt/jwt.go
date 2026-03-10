@@ -23,6 +23,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math/big"
 	"net/http"
 	"strings"
@@ -189,8 +190,7 @@ func (c *Component) middleware() spec.HTTPMiddleware {
 
 			claims, err := c.validate(r)
 			if err != nil {
-				w.WriteHeader(http.StatusUnauthorized)
-				_, _ = w.Write([]byte(`{"error":"unauthorized","message":"` + sanitize(err.Error()) + `"}`))
+				writeJWTError(w, http.StatusUnauthorized, "unauthorized", err.Error())
 				return
 			}
 
@@ -202,11 +202,13 @@ func (c *Component) middleware() spec.HTTPMiddleware {
 	}
 }
 
-// sanitize strips characters that would break JSON string embedding.
-func sanitize(s string) string {
-	s = strings.ReplaceAll(s, `"`, `'`)
-	s = strings.ReplaceAll(s, `\`, `\\`)
-	return s
+// writeJWTError writes a JSON error response using encoding/json to handle all
+// control characters and special characters correctly.
+func writeJWTError(w spec.ResponseWriter, status int, errCode, message string) {
+	body, _ := json.Marshal(map[string]string{"error": errCode, "message": message})
+	w.Header()["Content-Type"] = []string{"application/json"}
+	w.WriteHeader(status)
+	_, _ = w.Write(body)
 }
 
 // validate extracts and validates the JWT from the Authorization header.
@@ -368,7 +370,8 @@ func (c *Component) refreshKeys() error {
 			E   string `json:"e"`
 		} `json:"keys"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&jwks); err != nil {
+	// Limit JWKS response to 1 MiB to prevent OOM on oversized/malicious responses.
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&jwks); err != nil {
 		return fmt.Errorf("decode JWKS: %w", err)
 	}
 
