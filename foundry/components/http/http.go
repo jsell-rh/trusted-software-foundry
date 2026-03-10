@@ -205,7 +205,11 @@ func (c *HTTPComponent) Stop(ctx context.Context) error {
 func (c *HTTPComponent) adapt(h spec.HTTPHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		r.Body = http.MaxBytesReader(w, r.Body, c.cfg.maxBodyBytes)
-		body, _ := io.ReadAll(r.Body)
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "request body too large", http.StatusRequestEntityTooLarge)
+			return
+		}
 		req := &spec.Request{
 			Method:  r.Method,
 			URL:     r.URL.String(),
@@ -224,7 +228,11 @@ func (c *HTTPComponent) adaptMiddleware(mw spec.HTTPMiddleware, next http.Handle
 	wrapped := mw(specNext)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		r.Body = http.MaxBytesReader(w, r.Body, c.cfg.maxBodyBytes)
-		body, _ := io.ReadAll(r.Body)
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "request body too large", http.StatusRequestEntityTooLarge)
+			return
+		}
 		req := &spec.Request{
 			Method:  r.Method,
 			URL:     r.URL.String(),

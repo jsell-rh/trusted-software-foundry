@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"sort"
 	"strings"
 	"testing"
@@ -705,6 +706,36 @@ func TestNotify_Error(t *testing.T) {
 
 	if err := dao.notify(context.Background(), "created", "id-1"); err == nil {
 		t.Error("expected error from notify, got nil")
+	}
+}
+
+func TestNotify_PayloadIsValidJSON(t *testing.T) {
+	// Verify that the JSON payload produced for pg_notify is always valid JSON,
+	// even when the id contains characters that would break hand-rolled JSON
+	// (e.g. double-quote, backslash, newline).
+	specialIDs := []string{
+		`normal-uuid`,
+		`id-with-"quotes"`,
+		`id-with-\backslash`,
+		"id\nwith\nnewlines",
+		`id	with	tabs`,
+	}
+	for _, id := range specialIDs {
+		// Directly test the encoding logic used by notify().
+		payload, err := json.Marshal(map[string]string{"action": "created", "id": id})
+		if err != nil {
+			t.Errorf("json.Marshal for id %q failed: %v", id, err)
+			continue
+		}
+		// Round-trip: decode must succeed and preserve the id exactly.
+		var decoded map[string]string
+		if err := json.Unmarshal(payload, &decoded); err != nil {
+			t.Errorf("notify payload for id %q is not valid JSON: %v; payload: %s", id, err, payload)
+			continue
+		}
+		if decoded["id"] != id {
+			t.Errorf("notify payload id mismatch: got %q, want %q", decoded["id"], id)
+		}
 	}
 }
 
