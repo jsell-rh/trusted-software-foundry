@@ -228,6 +228,14 @@ func TestCollectionHandler_List_DBError(t *testing.T) {
 	if w.code != 500 {
 		t.Errorf("code = %d, want 500", w.code)
 	}
+	// Response must NOT leak raw DB error details to the caller.
+	body := w.body.String()
+	if strings.Contains(body, sql.ErrConnDone.Error()) {
+		t.Errorf("response body leaks internal DB error: %s", body)
+	}
+	if !strings.Contains(body, "internal server error") {
+		t.Errorf("expected generic error in body, got: %s", body)
+	}
 }
 
 // --------------------------------------------------------------------------
@@ -328,6 +336,13 @@ func TestCollectionHandler_Create_DBError(t *testing.T) {
 	if w.code != 500 {
 		t.Errorf("code = %d, want 500", w.code)
 	}
+	respBody := w.body.String()
+	if strings.Contains(respBody, sql.ErrConnDone.Error()) {
+		t.Errorf("response body leaks internal DB error: %s", respBody)
+	}
+	if !strings.Contains(respBody, "internal server error") {
+		t.Errorf("expected generic error in body, got: %s", respBody)
+	}
 }
 
 func TestCollectionHandler_UnknownMethod(t *testing.T) {
@@ -387,6 +402,13 @@ func TestItemHandler_Get_DBError(t *testing.T) {
 	h.ServeHTTP(w, newRequest("GET", "/dinosaurs/abc-123", nil))
 	if w.code != 500 {
 		t.Errorf("code = %d, want 500", w.code)
+	}
+	respBody := w.body.String()
+	if strings.Contains(respBody, sql.ErrConnDone.Error()) {
+		t.Errorf("response body leaks internal DB error: %s", respBody)
+	}
+	if !strings.Contains(respBody, "internal server error") {
+		t.Errorf("expected generic error in body, got: %s", respBody)
 	}
 }
 
@@ -475,6 +497,13 @@ func TestItemHandler_Put_DBError(t *testing.T) {
 	if w.code != 500 {
 		t.Errorf("code = %d, want 500", w.code)
 	}
+	respBody := w.body.String()
+	if strings.Contains(respBody, sql.ErrConnDone.Error()) {
+		t.Errorf("response body leaks internal DB error: %s", respBody)
+	}
+	if !strings.Contains(respBody, "internal server error") {
+		t.Errorf("expected generic error in body, got: %s", respBody)
+	}
 }
 
 // --------------------------------------------------------------------------
@@ -515,6 +544,13 @@ func TestItemHandler_Delete_DBError(t *testing.T) {
 	h.ServeHTTP(w, newRequest("DELETE", "/dinosaurs/abc-123", nil))
 	if w.code != 500 {
 		t.Errorf("code = %d, want 500", w.code)
+	}
+	respBody := w.body.String()
+	if strings.Contains(respBody, sql.ErrConnDone.Error()) {
+		t.Errorf("response body leaks internal DB error: %s", respBody)
+	}
+	if !strings.Contains(respBody, "internal server error") {
+		t.Errorf("expected generic error in body, got: %s", respBody)
 	}
 }
 
