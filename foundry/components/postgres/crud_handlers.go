@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jsell-rh/trusted-software-foundry/foundry/components/postgres/filter"
 	"github.com/jsell-rh/trusted-software-foundry/foundry/spec"
 )
 
@@ -101,15 +102,47 @@ func (h *collectionHandler) handleList(w spec.ResponseWriter, r *spec.Request) {
 		}
 	}
 
-	c := ctx(r)
-	total, err := h.dao.Count(c)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "foundry-postgres: count %s: %v\n", h.resource.Plural, err)
-		writeError(w, 500, "internal server error")
-		return
+	// Parse optional ?search= filter parameter.
+	searchParam := queryParam(r.URL, "search")
+	var (
+		whereSQL  string
+		whereArgs []any
+	)
+	if searchParam != "" {
+		// URL-decode the search value (query params may be percent-encoded).
+		decoded := urlDecodeSimple(searchParam)
+		var err error
+		whereSQL, whereArgs, err = filter.BuildWhere(decoded, h.dao.allowedFilterFields())
+		if err != nil {
+			writeError(w, 400, "invalid search filter: "+err.Error())
+			return
+		}
 	}
 
-	items, err := h.dao.List(c, page, size)
+	c := ctx(r)
+	var (
+		total int64
+		items []map[string]any
+		err   error
+	)
+
+	if whereSQL != "" {
+		total, err = h.dao.CountSearch(c, whereSQL, whereArgs)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "foundry-postgres: count search %s: %v\n", h.resource.Plural, err)
+			writeError(w, 500, "internal server error")
+			return
+		}
+		items, err = h.dao.Search(c, whereSQL, whereArgs, page, size)
+	} else {
+		total, err = h.dao.Count(c)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "foundry-postgres: count %s: %v\n", h.resource.Plural, err)
+			writeError(w, 500, "internal server error")
+			return
+		}
+		items, err = h.dao.List(c, page, size)
+	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "foundry-postgres: list %s: %v\n", h.resource.Plural, err)
 		writeError(w, 500, "internal server error")
@@ -124,6 +157,44 @@ func (h *collectionHandler) handleList(w spec.ResponseWriter, r *spec.Request) {
 		"items": items,
 	}
 	writeJSON(w, 200, resp)
+}
+
+// urlDecodeSimple percent-decodes a query param value (replaces + with space,
+// and %XX with the corresponding byte). Non-decodable sequences are left as-is.
+func urlDecodeSimple(s string) string {
+	var b strings.Builder
+	i := 0
+	for i < len(s) {
+		if s[i] == '+' {
+			b.WriteByte(' ')
+			i++
+			continue
+		}
+		if s[i] == '%' && i+2 < len(s) {
+			hi := hexNibble(s[i+1])
+			lo := hexNibble(s[i+2])
+			if hi >= 0 && lo >= 0 {
+				b.WriteByte(byte(hi<<4 | lo))
+				i += 3
+				continue
+			}
+		}
+		b.WriteByte(s[i])
+		i++
+	}
+	return b.String()
+}
+
+func hexNibble(c byte) int {
+	switch {
+	case c >= '0' && c <= '9':
+		return int(c - '0')
+	case c >= 'a' && c <= 'f':
+		return int(c-'a') + 10
+	case c >= 'A' && c <= 'F':
+		return int(c-'A') + 10
+	}
+	return -1
 }
 
 func (h *collectionHandler) handleCreate(w spec.ResponseWriter, r *spec.Request) {
