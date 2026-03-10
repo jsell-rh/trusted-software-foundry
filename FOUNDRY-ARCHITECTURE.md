@@ -220,7 +220,7 @@ Registry entries are append-only. A component version, once audited, is immutabl
 
 ## Repository Layout
 
-Working in `github.com/jsell-rh/trusted-software-foundry` with `.worktrees/` for parallel development:
+Working in `github.com/jsell-rh/trusted-software-foundry`:
 
 ```
 trusted-software-foundry/
@@ -286,7 +286,7 @@ The Foundry platform is complete (at trex parity) when:
 
 1. **Read this document before starting work.** Path: `~/code/scratch/trusted-software-foundry/FOUNDRY-ARCHITECTURE.md`
 2. **Post status updates every 10 minutes** during active work.
-3. **Work in your assigned worktree** — do not modify files in other agents' worktrees.
+3. **Branch per feature** — submit PRs for review before merging to main.
 4. **Component interface contracts** (defined by TSF-Architect) are frozen once posted. Compiler and Library agents must wait for contracts before implementing.
 5. **Post blockers immediately** — do not spin on blocked work.
 6. **Tag questions for CTO with `[?BOSS]`** and continue working on what you can.
