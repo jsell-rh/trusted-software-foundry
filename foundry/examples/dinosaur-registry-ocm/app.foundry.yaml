@@ -1,0 +1,65 @@
+apiVersion: foundry/v1
+kind: Application
+
+metadata:
+  name: dinosaur-registry-ocm
+  version: 1.0.0
+
+# Trusted component versions — OCM auth variant
+components:
+  foundry-http:     v1.0.0
+  foundry-postgres: v1.0.0
+  foundry-auth-ocm: v1.0.0   # OCM bearer-token validation — replaces foundry-auth-jwt
+  foundry-grpc:     v1.0.0
+  foundry-health:   v1.0.0
+  foundry-metrics:  v1.0.0
+  foundry-events:   v1.0.0
+
+resources:
+  - name: Dinosaur
+    plural: dinosaurs
+    fields:
+      - name: species
+        type: string
+        required: true
+        max_length: 255
+      - name: description
+        type: string
+      - name: created_at
+        type: timestamp
+        auto: created
+      - name: updated_at
+        type: timestamp
+        auto: updated
+      - name: deleted_at
+        type: timestamp
+        soft_delete: true
+    operations: [create, read, update, delete, list]
+    events: true
+
+api:
+  rest:
+    base_path: /api/v1
+    version_header: true
+  grpc:
+    enabled: true
+
+# OCM authentication — validates Red Hat SSO bearer tokens.
+# The platform core remains OCM-neutral; coupling is entirely inside foundry-auth-ocm.
+auth:
+  type: ocm
+  ocm_url: "${OCM_URL}"          # e.g. https://sso.redhat.com/auth/realms/redhat-external
+  allowed_orgs: []               # empty = allow all valid OCM orgs; set to restrict
+  cache_ttl: "5m"
+  required: true
+
+database:
+  type: postgres
+  migrations: auto
+
+observability:
+  health_check:
+    port: 8083
+  metrics:
+    port: 8080
+    path: /metrics

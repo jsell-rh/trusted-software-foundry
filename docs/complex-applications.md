@@ -3,13 +3,13 @@
 **Author:** TSF-Architect
 **Branch:** feat/foundry-complex-ir
 **Status:** Draft — for CTO review
-**Context:** Extends `foundry/spec/schema.json` (v1) to support complex platform applications beyond simple CRUD services. Informed by studying [kartograph](https://github.com/openshift-hyperfleet/kartograph) (bi-temporal property graph platform) as the canonical complex-case target.
+**Context:** Extends `foundry/spec/schema.json` (v1) to support complex platform applications beyond simple CRUD services. Informed by studying the fleet-manager example (multi-tenant SaaS control plane) as the canonical complex-case target.
 
 ---
 
 ## Problem Statement
 
-TSF v1 targets CRUD services (trex parity). Real enterprise platforms (kartograph, OCM, ACS) require:
+TSF v1 targets CRUD services (trex parity). Real enterprise platforms (fleet-manager, OCM, ACS) require:
 
 1. **Property graphs** — nodes, edges, bi-directional relationships, Cypher queries (Apache AGE)
 2. **Multi-service** — cooperating services with distinct deployment profiles and APIs within one logical application
@@ -80,7 +80,7 @@ graph:
   mutations:
     # Allowed operation types on graph entities
     operations: [DEFINE, CREATE, UPDATE, DELETE]
-    bulk_loading: true          # enable bulk JSONL mutation loading (like kartograph)
+    bulk_loading: true          # enable bulk JSONL mutation loading
     mutation_format: jsonl      # "jsonl" | "json"
 
   queries:
@@ -356,15 +356,15 @@ New component registry entries (all require audit before use):
 
 ---
 
-## Kartograph in TSF IR
+## Fleet Manager in TSF IR
 
-Using the v2 IR, the kartograph application would be described as:
+Using the v2 IR, the fleet-manager application would be described as:
 
 ```yaml
 apiVersion: foundry/v1
 kind: Application
 metadata:
-  name: kartograph
+  name: fleet-manager
   version: 1.0.0
 
 components:
@@ -473,7 +473,7 @@ observability:
   metrics: { port: 8080, path: /metrics }
 ```
 
-This single YAML file describes kartograph's entire architecture. The AI writes it; TSF compiles it.
+This single YAML file describes fleet-manager's entire architecture. The AI writes it; TSF compiles it.
 
 ---
 
@@ -486,7 +486,7 @@ This single YAML file describes kartograph's entire architecture. The AI writes 
 | 3 | `foundry-kafka`, `foundry-redis` components | TSF-Library | Phase 4 |
 | 4 | `foundry-auth-spicedb`, `foundry-tenancy` components | TSF-Library | Phase 5 |
 | 5 | TSF-Compiler v2: multi-service codegen, kafka wiring | TSF-Compiler | Phase 6 |
-| 6 | kartograph parity: compile kartograph spec end-to-end | All | Done |
+| 6 | fleet-manager parity: compile fleet-manager spec end-to-end | All | Done |
 
 ---
 
