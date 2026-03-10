@@ -2,51 +2,122 @@
 
 An IR-first application platform where **AI agents write declarative specs, not code**.
 
-Enterprises adopting AI-driven development face a fundamental trust problem: AI agents produce non-deterministic code that cannot be formally audited. TSF solves this by inverting the model — AI writes a structured Intermediate Representation (IR), and a deterministic compiler assembles working applications from pre-audited, version-pinned trusted components.
-
-## The Core Idea
+Enterprises adopting AI-driven development face a fundamental trust problem: AI agents produce
+non-deterministic code that cannot be formally audited. Trusted Software Foundry (TSF) solves this
+by inverting the model — AI writes a structured Intermediate Representation (IR), and a
+deterministic compiler assembles working applications from pre-audited, version-pinned trusted
+components.
 
 ```
 AI Agent
-  │
-  │  edits only this file:
+  │  edits only:
   ▼
-app.foundry.yaml          ← the IR spec (declarative, schema-validated)
+app.foundry.yaml          ← declarative IR spec (schema-validated)
   │
   │  forge compile app.foundry.yaml -o ./out
   ▼
 Compiler
   │  resolves trusted components (audited, version-pinned)
   │  generates minimal wiring code (main.go, go.mod, migrations/)
+  │  generates stub hooks for custom logic injection points
   ▼
-go build ./out        ← working binary
+go build ./out            ← working, auditable binary
 ```
 
-The AI never touches source code. Every line of generated code comes from audited, immutable trusted components.
+The AI never touches source code. Every line of generated code comes from audited, immutable
+trusted components. New features are YAML fields, not code diffs.
 
-## Quick Start
+---
 
-### 1. Write your application spec
+## Demo: Kartograph in 3 Commands
+
+Kartograph is an enterprise bi-temporal knowledge graph platform. Its entire infrastructure is
+described in [`foundry/examples/kartograph/app.foundry.yaml`](./foundry/examples/kartograph/app.foundry.yaml) —
+PostgreSQL/AGE graph storage, SpiceDB fine-grained authz, JWT auth, Kafka events, multi-tenancy,
+and 4 lifecycle hooks.
+
+```bash
+# 1. Build the forge compiler
+go build -o /usr/local/bin/forge ./cmd/forge
+
+# 2. Compile the Kartograph spec into a runnable Go project
+forge compile foundry/examples/kartograph/app.foundry.yaml \
+  --foundry-path $(pwd) \
+  -o /tmp/kartograph
+
+# 3. Build the generated project — exits 0
+cd /tmp/kartograph && go build -o kartograph .
+```
+
+That's it. A production-ready binary with REST API, graph database, auth, events, health checks,
+and metrics — from a YAML file. No code written by a human or AI.
+
+**What was generated:**
+
+```
+/tmp/kartograph/
+  main.go                  ← component wiring (DO NOT EDIT — generated)
+  hook_registry.go         ← hook call sites (DO NOT EDIT — generated)
+  hooks/
+    stubs_generated.go     ← stub hooks (replace with your real logic)
+  migrations/
+    0001_graphs.sql
+    0002_nodes.sql
+    0003_edges.sql
+    0004_queries.sql
+  authz/schema.zed         ← SpiceDB schema stub
+  go.mod / go.sum
+```
+
+---
+
+## Quick Start: Your First Service
+
+### 1. Scaffold a new spec
+
+```bash
+forge scaffold --name my-service --resource Widget -o app.foundry.yaml
+```
+
+### 2. Lint and validate
+
+```bash
+forge lint app.foundry.yaml
+```
+
+### 3. Understand what will be built
+
+```bash
+forge explain app.foundry.yaml
+```
+
+### 4. Compile
+
+```bash
+forge compile app.foundry.yaml \
+  --foundry-path /path/to/trusted-software-foundry \
+  -o ./out
+```
+
+### 5. Build and run
+
+```bash
+cd ./out
+go build -o app .
+
+export JWK_CERT_URL=http://localhost:8080/auth/realms/myrealm/protocol/openid-connect/certs
+export OCM_MOCK_ENABLED=true   # skip real auth in dev
+./app
+```
+
+REST API: `:8000` | Health: `:8083` | Metrics: `:8080`
+
+### 6. Add a resource — zero code
 
 ```yaml
-# app.foundry.yaml
-apiVersion: foundry/v1
-kind: Application
-
-metadata:
-  name: my-service
-  version: 1.0.0
-
-components:
-  foundry-http:     v1.0.0
-  foundry-postgres: v1.0.0
-  foundry-auth-jwt: v1.0.0
-  foundry-health:   v1.0.0
-  foundry-metrics:  v1.0.0
-
-resources:
-  - name: Widget
-    plural: widgets
+# app.foundry.yaml — add this block under resources:
+  - name: Gadget
+    plural: gadgets
     fields:
       - name: id
         type: uuid
@@ -59,152 +130,173 @@ resources:
       - name: created_at
         type: timestamp
         auto: created
-      - name: deleted_at
-        type: timestamp
-        soft_delete: true
     operations: [create, read, update, delete, list]
-
-api:
-  rest:
-    base_path: /api/v1
-    version_header: true
-
-auth:
-  type: jwt
-  jwk_url: "${JWK_CERT_URL}"
-  required: true
-  allow_mock: "${OCM_MOCK_ENABLED}"
-
-database:
-  type: postgres
-  migrations: auto
-
-observability:
-  health_check:
-    port: 8083
-    path: /healthz
-  metrics:
-    port: 8080
-    path: /metrics
 ```
-
-### 2. Compile
 
 ```bash
-# Build the forge compiler
-go build -o /usr/local/bin/forge ./cmd/forge
-
-# Compile your spec into a runnable Go project
-forge compile app.foundry.yaml \
-  --trusted-software-foundry ~/code/scratch/trusted-software-foundry \
-  -o ./my-service-out
+forge compile app.foundry.yaml --foundry-path . -o ./out
+cd ./out && go build -o app .
+# /api/my-service/v1/gadgets is now live. No code written.
 ```
 
-### 3. Build and run
+---
 
-```bash
-cd my-service-out
-go build -o app .
+## Custom Logic via Hooks
 
-# Run with a PostgreSQL database
-export JWK_CERT_URL=...
-export OCM_MOCK_ENABLED=true
-./app
-```
+Hooks let you inject custom Go code at well-defined points without modifying trusted components.
 
-REST API on `:8000`, health check on `:8083`, metrics on `:8080`.
-
-### 4. Add a new resource — zero code required
+**Declare in spec:**
 
 ```yaml
-# Edit app.foundry.yaml — add this resource block:
-  - name: Fossil
-    plural: fossils
-    fields:
-      - name: id
-        type: uuid
-        required: true
-        auto: created
-      - name: location
-        type: string
-        required: true
-    operations: [create, read, update, delete, list]
+hooks:
+  - name: audit-logger
+    point: pre-handler
+    implementation: hooks/audit_logger.go
+
+  - name: data-enricher
+    point: post-db
+    implementation: hooks/enricher.go
 ```
 
-```bash
-# Recompile — the compiler handles everything
-forge compile app.foundry.yaml --trusted-software-foundry . -o ./my-service-out
-cd my-service-out && go build -o app .
-# /api/v1/fossils endpoints now work. No code written.
+**Implement in Go:**
+
+```go
+// hooks/audit_logger.go
+package hooks
+
+import (
+    "net/http"
+    "github.com/jsell-rh/trusted-software-foundry/foundry/spec/foundry"
+)
+
+func AuditLoggerPreHandler(hctx *foundry.HookContext, w http.ResponseWriter, r *http.Request) error {
+    hctx.Logger.Info("request", "method", r.Method, "path", r.URL.Path, "tenant", hctx.TenantID)
+    return nil
+}
 ```
+
+When you run `forge compile`, the compiler copies your hook files into the generated project and
+generates typed call sites in `hook_registry.go`. If a hook file doesn't exist yet, a stub is
+generated — replace it with real logic and recompile.
+
+**Hook injection points:**
+
+| Point | Signature | Use case |
+|-------|-----------|----------|
+| `pre-handler` | `(hctx, w, r)` | Auth, rate limiting, logging |
+| `post-handler` | `(hctx, req)` | Response transformation, metrics |
+| `pre-db` | `(hctx, op)` | Validation, enrichment before write |
+| `post-db` | `(hctx, result)` | Side effects after write (sync AGE graph) |
+| `pre-publish` | `(hctx, msg)` | Event enrichment before Kafka publish |
+| `post-consume` | `(hctx, event)` | Event handling after Kafka consume |
+
+See [`foundry/examples/fleet-manager/hooks/`](./foundry/examples/fleet-manager/hooks/) for
+working hook examples including bi-temporal validation, graph sync, and tenant isolation.
+
+---
+
+## The forge Command Suite
+
+| Command | Description |
+|---------|-------------|
+| `forge scaffold` | Generate a starter `app.foundry.yaml` |
+| `forge lint` | Validate spec (JSON Schema + semantic rules) |
+| `forge explain` | Human-readable spec summary (resources, components, API surface) |
+| `forge compile` | Compile spec → buildable Go project |
+| `forge diff old.yaml new.yaml` | Structured diff of two specs |
+| `forge sbom` | Generate CycloneDX 1.5 Software Bill of Materials |
+| `forge verify` | Verify component audit hashes |
+| `forge deploy` | Generate Kubernetes manifests + Helm chart |
+
+---
+
+## Trusted Component Catalog
+
+All components are pre-audited, version-pinned, and immutable after release.
+Bug fixes and new features create new component versions — the old version is never modified.
+
+| Component | Purpose |
+|-----------|---------|
+| `foundry-http` | HTTP server, routing, CORS, middleware registration |
+| `foundry-postgres` | DB pool, CRUD DAOs, auto-migrations, soft delete, pg_notify |
+| `foundry-auth-jwt` | JWT validation, RBAC middleware, JWK endpoint integration |
+| `foundry-auth-spicedb` | Fine-grained authz via SpiceDB/Authzed |
+| `foundry-grpc` | gRPC server, interceptors |
+| `foundry-health` | Liveness + readiness endpoints |
+| `foundry-metrics` | Prometheus metrics server |
+| `foundry-events` | PostgreSQL LISTEN/NOTIFY event loop |
+| `foundry-kafka` | Kafka producer/consumer with topic management |
+| `foundry-nats` | NATS messaging |
+| `foundry-redis` | Cache, rate limiting, distributed locking |
+| `foundry-redis-streams` | Redis Streams consumer groups |
+| `foundry-graph-age` | Apache AGE graph database (Cypher, bi-temporal, bulk mutations) |
+| `foundry-temporal` | Temporal workflow orchestration |
+| `foundry-tenancy` | Row-level multi-tenancy isolation |
+| `foundry-service-router` | Service mesh routing |
+
+---
+
+## Why TSF?
+
+| Traditional AI-Generated Code | Trusted Software Foundry |
+|-------------------------------|--------------------------|
+| AI writes arbitrary source code | AI writes a validated IR spec |
+| No formal audit trail | Every component has audit record + hash |
+| Non-deterministic output | Same spec + versions = identical binary |
+| Hard to generate SBOM | Component list IS the SBOM |
+| New resource = code review | New resource = YAML field, zero code |
+| AI mistakes reach production | Schema validation blocks malformed specs |
+| Custom logic scattered in generated code | Hooks declared in spec, injected at compile time |
+
+---
 
 ## Repository Structure
 
 ```
 foundry/
-  spec/           IR type definitions — Component interface, Application, JSON Schema
-  components/     Trusted component library (7 components, 62 tests)
-    registry.go   Audit verification registry
-    http/         HTTP server, routing, middleware
-    postgres/     DB pool, CRUD DAOs, migrations, pg_notify
-    auth/jwt/     JWT validation, RBAC
-    grpc/         gRPC server, interceptors
-    health/       Health check server
-    metrics/      Prometheus metrics
-    events/       PostgreSQL LISTEN/NOTIFY
-  compiler/       Foundry compiler: parse → resolve → generate
+  spec/               IR type system — ComponentInterface, Application, JSON Schema
+  components/         Trusted component library (15 components, 60+ tests)
+  compiler/           Forge compiler: parse → validate → resolve → generate
   examples/
-    dinosaur-registry/
-      app.foundry.yaml  Reference application (trex parity demo)
+    kartograph/       Enterprise bi-temporal knowledge graph (hero demo)
+    dinosaur-registry/ Simple CRUD service (quick-start reference)
+    fleet-manager/    Multi-service with hooks (advanced patterns)
 cmd/
-  foundry/            tsc CLI entrypoint
-FOUNDRY-ARCHITECTURE.md  Full architecture decision record
+  forge/              forge CLI (compile, scaffold, lint, explain, diff, sbom, verify, deploy)
+docs/                 Hook contract, IR field reference
+FOUNDRY-ARCHITECTURE.md  Architecture decisions and component design
 ```
 
 ## Testing
 
 ```bash
+# All foundry + compiler tests
 go test ./foundry/...
-# ok  foundry/compiler          (37 tests)
-# ok  foundry/components        (9 tests)
-# ok  foundry/components/auth/jwt (6 tests)
-# ok  foundry/components/events (4 tests)
-# ok  foundry/components/postgres (6 tests)
+
+# Key packages
+go test ./foundry/compiler/...    # compiler pipeline (60+ tests)
+go test ./foundry/components/...  # trusted component library (60+ tests)
+go test ./cmd/forge/...           # forge CLI commands
 ```
-
-## Trusted Component Catalog
-
-| Component | Version | Purpose | Ports |
-|-----------|---------|---------|-------|
-| `foundry-http` | v1.0.0 | HTTP server, routing, CORS middleware | :8000 |
-| `foundry-postgres` | v1.0.0 | DB pool, CRUD DAOs, auto-migrations, soft delete | — |
-| `foundry-auth-jwt` | v1.0.0 | JWT validation, RBAC middleware | — |
-| `foundry-grpc` | v1.0.0 | gRPC server, pre-auth interceptor hook | :9000 |
-| `foundry-health` | v1.0.0 | Liveness + readiness check | :8083 |
-| `foundry-metrics` | v1.0.0 | Prometheus metrics | :8080 |
-| `foundry-events` | v1.0.0 | PostgreSQL LISTEN/NOTIFY event loop | — |
-
-Each component: audited, version-pinned, immutable after audit. Bug fixes create new versions.
-
-## Why TSF?
-
-| Traditional AI-Generated Code | TSF |
-|-------------------------------|-----|
-| AI writes arbitrary code | AI writes validated IR spec |
-| No formal audit trail | Every component has audit record + hash |
-| Non-deterministic output | Same spec + versions = same binary, always |
-| Hard to SBOM | Components block IS the SBOM |
-| New resource = code review | New resource = YAML field, zero code |
 
 ## IR Spec Reference
 
 Full JSON Schema: `foundry/spec/schema.json`
 
-Validate your spec:
 ```bash
-forge validate app.foundry.yaml
+forge lint app.foundry.yaml   # validates against schema + semantic rules
 ```
 
-## Architecture
+See [FOUNDRY-ARCHITECTURE.md](./FOUNDRY-ARCHITECTURE.md) for full architecture decisions,
+component interface contracts, the compiler design, and hook injection point specifications.
 
-See [FOUNDRY-ARCHITECTURE.md](./FOUNDRY-ARCHITECTURE.md) for full architecture decisions, component interface contracts, and the compiler design.
+---
+
+## Contributing
+
+Trusted components live in `foundry/components/` — changes require a new version and audit record.
+The compiler output surface is frozen: changes to generated code shape need architecture review.
+
+```bash
+go test ./foundry/... ./cmd/...   # must pass before submitting a PR
+```
