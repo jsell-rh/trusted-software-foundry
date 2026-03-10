@@ -311,10 +311,41 @@ func (d *resourceDAO) tenantClause(ctx context.Context, p int) (clause string, v
 	return fmt.Sprintf(" AND %s = $%d", field, p), []any{tenantID}
 }
 
+// writableFieldSet returns the set of field names that users are allowed to write.
+// Auto-managed fields (created_at, updated_at) and soft-delete sentinel columns
+// are excluded; only columns explicitly declared in the IR resource definition
+// with no Auto tag and not marked as soft-delete are writable.
+// System base columns (id, created_at, updated_at, deleted_at) are never writable.
+func (d *resourceDAO) writableFieldSet() map[string]bool {
+	protected := map[string]bool{"id": true, "created_at": true, "updated_at": true, "deleted_at": true}
+	allowed := make(map[string]bool, len(d.resource.Fields))
+	for _, f := range d.resource.Fields {
+		name := strings.ToLower(f.Name)
+		if !protected[name] && f.Auto == "" && !f.SoftDelete {
+			allowed[name] = true
+		}
+	}
+	return allowed
+}
+
+// filterWritable returns a copy of obj containing only keys that are writable fields
+// for this resource. This prevents SQL injection via user-controlled column names
+// and rejects attempts to overwrite auto-managed columns.
+func (d *resourceDAO) filterWritable(obj map[string]any) map[string]any {
+	allowed := d.writableFieldSet()
+	filtered := make(map[string]any, len(obj))
+	for k, v := range obj {
+		if allowed[strings.ToLower(k)] {
+			filtered[strings.ToLower(k)] = v
+		}
+	}
+	return filtered
+}
+
 // Create inserts obj (map[string]any) into the resource table and returns the generated ID.
 func (d *resourceDAO) Create(ctx context.Context, obj map[string]any) (string, error) {
 	table := strings.ToLower(d.resource.Plural)
-	cols, placeholders, vals := buildInsert(obj)
+	cols, placeholders, vals := buildInsert(d.filterWritable(obj))
 
 	query := fmt.Sprintf(
 		"INSERT INTO %s (%s) VALUES (%s) RETURNING id",
@@ -359,7 +390,7 @@ func (d *resourceDAO) Get(ctx context.Context, id string) (map[string]any, error
 // Update replaces the row with id. obj must include the "id" field.
 func (d *resourceDAO) Update(ctx context.Context, id string, obj map[string]any) error {
 	table := strings.ToLower(d.resource.Plural)
-	sets, vals := buildUpdate(obj)
+	sets, vals := buildUpdate(d.filterWritable(obj))
 	vals = append(vals, id)
 	tenantSQL, tenantVals := d.tenantClause(ctx, len(vals)+1)
 	vals = append(vals, tenantVals...)
