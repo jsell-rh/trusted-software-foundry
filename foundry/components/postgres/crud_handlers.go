@@ -129,7 +129,18 @@ func (h *collectionHandler) handleCreate(w spec.ResponseWriter, r *spec.Request)
 		return
 	}
 
-	id, err := h.dao.Create(ctx(r), obj)
+	// Normalise keys to lowercase before validation so field name comparisons are case-insensitive.
+	normalised := make(map[string]any, len(obj))
+	for k, v := range obj {
+		normalised[strings.ToLower(k)] = v
+	}
+
+	if missing := validateRequired(h.resource.Fields, normalised); len(missing) > 0 {
+		writeError(w, 400, "missing required fields: "+strings.Join(missing, ", "))
+		return
+	}
+
+	id, err := h.dao.Create(ctx(r), normalised)
 	if err != nil {
 		writeError(w, 500, "create failed: "+err.Error())
 		return
@@ -224,6 +235,23 @@ func (h *itemHandler) ServeHTTP(w spec.ResponseWriter, r *spec.Request) {
 }
 
 // --- helpers ---
+
+// validateRequired checks that all required fields declared in the resource definition
+// are present (with a non-nil value) in the input map. Returns a list of missing field
+// names; an empty slice means the input is valid.
+func validateRequired(fields []spec.FieldDefinition, input map[string]any) []string {
+	var missing []string
+	for _, f := range fields {
+		if !f.Required || f.Auto != "" || f.SoftDelete {
+			continue
+		}
+		name := strings.ToLower(f.Name)
+		if v, ok := input[name]; !ok || v == nil {
+			missing = append(missing, f.Name)
+		}
+	}
+	return missing
+}
 
 func writeJSON(w spec.ResponseWriter, status int, v any) {
 	data, err := json.Marshal(v)
