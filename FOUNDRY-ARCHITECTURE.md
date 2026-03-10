@@ -220,10 +220,10 @@ Registry entries are append-only. A component version, once audited, is immutabl
 
 ## Repository Layout
 
-Working in `github.com/openshift-online/rh-trex-ai` with `.worktrees/` for parallel development:
+Working in `github.com/jsell-rh/trusted-software-foundry` with `.worktrees/` for parallel development:
 
 ```
-rh-trex-ai/
+trusted-software-foundry/
   FOUNDRY-ARCHITECTURE.md       # This document (CTO-owned)
   foundry/
     spec/                   # IR JSON Schema (TSF-Architect owns)
@@ -284,7 +284,7 @@ The Foundry platform is complete (at trex parity) when:
 
 ## Standing Orders for All Agents
 
-1. **Read this document before starting work.** Path: `~/code/scratch/rh-trex-ai/FOUNDRY-ARCHITECTURE.md`
+1. **Read this document before starting work.** Path: `~/code/scratch/trusted-software-foundry/FOUNDRY-ARCHITECTURE.md`
 2. **Post status updates every 10 minutes** during active work.
 3. **Work in your assigned worktree** — do not modify files in other agents' worktrees.
 4. **Component interface contracts** (defined by TSF-Architect) are frozen once posted. Compiler and Library agents must wait for contracts before implementing.

@@ -53,7 +53,7 @@ Reference: `plugins/dinosaurs/model.go`
 package widgets
 
 import (
-    "github.com/openshift-online/rh-trex-ai/pkg/api"
+    "github.com/jsell-rh/trusted-software-foundry/pkg/api"
     "gorm.io/gorm"
 )
 
@@ -117,16 +117,16 @@ import (
     "net/http"
 
     "github.com/gorilla/mux"
-    "github.com/openshift-online/rh-trex-ai/cmd/trex/environments"
-    "github.com/openshift-online/rh-trex-ai/cmd/trex/environments/registry"
-    "github.com/openshift-online/rh-trex-ai/cmd/trex/server"
-    "github.com/openshift-online/rh-trex-ai/pkg/api"
-    "github.com/openshift-online/rh-trex-ai/pkg/api/presenters"
-    "github.com/openshift-online/rh-trex-ai/pkg/auth"
-    "github.com/openshift-online/rh-trex-ai/pkg/controllers"
-    "github.com/openshift-online/rh-trex-ai/pkg/db"
-    "github.com/openshift-online/rh-trex-ai/plugins/events"
-    "github.com/openshift-online/rh-trex-ai/plugins/generic"
+    "github.com/jsell-rh/trusted-software-foundry/cmd/trex/environments"
+    "github.com/jsell-rh/trusted-software-foundry/cmd/trex/environments/registry"
+    "github.com/jsell-rh/trusted-software-foundry/cmd/trex/server"
+    "github.com/jsell-rh/trusted-software-foundry/pkg/api"
+    "github.com/jsell-rh/trusted-software-foundry/pkg/api/presenters"
+    "github.com/jsell-rh/trusted-software-foundry/pkg/auth"
+    "github.com/jsell-rh/trusted-software-foundry/pkg/controllers"
+    "github.com/jsell-rh/trusted-software-foundry/pkg/db"
+    "github.com/jsell-rh/trusted-software-foundry/plugins/events"
+    "github.com/jsell-rh/trusted-software-foundry/plugins/generic"
 )
 
 type ServiceLocator func() WidgetService
@@ -218,7 +218,7 @@ Reference: `openapi/openapi.dinosaurs.yaml`
 
 #### 3.1 `cmd/trex/main.go` - Add plugin import
 ```go
-_ "github.com/openshift-online/rh-trex-ai/plugins/widgets"
+_ "github.com/jsell-rh/trusted-software-foundry/plugins/widgets"
 ```
 
 #### 3.2 `pkg/db/migrations/migration_structs.go` - Add migration

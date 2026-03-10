@@ -220,7 +220,7 @@ resources:
 
 	// Pass a fake local path — the replace directive will reference it and
 	// go mod tidy will fail because the directory doesn't exist.
-	fakeLocalPath := "/nonexistent/rh-trex-ai-local"
+	fakeLocalPath := "/nonexistent/foundry-local"
 	c := compiler.New(compiler.NewStubRegistry(), "", fakeLocalPath)
 	err := c.Compile(specFile, t.TempDir())
 	if err == nil {

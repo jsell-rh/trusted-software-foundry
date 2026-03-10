@@ -4,18 +4,18 @@ All URIs are relative to *http://localhost:8000*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**ApiRhTrexAiV1DinosaursGet**](DefaultAPI.md#ApiRhTrexAiV1DinosaursGet) | **Get** /api/rh-trex-ai/v1/dinosaurs | Returns a list of dinosaurs
-[**ApiRhTrexAiV1DinosaursIdGet**](DefaultAPI.md#ApiRhTrexAiV1DinosaursIdGet) | **Get** /api/rh-trex-ai/v1/dinosaurs/{id} | Get an dinosaur by id
-[**ApiRhTrexAiV1DinosaursIdPatch**](DefaultAPI.md#ApiRhTrexAiV1DinosaursIdPatch) | **Patch** /api/rh-trex-ai/v1/dinosaurs/{id} | Update an dinosaur
-[**ApiRhTrexAiV1DinosaursPost**](DefaultAPI.md#ApiRhTrexAiV1DinosaursPost) | **Post** /api/rh-trex-ai/v1/dinosaurs | Create a new dinosaur
-[**ApiRhTrexAiV1FossilsGet**](DefaultAPI.md#ApiRhTrexAiV1FossilsGet) | **Get** /api/rh-trex-ai/v1/fossils | Returns a list of fossils
-[**ApiRhTrexAiV1FossilsIdGet**](DefaultAPI.md#ApiRhTrexAiV1FossilsIdGet) | **Get** /api/rh-trex-ai/v1/fossils/{id} | Get an fossil by id
-[**ApiRhTrexAiV1FossilsIdPatch**](DefaultAPI.md#ApiRhTrexAiV1FossilsIdPatch) | **Patch** /api/rh-trex-ai/v1/fossils/{id} | Update an fossil
-[**ApiRhTrexAiV1FossilsPost**](DefaultAPI.md#ApiRhTrexAiV1FossilsPost) | **Post** /api/rh-trex-ai/v1/fossils | Create a new fossil
-[**ApiRhTrexAiV1ScientistsGet**](DefaultAPI.md#ApiRhTrexAiV1ScientistsGet) | **Get** /api/rh-trex-ai/v1/scientists | Returns a list of scientists
-[**ApiRhTrexAiV1ScientistsIdGet**](DefaultAPI.md#ApiRhTrexAiV1ScientistsIdGet) | **Get** /api/rh-trex-ai/v1/scientists/{id} | Get an scientist by id
-[**ApiRhTrexAiV1ScientistsIdPatch**](DefaultAPI.md#ApiRhTrexAiV1ScientistsIdPatch) | **Patch** /api/rh-trex-ai/v1/scientists/{id} | Update an scientist
-[**ApiRhTrexAiV1ScientistsPost**](DefaultAPI.md#ApiRhTrexAiV1ScientistsPost) | **Post** /api/rh-trex-ai/v1/scientists | Create a new scientist
+[**ApiRhTrexAiV1DinosaursGet**](DefaultAPI.md#ApiRhTrexAiV1DinosaursGet) | **Get** /api/trusted-software-foundry/v1/dinosaurs | Returns a list of dinosaurs
+[**ApiRhTrexAiV1DinosaursIdGet**](DefaultAPI.md#ApiRhTrexAiV1DinosaursIdGet) | **Get** /api/trusted-software-foundry/v1/dinosaurs/{id} | Get an dinosaur by id
+[**ApiRhTrexAiV1DinosaursIdPatch**](DefaultAPI.md#ApiRhTrexAiV1DinosaursIdPatch) | **Patch** /api/trusted-software-foundry/v1/dinosaurs/{id} | Update an dinosaur
+[**ApiRhTrexAiV1DinosaursPost**](DefaultAPI.md#ApiRhTrexAiV1DinosaursPost) | **Post** /api/trusted-software-foundry/v1/dinosaurs | Create a new dinosaur
+[**ApiRhTrexAiV1FossilsGet**](DefaultAPI.md#ApiRhTrexAiV1FossilsGet) | **Get** /api/trusted-software-foundry/v1/fossils | Returns a list of fossils
+[**ApiRhTrexAiV1FossilsIdGet**](DefaultAPI.md#ApiRhTrexAiV1FossilsIdGet) | **Get** /api/trusted-software-foundry/v1/fossils/{id} | Get an fossil by id
+[**ApiRhTrexAiV1FossilsIdPatch**](DefaultAPI.md#ApiRhTrexAiV1FossilsIdPatch) | **Patch** /api/trusted-software-foundry/v1/fossils/{id} | Update an fossil
+[**ApiRhTrexAiV1FossilsPost**](DefaultAPI.md#ApiRhTrexAiV1FossilsPost) | **Post** /api/trusted-software-foundry/v1/fossils | Create a new fossil
+[**ApiRhTrexAiV1ScientistsGet**](DefaultAPI.md#ApiRhTrexAiV1ScientistsGet) | **Get** /api/trusted-software-foundry/v1/scientists | Returns a list of scientists
+[**ApiRhTrexAiV1ScientistsIdGet**](DefaultAPI.md#ApiRhTrexAiV1ScientistsIdGet) | **Get** /api/trusted-software-foundry/v1/scientists/{id} | Get an scientist by id
+[**ApiRhTrexAiV1ScientistsIdPatch**](DefaultAPI.md#ApiRhTrexAiV1ScientistsIdPatch) | **Patch** /api/trusted-software-foundry/v1/scientists/{id} | Update an scientist
+[**ApiRhTrexAiV1ScientistsPost**](DefaultAPI.md#ApiRhTrexAiV1ScientistsPost) | **Post** /api/trusted-software-foundry/v1/scientists | Create a new scientist
 
 
 

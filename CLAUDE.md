@@ -37,7 +37,7 @@ go test ./foundry/...
 
 ```bash
 /tmp/forge compile foundry/examples/dinosaur-registry/app.foundry.yaml \
-  --rh-trex-ai $(pwd) \
+  --trusted-software-foundry $(pwd) \
   -o /tmp/dinosaur-out
 
 cd /tmp/dinosaur-out && go build -o app .
@@ -84,5 +84,5 @@ The `cmd/trex/`, `pkg/`, `plugins/`, `scripts/`, and `templates/` directories co
 ## Module
 
 ```
-github.com/openshift-online/rh-trex-ai
+github.com/jsell-rh/trusted-software-foundry
 ```

@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
-  description: rh-trex-ai Service API
-  title: rh-trex-ai Service API
+  description: trusted-software-foundry Service API
+  title: trusted-software-foundry Service API
   version: 0.0.1
 servers:
 - description: current domain
@@ -11,7 +11,7 @@ servers:
 - description: Staging server
   url: https://api.stage.openshift.com
 paths:
-  /api/rh-trex-ai/v1/dinosaurs:
+  /api/trusted-software-foundry/v1/dinosaurs:
     get:
       parameters:
       - description: Page number of record list when record list exceeds specified
@@ -169,7 +169,7 @@ paths:
       security:
       - Bearer: []
       summary: Create a new dinosaur
-  /api/rh-trex-ai/v1/dinosaurs/{id}:
+  /api/trusted-software-foundry/v1/dinosaurs/{id}:
     get:
       parameters:
       - description: The id of record
@@ -277,7 +277,7 @@ paths:
       security:
       - Bearer: []
       summary: Update an dinosaur
-  /api/rh-trex-ai/v1/fossils:
+  /api/trusted-software-foundry/v1/fossils:
     get:
       parameters:
       - description: Page number of record list when record list exceeds specified
@@ -435,7 +435,7 @@ paths:
       security:
       - Bearer: []
       summary: Create a new fossil
-  /api/rh-trex-ai/v1/fossils/{id}:
+  /api/trusted-software-foundry/v1/fossils/{id}:
     get:
       parameters:
       - description: The id of record
@@ -543,7 +543,7 @@ paths:
       security:
       - Bearer: []
       summary: Update an fossil
-  /api/rh-trex-ai/v1/scientists:
+  /api/trusted-software-foundry/v1/scientists:
     get:
       parameters:
       - description: Page number of record list when record list exceeds specified
@@ -701,7 +701,7 @@ paths:
       security:
       - Bearer: []
       summary: Create a new scientist
-  /api/rh-trex-ai/v1/scientists/{id}:
+  /api/trusted-software-foundry/v1/scientists/{id}:
     get:
       parameters:
       - description: The id of record

@@ -1,7 +1,7 @@
 /*
-rh-trex-ai Service API
+trusted-software-foundry Service API
 
-rh-trex-ai Service API
+trusted-software-foundry Service API
 
 API version: 0.0.1
 */
@@ -95,7 +95,7 @@ func (a *DefaultAPIService) ApiRhTrexAiV1DinosaursGetExecute(r ApiApiRhTrexAiV1D
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/rh-trex-ai/v1/dinosaurs"
+	localVarPath := localBasePath + "/api/trusted-software-foundry/v1/dinosaurs"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
@@ -249,7 +249,7 @@ func (a *DefaultAPIService) ApiRhTrexAiV1DinosaursIdGetExecute(r ApiApiRhTrexAiV
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/rh-trex-ai/v1/dinosaurs/{id}"
+	localVarPath := localBasePath + "/api/trusted-software-foundry/v1/dinosaurs/{id}"
 	localVarPath = strings.Replace(localVarPath, "{"+"id"+"}", url.PathEscape(parameterValueToString(r.id, "id")), -1)
 
 	localVarHeaderParams := make(map[string]string)
@@ -401,7 +401,7 @@ func (a *DefaultAPIService) ApiRhTrexAiV1DinosaursIdPatchExecute(r ApiApiRhTrexA
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/rh-trex-ai/v1/dinosaurs/{id}"
+	localVarPath := localBasePath + "/api/trusted-software-foundry/v1/dinosaurs/{id}"
 	localVarPath = strings.Replace(localVarPath, "{"+"id"+"}", url.PathEscape(parameterValueToString(r.id, "id")), -1)
 
 	localVarHeaderParams := make(map[string]string)
@@ -577,7 +577,7 @@ func (a *DefaultAPIService) ApiRhTrexAiV1DinosaursPostExecute(r ApiApiRhTrexAiV1
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/rh-trex-ai/v1/dinosaurs"
+	localVarPath := localBasePath + "/api/trusted-software-foundry/v1/dinosaurs"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
@@ -769,7 +769,7 @@ func (a *DefaultAPIService) ApiRhTrexAiV1FossilsGetExecute(r ApiApiRhTrexAiV1Fos
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/rh-trex-ai/v1/fossils"
+	localVarPath := localBasePath + "/api/trusted-software-foundry/v1/fossils"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
@@ -923,7 +923,7 @@ func (a *DefaultAPIService) ApiRhTrexAiV1FossilsIdGetExecute(r ApiApiRhTrexAiV1F
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/rh-trex-ai/v1/fossils/{id}"
+	localVarPath := localBasePath + "/api/trusted-software-foundry/v1/fossils/{id}"
 	localVarPath = strings.Replace(localVarPath, "{"+"id"+"}", url.PathEscape(parameterValueToString(r.id, "id")), -1)
 
 	localVarHeaderParams := make(map[string]string)
@@ -1075,7 +1075,7 @@ func (a *DefaultAPIService) ApiRhTrexAiV1FossilsIdPatchExecute(r ApiApiRhTrexAiV
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/rh-trex-ai/v1/fossils/{id}"
+	localVarPath := localBasePath + "/api/trusted-software-foundry/v1/fossils/{id}"
 	localVarPath = strings.Replace(localVarPath, "{"+"id"+"}", url.PathEscape(parameterValueToString(r.id, "id")), -1)
 
 	localVarHeaderParams := make(map[string]string)
@@ -1251,7 +1251,7 @@ func (a *DefaultAPIService) ApiRhTrexAiV1FossilsPostExecute(r ApiApiRhTrexAiV1Fo
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/rh-trex-ai/v1/fossils"
+	localVarPath := localBasePath + "/api/trusted-software-foundry/v1/fossils"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
@@ -1443,7 +1443,7 @@ func (a *DefaultAPIService) ApiRhTrexAiV1ScientistsGetExecute(r ApiApiRhTrexAiV1
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/rh-trex-ai/v1/scientists"
+	localVarPath := localBasePath + "/api/trusted-software-foundry/v1/scientists"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
@@ -1597,7 +1597,7 @@ func (a *DefaultAPIService) ApiRhTrexAiV1ScientistsIdGetExecute(r ApiApiRhTrexAi
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/rh-trex-ai/v1/scientists/{id}"
+	localVarPath := localBasePath + "/api/trusted-software-foundry/v1/scientists/{id}"
 	localVarPath = strings.Replace(localVarPath, "{"+"id"+"}", url.PathEscape(parameterValueToString(r.id, "id")), -1)
 
 	localVarHeaderParams := make(map[string]string)
@@ -1749,7 +1749,7 @@ func (a *DefaultAPIService) ApiRhTrexAiV1ScientistsIdPatchExecute(r ApiApiRhTrex
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/rh-trex-ai/v1/scientists/{id}"
+	localVarPath := localBasePath + "/api/trusted-software-foundry/v1/scientists/{id}"
 	localVarPath = strings.Replace(localVarPath, "{"+"id"+"}", url.PathEscape(parameterValueToString(r.id, "id")), -1)
 
 	localVarHeaderParams := make(map[string]string)
@@ -1925,7 +1925,7 @@ func (a *DefaultAPIService) ApiRhTrexAiV1ScientistsPostExecute(r ApiApiRhTrexAiV
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/rh-trex-ai/v1/scientists"
+	localVarPath := localBasePath + "/api/trusted-software-foundry/v1/scientists"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}

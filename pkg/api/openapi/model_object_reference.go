@@ -1,7 +1,7 @@
 /*
-rh-trex-ai Service API
+trusted-software-foundry Service API
 
-rh-trex-ai Service API
+trusted-software-foundry Service API
 
 API version: 0.0.1
 */
