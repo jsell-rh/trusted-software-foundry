@@ -344,6 +344,14 @@ type IRAuth struct {
 	JWKURL    string `yaml:"jwk_url"    json:"jwk_url,omitempty"`
 	Required  bool   `yaml:"required"   json:"required"`
 	AllowMock string `yaml:"allow_mock" json:"allow_mock,omitempty"`
+
+	// OCM-specific fields (only used when Type == "ocm").
+	// OCMURL is the Red Hat SSO / OCM OIDC realm base URL; the JWKS endpoint is
+	// derived automatically as <ocm_url>/protocol/openid-connect/certs.
+	OCMURL       string   `yaml:"ocm_url"      json:"ocm_url,omitempty"`
+	JWKSOverride string   `yaml:"jwks_url"     json:"jwks_url,omitempty"`
+	AllowedOrgs  []string `yaml:"allowed_orgs" json:"allowed_orgs,omitempty"`
+	CacheTTL     string   `yaml:"cache_ttl"    json:"cache_ttl,omitempty"`
 }
 
 // IRDatabase holds database configuration.
@@ -381,6 +389,7 @@ var (
 		"foundry-metrics":  true,
 		"foundry-events":   true,
 		// Advanced components
+		"foundry-auth-ocm":       true,
 		"foundry-auth-spicedb":   true,
 		"foundry-graph-age":      true,
 		"foundry-kafka":          true,
@@ -519,6 +528,14 @@ func Validate(spec *IRSpec) []error {
 		}
 		if spec.Components["foundry-auth-jwt"] == "" {
 			add("auth.type=jwt requires foundry-auth-jwt in components")
+		}
+	}
+	if spec.Auth != nil && spec.Auth.Type == "ocm" {
+		if spec.Auth.OCMURL == "" && spec.Auth.JWKSOverride == "" {
+			add("auth.type=ocm requires either auth.ocm_url or auth.jwks_url")
+		}
+		if spec.Components["foundry-auth-ocm"] == "" {
+			add("auth.type=ocm requires foundry-auth-ocm in components")
 		}
 	}
 

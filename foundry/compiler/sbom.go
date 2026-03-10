@@ -164,6 +164,8 @@ func componentNameToPath(name string) string {
 	switch name {
 	case "foundry-auth-jwt":
 		return "foundry/components/auth/jwt"
+	case "foundry-auth-ocm":
+		return "foundry/components/auth/ocm"
 	case "foundry-auth-spicedb":
 		return "foundry/components/spicedb"
 	case "foundry-graph-age":
@@ -185,6 +187,7 @@ func componentRole(name string) string {
 		"foundry-http":           "http-server",
 		"foundry-grpc":           "grpc-server",
 		"foundry-auth-jwt":       "authentication",
+		"foundry-auth-ocm":       "authentication",
 		"foundry-auth-spicedb":   "authorization",
 		"foundry-tenancy":        "multi-tenancy",
 		"foundry-health":         "health-check",

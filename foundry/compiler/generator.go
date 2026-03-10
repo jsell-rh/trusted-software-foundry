@@ -56,6 +56,7 @@ func newGeneratorWithSpecDir(outputDir, foundryPath, specDir string) *Generator 
 var componentPriority = map[string]int{
 	"foundry-postgres":       0,
 	"foundry-auth-jwt":       1,
+	"foundry-auth-ocm":       1,
 	"foundry-auth-spicedb":   2,
 	"foundry-tenancy":        3,
 	"foundry-http":           4,
@@ -206,7 +207,9 @@ func main() {
 	// Runtime secrets (DSN, broker URLs) are always read from environment variables.
 	configs := map[string]spec.ComponentConfig{
 {{ if .IR.Database }}		"foundry-postgres": {"dsn": env("DATABASE_DSN", "host=localhost user=postgres dbname=postgres sslmode=disable")},
-{{ end }}{{ if .IR.Auth }}		"foundry-auth-jwt": {"type": {{ goStr .IR.Auth.Type }}, "jwk_url": {{ envVar .IR.Auth.JWKURL }}, "required": {{ .IR.Auth.Required }}, "allow_mock": env("ALLOW_MOCK_AUTH", "false")},
+{{ end }}{{ if .IR.Auth }}{{ if eq .IR.Auth.Type "ocm" }}		"foundry-auth-ocm": {"ocm_url": {{ goStr .IR.Auth.OCMURL }}, "jwks_url": {{ goStr .IR.Auth.JWKSOverride }}, "required": {{ .IR.Auth.Required }}, "cache_ttl": {{ goStr .IR.Auth.CacheTTL }}, "allowed_orgs": []interface{}{ {{ range .IR.Auth.AllowedOrgs }}{{ goStr . }}, {{ end }} }},
+{{ else }}		"foundry-auth-jwt": {"type": {{ goStr .IR.Auth.Type }}, "jwk_url": {{ envVar .IR.Auth.JWKURL }}, "required": {{ .IR.Auth.Required }}, "allow_mock": env("ALLOW_MOCK_AUTH", "false")},
+{{ end }}
 {{ end }}{{ if .IR.API }}{{ if .IR.API.REST }}		"foundry-http":    {"base_path": {{ goStr .IR.API.REST.BasePath }}, "version_header": {{ .IR.API.REST.VersionHeader }}},
 {{ end }}{{ if .IR.API.GRPC }}		"foundry-grpc":    {"enabled": {{ .IR.API.GRPC.Enabled }}{{ if .IR.API.GRPC.Port }}, "port": {{ .IR.API.GRPC.Port }}{{ end }}},
 {{ end }}{{ end }}{{ if .IR.Observ }}{{ if .IR.Observ.HealthCheck }}		"foundry-health":  {"port": {{ .IR.Observ.HealthCheck.Port }}},
