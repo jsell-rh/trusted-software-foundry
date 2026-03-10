@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/jsell-rh/trusted-software-foundry/foundry/spec"
 )
@@ -101,8 +102,9 @@ func (c *HTTPComponent) Start(ctx context.Context) error {
 
 	c.mux = http.NewServeMux()
 
-	// Wire handlers registered by peer components.
-	for _, entry := range c.app.HTTPHandlers() {
+	// Wire handlers registered by peer components; log registered routes.
+	handlers := c.app.HTTPHandlers()
+	for _, entry := range handlers {
 		pattern := c.cfg.basePath + entry.Pattern
 		h := entry.Handler
 		// Capture loop variables.
@@ -116,7 +118,8 @@ func (c *HTTPComponent) Start(ctx context.Context) error {
 		handler = c.adaptMiddleware(mw, handler)
 	}
 
-	// Wrap with CORS and optional version header.
+	// Apply built-in middleware: request logging (innermost), CORS, version header.
+	handler = c.requestLogMiddleware(handler)
 	if len(c.cfg.allowedOrigins) > 0 {
 		handler = c.corsMiddleware(handler)
 	}
@@ -127,6 +130,12 @@ func (c *HTTPComponent) Start(ctx context.Context) error {
 	c.server = &http.Server{
 		Addr:    c.cfg.bind,
 		Handler: handler,
+	}
+
+	// Log registered routes on startup.
+	fmt.Printf("foundry-http: listening on %s\n", c.cfg.bind)
+	for _, entry := range handlers {
+		fmt.Printf("  route: %s%s\n", c.cfg.basePath, entry.Pattern)
 	}
 
 	errCh := make(chan error, 1)
@@ -190,6 +199,27 @@ func (c *HTTPComponent) adaptMiddleware(mw spec.HTTPMiddleware, next http.Handle
 		}
 		wrapped.ServeHTTP(&responseWriterAdapter{w: w}, req)
 	})
+}
+
+// requestLogMiddleware logs each HTTP request: method, path, status, and duration.
+func (c *HTTPComponent) requestLogMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		lw := &loggingResponseWriter{ResponseWriter: w, code: http.StatusOK}
+		next.ServeHTTP(lw, r)
+		fmt.Printf("foundry-http: %s %s %d %s\n", r.Method, r.URL.Path, lw.code, time.Since(start))
+	})
+}
+
+// loggingResponseWriter captures the HTTP status code for request logging.
+type loggingResponseWriter struct {
+	http.ResponseWriter
+	code int
+}
+
+func (l *loggingResponseWriter) WriteHeader(code int) {
+	l.code = code
+	l.ResponseWriter.WriteHeader(code)
 }
 
 func (c *HTTPComponent) corsMiddleware(next http.Handler) http.Handler {

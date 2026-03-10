@@ -568,3 +568,62 @@ func TestStart_WithBasePath(t *testing.T) {
 		t.Errorf("body = %q, want items", string(body))
 	}
 }
+
+func TestLoggingResponseWriter_DefaultCode(t *testing.T) {
+	// When WriteHeader is never called, status defaults to 200.
+	lw := &loggingResponseWriter{
+		ResponseWriter: httptest.NewRecorder(),
+		code:           http.StatusOK,
+	}
+	if lw.code != http.StatusOK {
+		t.Errorf("default code = %d, want 200", lw.code)
+	}
+}
+
+func TestLoggingResponseWriter_CapturessStatusCode(t *testing.T) {
+	rec := httptest.NewRecorder()
+	lw := &loggingResponseWriter{ResponseWriter: rec, code: http.StatusOK}
+	lw.WriteHeader(http.StatusNotFound)
+	if lw.code != http.StatusNotFound {
+		t.Errorf("code = %d, want 404", lw.code)
+	}
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("recorder code = %d, want 404", rec.Code)
+	}
+}
+
+func TestRequestLogMiddleware_CapturesStatus(t *testing.T) {
+	c := New()
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+	})
+	handler := c.requestLogMiddleware(inner)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/items", nil)
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Errorf("status = %d, want 201", rec.Code)
+	}
+}
+
+func TestStartup_LogsRoutes(t *testing.T) {
+	// Verify that Start does not panic when routes are present.
+	app := spec.NewApplication(nil)
+	app.AddHTTPHandler("/health", &simpleHandler{body: "ok", code: http.StatusOK})
+
+	c := New()
+	if err := c.Configure(spec.ComponentConfig{"bind": ":0"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Register(app); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := context.Background()
+	if err := c.Start(ctx); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	defer c.Stop(ctx) //nolint:errcheck
+}
