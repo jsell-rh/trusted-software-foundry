@@ -51,6 +51,7 @@ type config struct {
 	readTimeout    time.Duration
 	writeTimeout   time.Duration
 	idleTimeout    time.Duration
+	maxBodyBytes   int64
 }
 
 // defaultReadTimeout and friends are conservative production-safe defaults.
@@ -58,6 +59,8 @@ const (
 	defaultReadTimeout  = 30 * time.Second
 	defaultWriteTimeout = 30 * time.Second
 	defaultIdleTimeout  = 120 * time.Second
+	// defaultMaxBodyBytes limits request bodies to 4 MiB to prevent OOM on malicious uploads.
+	defaultMaxBodyBytes int64 = 4 << 20
 )
 
 // New returns a new HTTPComponent with defaults.
@@ -69,6 +72,7 @@ func New() *HTTPComponent {
 			readTimeout:  defaultReadTimeout,
 			writeTimeout: defaultWriteTimeout,
 			idleTimeout:  defaultIdleTimeout,
+			maxBodyBytes: defaultMaxBodyBytes,
 		},
 	}
 }
@@ -106,6 +110,9 @@ func (c *HTTPComponent) Configure(cfg spec.ComponentConfig) error {
 	}
 	if v, ok := cfg["idle_timeout_sec"].(int); ok && v > 0 {
 		c.cfg.idleTimeout = time.Duration(v) * time.Second
+	}
+	if v, ok := cfg["max_body_bytes"].(int); ok && v > 0 {
+		c.cfg.maxBodyBytes = int64(v)
 	}
 	return nil
 }
@@ -197,6 +204,7 @@ func (c *HTTPComponent) Stop(ctx context.Context) error {
 // adapt converts a spec.HTTPHandler into a net/http.HandlerFunc.
 func (c *HTTPComponent) adapt(h spec.HTTPHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, c.cfg.maxBodyBytes)
 		body, _ := io.ReadAll(r.Body)
 		req := &spec.Request{
 			Method:  r.Method,
@@ -215,6 +223,7 @@ func (c *HTTPComponent) adaptMiddleware(mw spec.HTTPMiddleware, next http.Handle
 	specNext := &handlerAdapter{h: next}
 	wrapped := mw(specNext)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, c.cfg.maxBodyBytes)
 		body, _ := io.ReadAll(r.Body)
 		req := &spec.Request{
 			Method:  r.Method,
