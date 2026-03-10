@@ -208,7 +208,8 @@ func main() {
 {{ end }}{{ if .IR.Observ.Metrics }}		"foundry-metrics": {"port": {{ .IR.Observ.Metrics.Port }}, "path": "{{ .IR.Observ.Metrics.Path }}"},
 {{ end }}{{ end }}{{ if .IR.Events }}{{ if eq .IR.Events.Backend "kafka" }}		"foundry-kafka":   {"broker_url": {{ envVar .IR.Events.BrokerURL }}},
 {{ else if eq .IR.Events.Backend "nats" }}		"foundry-nats":    {"url": {{ envVar .IR.Events.BrokerURL }}},
-{{ end }}{{ end }}	}
+{{ end }}{{ end }}{{ if .IR.Tenancy }}		"foundry-tenancy": {"field": "{{ .IR.Tenancy.Field }}", "strategy": "{{ .IR.Tenancy.Strategy }}", "header": "{{ .IR.Tenancy.Header }}"},
+{{ end }}	}
 
 	if err := app.Configure(configs); err != nil {
 		fmt.Fprintf(os.Stderr, "configure: %v\n", err)

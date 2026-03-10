@@ -18,6 +18,7 @@ type Application struct {
 	grpcServices []GRPCServiceEntry
 	db           DB
 	resources    []ResourceDefinition
+	tenantField  string // column name for tenant isolation; set by foundry-tenancy
 }
 
 // HTTPHandlerEntry holds a registered HTTP handler and its URL pattern.
@@ -136,6 +137,21 @@ func (a *Application) DB() DB {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	return a.db
+}
+
+// SetTenantField registers the column name used for row-level tenant isolation.
+// Called by foundry-tenancy during Register so foundry-postgres can scope queries.
+func (a *Application) SetTenantField(field string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.tenantField = field
+}
+
+// TenantField returns the tenant isolation column name, or "" if not configured.
+func (a *Application) TenantField() string {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.tenantField
 }
 
 func (a *Application) Resources() []ResourceDefinition {
