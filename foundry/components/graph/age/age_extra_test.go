@@ -1094,13 +1094,13 @@ func TestValidateLabel_ValidLabels(t *testing.T) {
 func TestValidateLabel_InvalidLabels(t *testing.T) {
 	invalid := []string{
 		"",
-		"123Node",        // starts with digit
-		"Node Type",      // contains space
-		"Node; DROP",     // semicolon injection
-		"Node$",          // dollar sign
-		"Node\nLabel",    // newline
-		"'quoted'",       // single quotes
-		"Node--comment",  // double-dash
+		"123Node",       // starts with digit
+		"Node Type",     // contains space
+		"Node; DROP",    // semicolon injection
+		"Node$",         // dollar sign
+		"Node\nLabel",   // newline
+		"'quoted'",      // single quotes
+		"Node--comment", // double-dash
 	}
 	for _, label := range invalid {
 		if err := validateLabel(label); err == nil {
@@ -1253,11 +1253,11 @@ func TestConfigure_InvalidGraphName_RejectsInjection(t *testing.T) {
 	// outside [A-Za-z][A-Za-z0-9_]* must be rejected to prevent injection.
 	invalid := []string{
 		"'; DROP GRAPH foundry_graph; --",
-		"graph name",   // space
-		"123graph",     // starts with digit
-		"graph-name",   // hyphen
-		"graph.name",   // dot
-		"graph\nname",  // newline
+		"graph name",  // space
+		"123graph",    // starts with digit
+		"graph-name",  // hyphen
+		"graph.name",  // dot
+		"graph\nname", // newline
 	}
 	for _, name := range invalid {
 		c := New()

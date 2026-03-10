@@ -536,9 +536,9 @@ func TestGoStr_SafelyEscapesSpecialChars(t *testing.T) {
 		},
 		Resources: []spec.IRResource{
 			{
-				Name:   "Widget",
-				Plural: "widgets",
-				Fields: []spec.IRField{{Name: "name", Type: "string"}},
+				Name:       "Widget",
+				Plural:     "widgets",
+				Fields:     []spec.IRField{{Name: "name", Type: "string"}},
 				Operations: []string{"create", "read"},
 			},
 		},
