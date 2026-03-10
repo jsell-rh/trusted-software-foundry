@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -103,13 +104,15 @@ func (h *collectionHandler) handleList(w spec.ResponseWriter, r *spec.Request) {
 	c := ctx(r)
 	total, err := h.dao.Count(c)
 	if err != nil {
-		writeError(w, 500, "count failed: "+err.Error())
+		fmt.Fprintf(os.Stderr, "foundry-postgres: count %s: %v\n", h.resource.Plural, err)
+		writeError(w, 500, "internal server error")
 		return
 	}
 
 	items, err := h.dao.List(c, page, size)
 	if err != nil {
-		writeError(w, 500, "list failed: "+err.Error())
+		fmt.Fprintf(os.Stderr, "foundry-postgres: list %s: %v\n", h.resource.Plural, err)
+		writeError(w, 500, "internal server error")
 		return
 	}
 
@@ -148,7 +151,8 @@ func (h *collectionHandler) handleCreate(w spec.ResponseWriter, r *spec.Request)
 
 	id, err := h.dao.Create(ctx(r), normalised)
 	if err != nil {
-		writeError(w, 500, "create failed: "+err.Error())
+		fmt.Fprintf(os.Stderr, "foundry-postgres: create %s: %v\n", h.resource.Name, err)
+		writeError(w, 500, "internal server error")
 		return
 	}
 
@@ -187,7 +191,8 @@ func (h *itemHandler) ServeHTTP(w spec.ResponseWriter, r *spec.Request) {
 			if strings.Contains(err.Error(), "not found") {
 				writeError(w, 404, "not found")
 			} else {
-				writeError(w, 500, err.Error())
+				fmt.Fprintf(os.Stderr, "foundry-postgres: get %s %s: %v\n", h.plural, id, err)
+				writeError(w, 500, "internal server error")
 			}
 			return
 		}
@@ -209,7 +214,8 @@ func (h *itemHandler) ServeHTTP(w spec.ResponseWriter, r *spec.Request) {
 			} else if strings.Contains(err.Error(), "no writable fields") {
 				writeError(w, 400, err.Error())
 			} else {
-				writeError(w, 500, err.Error())
+				fmt.Fprintf(os.Stderr, "foundry-postgres: update %s %s: %v\n", h.plural, id, err)
+				writeError(w, 500, "internal server error")
 			}
 			return
 		}
@@ -229,7 +235,8 @@ func (h *itemHandler) ServeHTTP(w spec.ResponseWriter, r *spec.Request) {
 			if strings.Contains(err.Error(), "not found") {
 				writeError(w, 404, "not found")
 			} else {
-				writeError(w, 500, err.Error())
+				fmt.Fprintf(os.Stderr, "foundry-postgres: delete %s %s: %v\n", h.plural, id, err)
+				writeError(w, 500, "internal server error")
 			}
 			return
 		}
