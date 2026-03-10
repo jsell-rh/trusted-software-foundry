@@ -152,3 +152,27 @@ type Rows interface {
 	Close() error
 	Err() error
 }
+
+// tenantIDKeyType is an unexported type for the tenant context key to avoid
+// collisions with other packages using context.WithValue.
+type tenantIDKeyType struct{}
+
+// TenantIDKey is the context key used by foundry-tenancy to store the
+// tenant identifier extracted from the request. foundry-postgres reads this
+// key from the request context to scope all queries to the correct tenant.
+var TenantIDKey = tenantIDKeyType{}
+
+// TenantIDFromContext extracts the tenant identifier from ctx.
+// Returns ("", false) when no tenant is in context.
+func TenantIDFromContext(ctx context.Context) (string, bool) {
+	if ctx == nil {
+		return "", false
+	}
+	id, ok := ctx.Value(TenantIDKey).(string)
+	return id, ok && id != ""
+}
+
+// WithTenantID returns a copy of ctx with the tenant identifier attached.
+func WithTenantID(ctx context.Context, tenantID string) context.Context {
+	return context.WithValue(ctx, TenantIDKey, tenantID)
+}

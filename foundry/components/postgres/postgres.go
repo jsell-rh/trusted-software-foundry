@@ -117,7 +117,7 @@ func (c *Component) Register(app *spec.Application) error {
 
 	// Build one DAO per resource.
 	for _, res := range c.cfg.Resources {
-		c.daos[res.Name] = &resourceDAO{db: sqldb, resource: res}
+		c.daos[res.Name] = &resourceDAO{db: sqldb, resource: res, app: app}
 	}
 
 	// Register REST CRUD handlers for each resource.
@@ -244,9 +244,30 @@ func (s *sqlDB) QueryContext(ctx context.Context, query string, args ...any) (sp
 
 // resourceDAO is a CRUD data access object for a single IR resource.
 // The table name and column list are derived from the ResourceDefinition.
+// app is held to read the tenant field lazily at query time (foundry-tenancy
+// may register after foundry-postgres, so we cannot cache the field at creation).
 type resourceDAO struct {
 	db       *sql.DB
 	resource spec.ResourceDefinition
+	app      *spec.Application
+}
+
+// tenantClause returns an additional WHERE clause fragment and the tenant value
+// when a tenant ID is present in ctx. The placeholder index p is the next
+// available parameter index (e.g. $3). Returns ("", nil) when no tenant context.
+func (d *resourceDAO) tenantClause(ctx context.Context, p int) (clause string, val []any) {
+	if d.app == nil {
+		return "", nil
+	}
+	field := d.app.TenantField()
+	if field == "" {
+		return "", nil
+	}
+	tenantID, ok := spec.TenantIDFromContext(ctx)
+	if !ok {
+		return "", nil
+	}
+	return fmt.Sprintf(" AND %s = $%d", field, p), []any{tenantID}
 }
 
 // Create inserts obj (map[string]any) into the resource table and returns the generated ID.
@@ -275,8 +296,10 @@ func (d *resourceDAO) Create(ctx context.Context, obj map[string]any) (string, e
 // Get retrieves a single row by ID and returns map[string]any.
 func (d *resourceDAO) Get(ctx context.Context, id string) (map[string]any, error) {
 	table := strings.ToLower(d.resource.Plural)
-	query := fmt.Sprintf("SELECT * FROM %s WHERE id = $1 AND deleted_at IS NULL", table)
-	rows, err := d.db.QueryContext(ctx, query, id)
+	tenantSQL, tenantVals := d.tenantClause(ctx, 2)
+	query := fmt.Sprintf("SELECT * FROM %s WHERE id = $1 AND deleted_at IS NULL%s", table, tenantSQL)
+	args := append([]any{id}, tenantVals...)
+	rows, err := d.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("get %s %s: %w", d.resource.Name, id, err)
 	}
@@ -297,10 +320,12 @@ func (d *resourceDAO) Update(ctx context.Context, id string, obj map[string]any)
 	table := strings.ToLower(d.resource.Plural)
 	sets, vals := buildUpdate(obj)
 	vals = append(vals, id)
+	tenantSQL, tenantVals := d.tenantClause(ctx, len(vals)+1)
+	vals = append(vals, tenantVals...)
 
 	query := fmt.Sprintf(
-		"UPDATE %s SET %s WHERE id = $%d AND deleted_at IS NULL",
-		table, strings.Join(sets, ", "), len(vals),
+		"UPDATE %s SET %s WHERE id = $%d AND deleted_at IS NULL%s",
+		table, strings.Join(sets, ", "), len(vals)-len(tenantVals), tenantSQL,
 	)
 	if _, err := d.db.ExecContext(ctx, query, vals...); err != nil {
 		return fmt.Errorf("update %s %s: %w", d.resource.Name, id, err)
@@ -315,13 +340,15 @@ func (d *resourceDAO) Update(ctx context.Context, id string, obj map[string]any)
 // otherwise hard-deletes.
 func (d *resourceDAO) Delete(ctx context.Context, id string) error {
 	table := strings.ToLower(d.resource.Plural)
+	tenantSQL, tenantVals := d.tenantClause(ctx, 2)
+	args := append([]any{id}, tenantVals...)
 	var query string
 	if d.hasSoftDelete() {
-		query = fmt.Sprintf("UPDATE %s SET deleted_at = now() WHERE id = $1", table)
+		query = fmt.Sprintf("UPDATE %s SET deleted_at = now() WHERE id = $1%s", table, tenantSQL)
 	} else {
-		query = fmt.Sprintf("DELETE FROM %s WHERE id = $1", table)
+		query = fmt.Sprintf("DELETE FROM %s WHERE id = $1%s", table, tenantSQL)
 	}
-	if _, err := d.db.ExecContext(ctx, query, id); err != nil {
+	if _, err := d.db.ExecContext(ctx, query, args...); err != nil {
 		return fmt.Errorf("delete %s %s: %w", d.resource.Name, id, err)
 	}
 	if d.resource.Events {
@@ -338,11 +365,13 @@ func (d *resourceDAO) List(ctx context.Context, page, size int) ([]map[string]an
 	}
 	offset := (page - 1) * size
 
+	tenantSQL, tenantVals := d.tenantClause(ctx, 3)
 	query := fmt.Sprintf(
-		"SELECT * FROM %s WHERE deleted_at IS NULL ORDER BY id LIMIT $1 OFFSET $2",
-		table,
+		"SELECT * FROM %s WHERE deleted_at IS NULL%s ORDER BY id LIMIT $1 OFFSET $2",
+		table, tenantSQL,
 	)
-	rows, err := d.db.QueryContext(ctx, query, size, offset)
+	args := append([]any{size, offset}, tenantVals...)
+	rows, err := d.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("list %s: %w", d.resource.Plural, err)
 	}

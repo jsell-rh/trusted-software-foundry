@@ -11,6 +11,7 @@ package tenancy
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/jsell-rh/trusted-software-foundry/foundry/spec"
@@ -62,18 +63,65 @@ func (c *TenancyComponent) Configure(cfg spec.ComponentConfig) error {
 }
 
 // Register installs tenancy middleware on the application.
-// The middleware extracts the tenant ID from the configured header and
-// stores it in the request context. All foundry-postgres queries automatically
-// include a WHERE clause for the tenant field.
+// The middleware extracts the tenant ID from the configured HTTP header and
+// stores it in the request context via spec.WithTenantID. foundry-postgres
+// reads this value and appends WHERE {field} = $N to all queries, providing
+// transparent row-level multi-tenant isolation with zero application code.
 func (c *TenancyComponent) Register(app *spec.Application) error {
-	// TODO: register middleware that intercepts every request, extracts tenant ID,
-	// and adds it to context. Patch foundry-postgres query builder to inject
-	// WHERE {field} = $tenant clause on every operation.
+	if app == nil {
+		return nil
+	}
+	// Register the tenant field name so foundry-postgres can scope queries.
+	app.SetTenantField(c.field)
+
+	header := c.header
+	mw := spec.HTTPMiddleware(func(next spec.HTTPHandler) spec.HTTPHandler {
+		return &tenancyHandler{next: next, header: header}
+	})
+	app.AddMiddleware(mw)
 	return nil
 }
 
-// Start is a no-op for tenancy.
+// Start is a no-op for tenancy — isolation is enforced at request time.
 func (c *TenancyComponent) Start(ctx context.Context) error { return nil }
 
 // Stop is a no-op for tenancy.
 func (c *TenancyComponent) Stop(ctx context.Context) error { return nil }
+
+// TenantField returns the database column name for tenant isolation.
+// foundry-postgres reads this to know which column to filter on.
+func (c *TenancyComponent) TenantField() string { return c.field }
+
+// --- middleware ---
+
+type tenancyHandler struct {
+	next   spec.HTTPHandler
+	header string
+}
+
+func (h *tenancyHandler) ServeHTTP(w spec.ResponseWriter, r *spec.Request) {
+	tenantID := ""
+	if vals, ok := r.Headers[h.header]; ok && len(vals) > 0 {
+		tenantID = vals[0]
+	}
+	if tenantID == "" {
+		writeTenancyError(w, 400, "missing required header: "+h.header)
+		return
+	}
+	// Attach tenant ID to context; downstream components (foundry-postgres) read it.
+	r = &spec.Request{
+		Method:  r.Method,
+		URL:     r.URL,
+		Headers: r.Headers,
+		Body:    r.Body,
+		Context: spec.WithTenantID(r.Context, tenantID),
+	}
+	h.next.ServeHTTP(w, r)
+}
+
+func writeTenancyError(w spec.ResponseWriter, status int, msg string) {
+	data, _ := json.Marshal(map[string]any{"error": msg, "status": status})
+	w.Header()["Content-Type"] = []string{"application/json"}
+	w.WriteHeader(status)
+	w.Write(data) //nolint:errcheck
+}
