@@ -99,7 +99,14 @@ func (h *collectionHandler) handleList(w spec.ResponseWriter, r *spec.Request) {
 		}
 	}
 
-	items, err := h.dao.List(ctx(r), page, size)
+	c := ctx(r)
+	total, err := h.dao.Count(c)
+	if err != nil {
+		writeError(w, 500, "count failed: "+err.Error())
+		return
+	}
+
+	items, err := h.dao.List(c, page, size)
 	if err != nil {
 		writeError(w, 500, "list failed: "+err.Error())
 		return
@@ -109,7 +116,7 @@ func (h *collectionHandler) handleList(w spec.ResponseWriter, r *spec.Request) {
 		"kind":  h.resource.Name + "List",
 		"page":  page,
 		"size":  size,
-		"total": len(items),
+		"total": total,
 		"items": items,
 	}
 	writeJSON(w, 200, resp)
