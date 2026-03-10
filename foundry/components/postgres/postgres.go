@@ -33,6 +33,7 @@ type Component struct {
 	cfg  Config
 	db   *sqlDB
 	daos map[string]*resourceDAO
+	app  *spec.Application // held to read TenantField() at migration time
 }
 
 // Config holds the postgres component configuration derived from the IR spec.
@@ -96,6 +97,7 @@ func (c *Component) Configure(cfg spec.ComponentConfig) error {
 // Register connects to PostgreSQL, runs migrations, creates DAOs, and sets
 // the DB on the application registrar so other components can use it.
 func (c *Component) Register(app *spec.Application) error {
+	c.app = app
 	c.cfg.Resources = app.Resources()
 
 	if c.cfg.DSN == "" {
@@ -154,31 +156,58 @@ func (c *Component) ResourceFor(resourceName string) *resourceDAO {
 // --- Migration generation ---
 
 // runMigrations creates tables for each IR resource if they do not exist.
+// When foundry-tenancy is registered, the tenant isolation column is injected
+// automatically into the DDL (and added via ALTER TABLE for existing tables).
 func (c *Component) runMigrations(ctx context.Context) error {
+	tenantField := ""
+	if c.app != nil {
+		tenantField = c.app.TenantField()
+	}
 	for _, res := range c.cfg.Resources {
-		ddl := generateCreateTable(res)
+		ddl := generateCreateTable(res, tenantField)
 		if _, err := c.db.db.ExecContext(ctx, ddl); err != nil {
 			return fmt.Errorf("migrate %s: %w", res.Name, err)
+		}
+		// Idempotent column addition for tables that predate tenancy being enabled.
+		if tenantField != "" {
+			table := strings.ToLower(res.Plural)
+			alterSQL := fmt.Sprintf(
+				"ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s TEXT NOT NULL DEFAULT ''",
+				table, tenantField,
+			)
+			if _, err := c.db.db.ExecContext(ctx, alterSQL); err != nil {
+				return fmt.Errorf("add tenant column to %s: %w", res.Name, err)
+			}
 		}
 	}
 	return nil
 }
 
 // GenerateMigrationSQL returns the SQL DDL for all resources.
+// tenantField is the column name to inject for row-level tenancy (e.g. "org_id").
+// Pass an empty string to omit tenant isolation columns.
 // Called by the compiler to write migrations/ files.
-func GenerateMigrationSQL(resources []spec.ResourceDefinition) string {
+func GenerateMigrationSQL(resources []spec.ResourceDefinition, tenantField string) string {
 	var sb strings.Builder
 	for _, res := range resources {
-		sb.WriteString(generateCreateTable(res))
+		sb.WriteString(generateCreateTable(res, tenantField))
 		sb.WriteString("\n")
 	}
 	return sb.String()
 }
 
-func generateCreateTable(res spec.ResourceDefinition) string {
+// generateCreateTable produces a CREATE TABLE IF NOT EXISTS statement for res.
+// If tenantField is non-empty and not already declared in res.Fields, the column
+// is injected right after the primary key column so every table is tenant-scoped.
+func generateCreateTable(res spec.ResourceDefinition, tenantField string) string {
 	table := strings.ToLower(res.Plural)
 	var cols []string
 	cols = append(cols, "  id UUID PRIMARY KEY DEFAULT gen_random_uuid()")
+
+	// Inject tenant isolation column unless the resource already declares it.
+	if tenantField != "" && !resourceHasField(res, tenantField) {
+		cols = append(cols, "  "+tenantField+" TEXT NOT NULL DEFAULT ''")
+	}
 
 	for _, f := range res.Fields {
 		cols = append(cols, "  "+fieldToColumn(f))
@@ -186,6 +215,18 @@ func generateCreateTable(res spec.ResourceDefinition) string {
 
 	return fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (\n%s\n);\n",
 		table, strings.Join(cols, ",\n"))
+}
+
+// resourceHasField returns true if res.Fields already contains a field with fieldName
+// (case-insensitive comparison).
+func resourceHasField(res spec.ResourceDefinition, fieldName string) bool {
+	lower := strings.ToLower(fieldName)
+	for _, f := range res.Fields {
+		if strings.ToLower(f.Name) == lower {
+			return true
+		}
+	}
+	return false
 }
 
 func fieldToColumn(f spec.FieldDefinition) string {
