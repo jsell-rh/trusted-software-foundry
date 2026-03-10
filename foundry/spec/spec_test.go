@@ -20,7 +20,7 @@ import (
 // --------------------------------------------------------------------------
 
 type stubComponent struct {
-	name        string
+	name         string
 	configureErr error
 	registerErr  error
 	startErr     error
@@ -32,8 +32,8 @@ type stubComponent struct {
 	stopped    bool
 }
 
-func (s *stubComponent) Name() string    { return s.name }
-func (s *stubComponent) Version() string { return "v1.0.0" }
+func (s *stubComponent) Name() string      { return s.name }
+func (s *stubComponent) Version() string   { return "v1.0.0" }
 func (s *stubComponent) AuditHash() string { return "abc123" }
 
 func (s *stubComponent) Configure(cfg ComponentConfig) error {
@@ -360,12 +360,12 @@ type stopOrderComponent struct {
 	stopped *[]string
 }
 
-func (s *stopOrderComponent) Name() string                                          { return s.name }
-func (s *stopOrderComponent) Version() string                                       { return "v0.0.0" }
-func (s *stopOrderComponent) AuditHash() string                                     { return "" }
-func (s *stopOrderComponent) Configure(cfg ComponentConfig) error                   { return nil }
-func (s *stopOrderComponent) Register(app *Application) error                       { return nil }
-func (s *stopOrderComponent) Start(ctx context.Context) error                       { return nil }
+func (s *stopOrderComponent) Name() string                        { return s.name }
+func (s *stopOrderComponent) Version() string                     { return "v0.0.0" }
+func (s *stopOrderComponent) AuditHash() string                   { return "" }
+func (s *stopOrderComponent) Configure(cfg ComponentConfig) error { return nil }
+func (s *stopOrderComponent) Register(app *Application) error     { return nil }
+func (s *stopOrderComponent) Start(ctx context.Context) error     { return nil }
 func (s *stopOrderComponent) Stop(ctx context.Context) error {
 	*s.stopped = append(*s.stopped, s.name)
 	return nil
@@ -1305,4 +1305,3 @@ func TestValidate_FullValidSpec(t *testing.T) {
 		t.Errorf("expected no errors for full valid spec, got: %v", errs)
 	}
 }
-

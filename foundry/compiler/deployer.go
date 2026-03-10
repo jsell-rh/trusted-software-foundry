@@ -72,9 +72,9 @@ func Deploy(ir *spec.IRSpec, outputDir string) error {
 	} else {
 		// Single-service spec: generate flat deploy/ structure.
 		data := serviceDeployData{
-			IR:      ir,
-			Service: spec.IRService{Name: ir.Metadata.Name, Port: 8080},
-			AppName: ir.Metadata.Name,
+			IR:         ir,
+			Service:    spec.IRService{Name: ir.Metadata.Name, Port: 8080},
+			AppName:    ir.Metadata.Name,
 			SecretName: secretName,
 			EnvVars:    buildEnvVars(ir, spec.IRService{}),
 			HasHealth:  true,

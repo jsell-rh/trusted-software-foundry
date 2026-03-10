@@ -30,9 +30,9 @@ const (
 // Component is the foundry-postgres trusted component implementation.
 // It satisfies spec.Component and spec.ResourceProvider.
 type Component struct {
-	cfg    Config
-	db     *sqlDB
-	daos   map[string]*resourceDAO
+	cfg  Config
+	db   *sqlDB
+	daos map[string]*resourceDAO
 }
 
 // Config holds the postgres component configuration derived from the IR spec.

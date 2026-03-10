@@ -25,9 +25,9 @@ const (
 
 // RedisStreamsComponent implements spec.Component for Redis Streams event bus.
 type RedisStreamsComponent struct {
-	url        string
-	maxLen     int64  // max stream length (MAXLEN ~) before trimming
-	groupName  string // consumer group name
+	url       string
+	maxLen    int64  // max stream length (MAXLEN ~) before trimming
+	groupName string // consumer group name
 }
 
 // New returns a RedisStreamsComponent with defaults.

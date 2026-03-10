@@ -17,9 +17,9 @@ import (
 
 func runCmd() *cobra.Command {
 	var (
-		outputDir    string
-		foundryPath  string
-		buildOnly    bool
+		outputDir     string
+		foundryPath   string
+		buildOnly     bool
 		noDockerBuild bool
 	)
 
