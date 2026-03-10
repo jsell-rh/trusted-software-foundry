@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
@@ -74,9 +75,14 @@ func (c *MetricsComponent) Start(_ context.Context) error {
 	mux := http.NewServeMux()
 	mux.Handle(c.cfg.path, promhttp.Handler())
 
+	// Metrics scrapes are short GET requests; conservative timeouts guard against
+	// slow-loris attacks without affecting normal Prometheus scrape behaviour.
 	c.server = &http.Server{
-		Addr:    c.cfg.bind,
-		Handler: mux,
+		Addr:         c.cfg.bind,
+		Handler:      mux,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
 
 	errCh := make(chan error, 1)
