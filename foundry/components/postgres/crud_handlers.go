@@ -189,6 +189,8 @@ func (h *itemHandler) ServeHTTP(w spec.ResponseWriter, r *spec.Request) {
 		if err := h.dao.Update(ctx(r), id, patch); err != nil {
 			if strings.Contains(err.Error(), "not found") {
 				writeError(w, 404, "not found")
+			} else if strings.Contains(err.Error(), "no writable fields") {
+				writeError(w, 400, err.Error())
 			} else {
 				writeError(w, 500, err.Error())
 			}

@@ -44,8 +44,12 @@ func newTestDAO(t *testing.T) (*resourceDAO, sqlmock.Sqlmock) {
 	}
 	t.Cleanup(func() { db.Close() })
 	res := spec.ResourceDefinition{
-		Name:       "Dinosaur",
-		Plural:     "dinosaurs",
+		Name:   "Dinosaur",
+		Plural: "dinosaurs",
+		Fields: []spec.FieldDefinition{
+			{Name: "species", Type: "string", Required: true},
+			{Name: "description", Type: "string"},
+		},
 		Operations: []string{"create", "read", "update", "delete", "list"},
 	}
 	return &resourceDAO{db: db, resource: res}, mock
@@ -428,6 +432,18 @@ func TestItemHandler_Put_NotAllowed(t *testing.T) {
 	h.ServeHTTP(w, newRequest("PUT", "/dinosaurs/abc-123", []byte("{}")))
 	if w.code != 405 {
 		t.Errorf("code = %d, want 405", w.code)
+	}
+}
+
+func TestItemHandler_Put_NoWritableFields(t *testing.T) {
+	dao, _ := newTestDAO(t)
+	h := &itemHandler{dao: dao, ops: opsSet([]string{"update"}), plural: "dinosaurs"}
+	w := newMockRW()
+	// Send only system columns — all will be filtered out.
+	body, _ := json.Marshal(map[string]any{"id": "abc", "created_at": "2020-01-01"})
+	h.ServeHTTP(w, newRequest("PUT", "/dinosaurs/abc-123", body))
+	if w.code != 400 {
+		t.Errorf("code = %d, want 400 (no writable fields)", w.code)
 	}
 }
 
