@@ -135,6 +135,24 @@ func TestWriteJSON(t *testing.T) {
 	}
 }
 
+func TestWriteJSON_MarshalError_DoesNotLeakGoTypeInfo(t *testing.T) {
+	// Passing an unmarshalable value (channel) triggers the marshal error path.
+	// The response must be 500 with a generic "internal server error" body —
+	// not the raw Go type error string.
+	w := newMockRW()
+	writeJSON(w, 200, map[string]any{"bad": make(chan int)})
+	if w.code != 500 {
+		t.Errorf("expected 500 on marshal error, got %d", w.code)
+	}
+	body := w.body.String()
+	if strings.Contains(body, "chan int") || strings.Contains(body, "unsupported type") {
+		t.Errorf("response leaks Go type info: %s", body)
+	}
+	if !strings.Contains(body, "internal server error") {
+		t.Errorf("expected generic error body, got: %s", body)
+	}
+}
+
 func TestWriteError(t *testing.T) {
 	w := newMockRW()
 	writeError(w, 404, "not found")
