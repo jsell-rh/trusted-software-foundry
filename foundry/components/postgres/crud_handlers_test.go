@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"strings"
@@ -538,5 +539,32 @@ func TestRegisterCRUDHandlers_EmptyPluralFallback(t *testing.T) {
 	}
 	if !patterns["/widgets"] {
 		t.Errorf("expected /widgets route from fallback; got: %v", patterns)
+	}
+}
+
+// TestResourceDAO_List_PageOffset verifies that page=1 returns OFFSET 0,
+// page=2 returns OFFSET size, etc. (1-based pagination).
+func TestResourceDAO_List_PageOffset(t *testing.T) {
+	cases := []struct {
+		page, size int
+		wantOffset int
+	}{
+		{1, 20, 0},
+		{2, 20, 20},
+		{3, 10, 20},
+	}
+	for _, tc := range cases {
+		dao, mock := newTestDAO(t)
+		mock.ExpectQuery("SELECT .* FROM dinosaurs WHERE deleted_at IS NULL ORDER BY id LIMIT").
+			WithArgs(tc.size, tc.wantOffset).
+			WillReturnRows(sqlmock.NewRows([]string{"id"}))
+
+		_, err := dao.List(context.Background(), tc.page, tc.size)
+		if err != nil {
+			t.Errorf("page=%d size=%d: %v", tc.page, tc.size, err)
+		}
+		if err := mock.ExpectationsWereMet(); err != nil {
+			t.Errorf("page=%d size=%d: expectations not met: %v", tc.page, tc.size, err)
+		}
 	}
 }
