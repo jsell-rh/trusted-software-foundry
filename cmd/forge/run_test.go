@@ -132,10 +132,10 @@ func TestBuildDevCompose_WithSpiceDB(t *testing.T) {
 }
 
 func TestBuildDevCompose_AppNameHyphenToUnderscore(t *testing.T) {
-	ir := minimalIR("kartograph-service")
+	ir := minimalIR("my-service")
 	ir.Database = &spec.IRDatabase{Type: "postgres"}
 	got := buildDevCompose(ir)
-	if !strings.Contains(got, "kartograph_service") {
+	if !strings.Contains(got, "my_service") {
 		t.Errorf("expected hyphen→underscore in DB name, got:\n%s", got)
 	}
 }

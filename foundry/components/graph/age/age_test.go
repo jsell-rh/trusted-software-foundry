@@ -51,7 +51,7 @@ func TestComponent_Configure_Defaults(t *testing.T) {
 func TestComponent_Configure_Custom(t *testing.T) {
 	c := New()
 	err := c.Configure(spec.ComponentConfig{
-		"graph_name":   "kartograph",
+		"graph_name":   "test_graph",
 		"max_depth":    5,
 		"expose_api":   true,
 		"bulk_loading": true,
@@ -59,8 +59,8 @@ func TestComponent_Configure_Custom(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Configure: %v", err)
 	}
-	if c.cfg.graphName != "kartograph" {
-		t.Errorf("graphName = %q, want kartograph", c.cfg.graphName)
+	if c.cfg.graphName != "test_graph" {
+		t.Errorf("graphName = %q, want test_graph", c.cfg.graphName)
 	}
 	if c.cfg.maxDepth != 5 {
 		t.Errorf("maxDepth = %d, want 5", c.cfg.maxDepth)

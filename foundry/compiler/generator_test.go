@@ -614,7 +614,7 @@ func TestGenerateMainGo_DatabaseDSNFromEnv(t *testing.T) {
 }
 
 func TestGenerateMainGo_KafkaBrokerFromEnv(t *testing.T) {
-	ir, err := Parse("../examples/kartograph/app.foundry.yaml")
+	ir, err := Parse("../examples/fleet-manager/app.foundry.yaml")
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -632,8 +632,8 @@ func TestGenerateMainGo_KafkaBrokerFromEnv(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := string(mainGo)
-	// The spec uses ${KARTOGRAPH_EVENTS_BROKER_URL} which should be expanded to env(...)
-	if !strings.Contains(s, `env("KARTOGRAPH_EVENTS_BROKER_URL"`) {
-		t.Errorf("generated main.go should expand ${KARTOGRAPH_EVENTS_BROKER_URL} to env(...); got snippet:\n%s", s)
+	// The spec uses ${KAFKA_BROKER_URL} which should be expanded to env(...)
+	if !strings.Contains(s, `env("KAFKA_BROKER_URL"`) {
+		t.Errorf("generated main.go should expand ${KAFKA_BROKER_URL} to env(...); got snippet:\n%s", s)
 	}
 }
