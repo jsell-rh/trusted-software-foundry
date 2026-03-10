@@ -13,10 +13,8 @@ components:
   foundry-http:     v1.0.0
   foundry-postgres: v1.0.0
   foundry-auth-jwt: v1.0.0
-  foundry-grpc:     v1.0.0
   foundry-health:   v1.0.0
   foundry-metrics:  v1.0.0
-  foundry-events:   v1.0.0
 
 # Data resources — what the application stores and manages.
 resources:
@@ -44,16 +42,12 @@ resources:
         type: timestamp
         soft_delete: true
     operations: [create, read, update, delete, list]
-    events: true
 
 # API configuration
 api:
   rest:
     base_path: /api/v1
     version_header: true
-  grpc:
-    enabled: true
-    port: 9000
 
 # Authentication
 auth:

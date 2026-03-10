@@ -49,19 +49,13 @@
           "foundry-http",
           "foundry-postgres",
           "foundry-auth-jwt",
-          "foundry-auth-spicedb",
-          "foundry-grpc",
+          "foundry-auth-ocm",
           "foundry-health",
           "foundry-metrics",
-          "foundry-events",
-          "foundry-graph-age",
-          "foundry-kafka",
-          "foundry-nats",
-          "foundry-redis",
-          "foundry-redis-streams",
-          "foundry-temporal",
           "foundry-tenancy",
-          "foundry-service-router"
+          "foundry-logging",
+          "foundry-errortracker",
+          "foundry-errortracker-sentry"
         ]
       },
       "additionalProperties": {
@@ -169,12 +163,29 @@
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["jwt", "none"],
-          "description": "Authentication mechanism. 'jwt' requires foundry-auth-jwt; 'none' disables auth middleware."
+          "enum": ["jwt", "ocm", "none"],
+          "description": "Authentication mechanism. 'jwt' requires foundry-auth-jwt; 'ocm' requires foundry-auth-ocm; 'none' disables auth middleware."
         },
         "jwk_url": {
           "type": "string",
           "description": "JWK public key endpoint URL or env-var reference, e.g. '${JWK_CERT_URL}'. Required when type=jwt."
+        },
+        "ocm_url": {
+          "type": "string",
+          "description": "OCM API base URL or env-var reference, e.g. '${OCM_BASE_URL}'. Required when type=ocm."
+        },
+        "jwks_url": {
+          "type": "string",
+          "description": "Optional JWKS URL override for OCM token verification."
+        },
+        "cache_ttl": {
+          "type": "string",
+          "description": "Token cache TTL, e.g. '5m'. Used when type=ocm."
+        },
+        "allowed_orgs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Allowlist of OCM organization IDs. Empty means all organizations are allowed."
         },
         "required": {
           "type": "boolean",
@@ -199,6 +210,20 @@
           "type": "string",
           "enum": ["postgres"],
           "description": "Database engine. Only 'postgres' is supported."
+        },
+        "dsn": {
+          "type": "string",
+          "description": "Database connection string or env-var reference, e.g. '${DATABASE_DSN}'."
+        },
+        "max_open_conns": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum number of open connections to the database."
+        },
+        "max_idle_conns": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum number of idle connections in the pool."
         },
         "migrations": {
           "type": "string",

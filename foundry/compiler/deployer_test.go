@@ -10,7 +10,7 @@ import (
 )
 
 // TestDeploy_FleetManager verifies that forge deploy generates correct Kubernetes
-// manifests for the fleet-manager example (multi-service, full complexity).
+// manifests for the fleet-manager example (single-service, rh-trex parity).
 func TestDeploy_FleetManager(t *testing.T) {
 	specPath := filepath.Join("..", "examples", "fleet-manager", "app.foundry.yaml")
 	if _, err := os.Stat(specPath); os.IsNotExist(err) {
@@ -29,55 +29,32 @@ func TestDeploy_FleetManager(t *testing.T) {
 
 	deployDir := filepath.Join(outDir, "deploy")
 
-	// Assert: kustomization.yaml generated
+	// Assert: flat deploy structure (single service)
+	for _, f := range []string{"deployment.yaml", "service.yaml", "kustomization.yaml"} {
+		if _, err := os.Stat(filepath.Join(deployDir, f)); err != nil {
+			t.Errorf("deploy/%s not generated: %v", f, err)
+		}
+	}
+
+	// Assert: deployment contains DATABASE_URL secret ref (postgres component)
+	deploy, err := os.ReadFile(filepath.Join(deployDir, "deployment.yaml"))
+	if err != nil {
+		t.Fatalf("deployment.yaml not generated: %v", err)
+	}
+	deployStr := string(deploy)
+	for _, want := range []string{"fleet-manager", "DATABASE_URL", "runAsNonRoot", "resources"} {
+		if !strings.Contains(deployStr, want) {
+			t.Errorf("deployment.yaml missing %q", want)
+		}
+	}
+
+	// Assert: kustomization.yaml references the app
 	kust, err := os.ReadFile(filepath.Join(deployDir, "kustomization.yaml"))
 	if err != nil {
 		t.Fatalf("kustomization.yaml not generated: %v", err)
 	}
-	kustStr := string(kust)
-	for _, want := range []string{"kustomize.config.k8s.io", "api-server", "provisioner", "graph-indexer", "secrets.yaml"} {
-		if !strings.Contains(kustStr, want) {
-			t.Errorf("kustomization.yaml missing %q", want)
-		}
-	}
-
-	// Assert: manifests for all 3 services generated
-	for _, svc := range []string{"api-server", "provisioner", "graph-indexer"} {
-		for _, filename := range []string{"deployment.yaml", "service.yaml"} {
-			p := filepath.Join(deployDir, svc, filename)
-			data, err := os.ReadFile(p)
-			if err != nil {
-				t.Errorf("%s/%s not generated: %v", svc, filename, err)
-				continue
-			}
-			s := string(data)
-			if !strings.Contains(s, "fleet-manager-"+svc) {
-				t.Errorf("%s/%s missing app name 'fleet-manager-%s'", svc, filename, svc)
-			}
-		}
-	}
-
-	// Assert: api-server deployment has health probes (foundry-health component)
-	apiDeploy, _ := os.ReadFile(filepath.Join(deployDir, "api-server", "deployment.yaml"))
-	apiStr := string(apiDeploy)
-	for _, want := range []string{"livenessProbe", "readinessProbe", "/healthz", "8083",
-		"DATABASE_URL", "JWK_CERT_URL", "fleet-manager-secrets",
-		"runAsNonRoot", "resources"} {
-		if !strings.Contains(apiStr, want) {
-			t.Errorf("api-server/deployment.yaml missing %q", want)
-		}
-	}
-
-	// Assert: secrets.yaml has all required env var keys
-	secrets, err := os.ReadFile(filepath.Join(deployDir, "secrets.yaml"))
-	if err != nil {
-		t.Fatalf("secrets.yaml not generated: %v", err)
-	}
-	secretsStr := string(secrets)
-	for _, want := range []string{"database-url", "jwk-cert-url", "kafka-broker-url", "redis-url", "temporal-host"} {
-		if !strings.Contains(secretsStr, want) {
-			t.Errorf("secrets.yaml missing key %q", want)
-		}
+	if !strings.Contains(string(kust), "kustomize.config.k8s.io") {
+		t.Error("kustomization.yaml missing kustomize header")
 	}
 }
 

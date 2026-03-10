@@ -380,25 +380,17 @@ type IRMetrics struct {
 
 var (
 	validComponents = map[string]bool{
-		// Core components (v1)
-		"foundry-http":     true,
-		"foundry-postgres": true,
-		"foundry-auth-jwt": true,
-		"foundry-grpc":     true,
-		"foundry-health":   true,
-		"foundry-metrics":  true,
-		"foundry-events":   true,
-		// Advanced components
-		"foundry-auth-ocm":       true,
-		"foundry-auth-spicedb":   true,
-		"foundry-graph-age":      true,
-		"foundry-kafka":          true,
-		"foundry-nats":           true,
-		"foundry-redis":          true,
-		"foundry-redis-streams":  true,
-		"foundry-temporal":       true,
-		"foundry-tenancy":        true,
-		"foundry-service-router": true,
+		// rh-trex parity components (v1)
+		"foundry-http":                true,
+		"foundry-postgres":            true,
+		"foundry-auth-jwt":            true,
+		"foundry-auth-ocm":            true,
+		"foundry-health":              true,
+		"foundry-metrics":             true,
+		"foundry-tenancy":             true,
+		"foundry-logging":             true,
+		"foundry-errortracker":        true,
+		"foundry-errortracker-sentry": true,
 	}
 	validFieldTypes = map[string]bool{
 		"string": true, "int": true, "float": true,

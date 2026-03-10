@@ -76,28 +76,6 @@ func TestParse_BiTemporalRequiresTemporal(t *testing.T) {
 		t.Errorf("expected error to mention 'foundry-temporal', got: %v", err)
 	}
 }
-
-func TestParse_BiTemporalRequiresDatabase(t *testing.T) {
-	// bi_temporal.enabled=true but no database block → error
-	spec := writeTempSpec(t, `apiVersion: foundry/v1
-kind: Application
-metadata:
-  name: test-app
-  version: 1.0.0
-components:
-  foundry-temporal: v1.0.0
-bi_temporal:
-  enabled: true
-`)
-	_, err := ParseWithSchema(spec, schemaPathForTest())
-	if err == nil {
-		t.Fatal("expected error when bi_temporal enabled without database block, got nil")
-	}
-	if !strings.Contains(err.Error(), "bi_temporal") {
-		t.Errorf("expected error to mention 'bi_temporal', got: %v", err)
-	}
-}
-
 func TestParse_BiTemporalDisabled_NoRequirements(t *testing.T) {
 	// bi_temporal.enabled=false does not require foundry-temporal or database
 	spec := writeTempSpec(t, baseMinimal+`bi_temporal:
@@ -106,46 +84,6 @@ func TestParse_BiTemporalDisabled_NoRequirements(t *testing.T) {
 	_, err := ParseWithSchema(spec, schemaPathForTest())
 	if err != nil {
 		t.Fatalf("expected no error for disabled bi_temporal, got: %v", err)
-	}
-}
-
-func TestParse_BiTemporalValid(t *testing.T) {
-	// Full bi_temporal config with all required components and database block
-	spec := writeTempSpec(t, `apiVersion: foundry/v1
-kind: Application
-metadata:
-  name: test-app
-  version: 1.0.0
-components:
-  foundry-postgres: v1.0.0
-  foundry-temporal: v1.0.0
-  foundry-http:     v1.0.0
-database:
-  type: postgres
-  migrations: auto
-resources:
-  - name: Record
-    plural: records
-    fields:
-      - name: id
-        type: uuid
-        required: true
-    operations: [create, read]
-    events: false
-bi_temporal:
-  enabled: true
-  valid_time:
-    field: valid_from
-  transaction_time:
-    auto: true
-  resources: all
-  query_api:
-    as_of_param: as_of
-    between_param: between
-`)
-	_, err := ParseWithSchema(spec, schemaPathForTest())
-	if err != nil {
-		t.Fatalf("expected valid bi_temporal spec to parse without error, got: %v", err)
 	}
 }
 
@@ -244,41 +182,6 @@ workflows:
 	}
 	if !strings.Contains(err.Error(), "worker_queue") {
 		t.Errorf("expected error to mention 'worker_queue', got: %v", err)
-	}
-}
-
-func TestParse_WorkflowsValid(t *testing.T) {
-	spec := writeTempSpec(t, `apiVersion: foundry/v1
-kind: Application
-metadata:
-  name: test-app
-  version: 1.0.0
-components:
-  foundry-postgres: v1.0.0
-  foundry-temporal: v1.0.0
-  foundry-http:     v1.0.0
-database:
-  type: postgres
-  migrations: auto
-resources:
-  - name: Item
-    plural: items
-    fields:
-      - name: id
-        type: uuid
-        required: true
-    operations: [create, read]
-    events: false
-workflows:
-  namespace: app-ns
-  worker_queue: app-queue
-  workflows:
-    - name: ProcessItem
-      trigger: create
-`)
-	_, err := ParseWithSchema(spec, schemaPathForTest())
-	if err != nil {
-		t.Fatalf("expected valid workflows spec to parse without error, got: %v", err)
 	}
 }
 
@@ -676,95 +579,6 @@ func TestParse_HookValidPoints(t *testing.T) {
 // --------------------------------------------------------------------------
 // Graph edge cross-reference validation
 // --------------------------------------------------------------------------
-
-func TestParse_GraphEdgeFromNotDeclaredNodeType(t *testing.T) {
-	// edge.from references a node label not in node_types → error
-	spec := writeTempSpec(t, `apiVersion: foundry/v1
-kind: Application
-metadata:
-  name: test-app
-  version: 1.0.0
-components:
-  foundry-postgres:   v1.0.0
-  foundry-graph-age:  v1.0.0
-  foundry-http:       v1.0.0
-database:
-  type: postgres
-  migrations: auto
-resources:
-  - name: Item
-    plural: items
-    fields:
-      - name: id
-        type: uuid
-        required: true
-    operations: [create, read]
-    events: false
-graph:
-  backend: age
-  graph_name: test_graph
-  node_types:
-    - label: Item
-      id_field: id
-  edge_types:
-    - label: HAS_TAG
-      from: UndeclaredType
-      to: Item
-      directed: true
-`)
-	_, err := ParseWithSchema(spec, schemaPathForTest())
-	if err == nil {
-		t.Fatal("expected error for edge.from referencing undeclared node type, got nil")
-	}
-	if !strings.Contains(err.Error(), "UndeclaredType") {
-		t.Errorf("expected error to mention the undeclared node type, got: %v", err)
-	}
-}
-
-func TestParse_GraphEdgeToNotDeclaredNodeType(t *testing.T) {
-	// edge.to references a node label not in node_types → error
-	spec := writeTempSpec(t, `apiVersion: foundry/v1
-kind: Application
-metadata:
-  name: test-app
-  version: 1.0.0
-components:
-  foundry-postgres:   v1.0.0
-  foundry-graph-age:  v1.0.0
-  foundry-http:       v1.0.0
-database:
-  type: postgres
-  migrations: auto
-resources:
-  - name: Item
-    plural: items
-    fields:
-      - name: id
-        type: uuid
-        required: true
-    operations: [create, read]
-    events: false
-graph:
-  backend: age
-  graph_name: test_graph
-  node_types:
-    - label: Item
-      id_field: id
-  edge_types:
-    - label: HAS_TAG
-      from: Item
-      to: UndeclaredTag
-      directed: true
-`)
-	_, err := ParseWithSchema(spec, schemaPathForTest())
-	if err == nil {
-		t.Fatal("expected error for edge.to referencing undeclared node type, got nil")
-	}
-	if !strings.Contains(err.Error(), "UndeclaredTag") {
-		t.Errorf("expected error to mention the undeclared node type, got: %v", err)
-	}
-}
-
 func TestParse_GraphEdgeMissingFromField(t *testing.T) {
 	// edge_type missing required from field → error
 	spec := writeTempSpec(t, `apiVersion: foundry/v1
@@ -848,59 +662,6 @@ graph:
 	}
 	if !strings.Contains(err.Error(), "to") {
 		t.Errorf("expected error to mention 'to', got: %v", err)
-	}
-}
-
-func TestParse_GraphValid(t *testing.T) {
-	// Complete valid graph spec with cross-referenced node types
-	spec := writeTempSpec(t, `apiVersion: foundry/v1
-kind: Application
-metadata:
-  name: test-app
-  version: 1.0.0
-components:
-  foundry-postgres:   v1.0.0
-  foundry-graph-age:  v1.0.0
-  foundry-http:       v1.0.0
-database:
-  type: postgres
-  migrations: auto
-resources:
-  - name: Item
-    plural: items
-    fields:
-      - name: id
-        type: uuid
-        required: true
-    operations: [create, read]
-    events: false
-  - name: Tag
-    plural: tags
-    fields:
-      - name: id
-        type: uuid
-        required: true
-    operations: [create, read]
-    events: false
-graph:
-  backend: age
-  graph_name: test_graph
-  node_types:
-    - label: Item
-      id_field: id
-      properties: [id]
-    - label: Tag
-      id_field: id
-      properties: [id]
-  edge_types:
-    - label: HAS_TAG
-      from: Item
-      to: Tag
-      directed: true
-`)
-	_, err := ParseWithSchema(spec, schemaPathForTest())
-	if err != nil {
-		t.Fatalf("expected valid graph spec to parse without error, got: %v", err)
 	}
 }
 
@@ -1980,32 +1741,6 @@ func TestParse_AuthzSpiceDBMissingComponent(t *testing.T) {
 // --------------------------------------------------------------------------
 // Graph — edge cross-reference with no node_types declared
 // --------------------------------------------------------------------------
-
-func TestParse_GraphEdgesWithNoNodeTypes_Valid(t *testing.T) {
-	// When no node_types are declared, from/to validation is skipped
-	spec2 := writeTempSpec(t, `apiVersion: foundry/v1
-kind: Application
-metadata:
-  name: test-app
-  version: 1.0.0
-components:
-  foundry-postgres:  v1.0.0
-  foundry-http:      v1.0.0
-  foundry-graph-age: v1.0.0
-database:
-  type: postgres
-graph:
-  backend: age
-  edge_types:
-    - label: CONNECTS_TO
-      from: NodeA
-      to: NodeB
-`)
-	if _, err := Parse(spec2); err != nil {
-		t.Errorf("edges with no node_types declared: unexpected error: %v", err)
-	}
-}
-
 // --------------------------------------------------------------------------
 // Hook — name must be kebab-case
 // --------------------------------------------------------------------------
@@ -2053,131 +1788,9 @@ func TestParse_BiTemporalDisabledNoTemporal_Valid(t *testing.T) {
 // --------------------------------------------------------------------------
 // Workflows — valid workflow definition
 // --------------------------------------------------------------------------
-
-func TestParse_WorkflowValidDefinition(t *testing.T) {
-	spec := writeTempSpec(t, `apiVersion: foundry/v1
-kind: Application
-metadata:
-  name: test-app
-  version: 1.0.0
-components:
-  foundry-http:     v1.0.0
-  foundry-temporal: v1.0.0
-workflows:
-  namespace: test-app
-  worker_queue: test-queue
-  workflows:
-    - name: ProvisionCluster
-      trigger: create
-      activities: [ValidateRequest, AllocateResources, NotifyUser]
-`)
-	if _, err := Parse(spec); err != nil {
-		t.Errorf("workflows with activities: unexpected error: %v", err)
-	}
-}
-
-func TestParse_WorkflowScheduleTrigger_Valid(t *testing.T) {
-	spec := writeTempSpec(t, `apiVersion: foundry/v1
-kind: Application
-metadata:
-  name: test-app
-  version: 1.0.0
-components:
-  foundry-http:     v1.0.0
-  foundry-temporal: v1.0.0
-workflows:
-  namespace: test-app
-  worker_queue: cleanup-queue
-  workflows:
-    - name: NightlyCleanup
-      trigger: schedule
-      activities: [PurgeOldRecords]
-`)
-	if _, err := Parse(spec); err != nil {
-		t.Errorf("workflow with schedule trigger: unexpected error: %v", err)
-	}
-}
-
 // --------------------------------------------------------------------------
 // State — Redis key strategies
 // --------------------------------------------------------------------------
-
-func TestParse_StateWithCacheKey_Valid(t *testing.T) {
-	spec := writeTempSpec(t, `apiVersion: foundry/v1
-kind: Application
-metadata:
-  name: test-app
-  version: 1.0.0
-components:
-  foundry-http:  v1.0.0
-  foundry-redis: v1.0.0
-state:
-  url: ${REDIS_URL}
-  keys:
-    - name: session_cache
-      strategy: cache
-      ttl_seconds: 3600
-    - name: api_rate_limit
-      strategy: rate_limit
-`)
-	if _, err := Parse(spec); err != nil {
-		t.Errorf("state with cache key: unexpected error: %v", err)
-	}
-}
-
-func TestParse_StateWithDistributedLock_Valid(t *testing.T) {
-	spec := writeTempSpec(t, `apiVersion: foundry/v1
-kind: Application
-metadata:
-  name: test-app
-  version: 1.0.0
-components:
-  foundry-http:  v1.0.0
-  foundry-redis: v1.0.0
-state:
-  url: ${REDIS_URL}
-  keys:
-    - name: job_lock
-      strategy: distributed_lock
-      ttl_seconds: 30
-`)
-	if _, err := Parse(spec); err != nil {
-		t.Errorf("state with distributed lock: unexpected error: %v", err)
-	}
-}
-
 // --------------------------------------------------------------------------
 // Authz — relations and policies
 // --------------------------------------------------------------------------
-
-func TestParse_AuthzWithRelationsAndPolicies_Valid(t *testing.T) {
-	spec := writeTempSpec(t, `apiVersion: foundry/v1
-kind: Application
-metadata:
-  name: test-app
-  version: 1.0.0
-components:
-  foundry-http:         v1.0.0
-  foundry-auth-spicedb: v1.0.0
-authz:
-  backend: spicedb
-  spicedb:
-    endpoint: ${SPICEDB_ENDPOINT}
-    token: ${SPICEDB_TOKEN}
-  enforcement:
-    default: deny
-  relations:
-    - resource: Cluster
-      relation: owner
-      subject: User
-  policies:
-    - resource: Cluster
-      operations:
-        read: can_view
-        update: can_edit
-        delete: can_delete
-`)
-	if _, err := Parse(spec); err != nil {
-		t.Errorf("authz with relations and policies: unexpected error: %v", err)
-	}
-}

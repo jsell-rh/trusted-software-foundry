@@ -6,29 +6,18 @@ metadata:
   version: 1.0.0
   description: >
     OpenShift Fleet Manager — a multi-tenant SaaS control plane for managing
-    OpenShift cluster lifecycles at Red Hat scale. Demonstrates every foundry
-    capability: multi-service architecture, graph topology, SpiceDB authz,
-    Temporal workflows, Kafka events, Redis distributed state, NATS service
-    bus, and hook-based audit/policy enforcement.
+    OpenShift cluster lifecycles at Red Hat scale. Demonstrates multi-resource
+    architecture, OCM authentication, row-level tenancy, and hook-based
+    audit/policy enforcement.
 
 # Trusted component versions — the application SBOM.
 components:
-  foundry-http:           v1.0.0
-  foundry-postgres:       v1.0.0
-  foundry-auth-jwt:       v1.0.0
-  foundry-grpc:           v1.0.0
-  foundry-health:         v1.0.0
-  foundry-metrics:        v1.0.0
-  foundry-events:         v1.0.0
-  foundry-auth-spicedb:   v1.0.0
-  foundry-graph-age:      v1.0.0
-  foundry-kafka:          v1.0.0
-  foundry-nats:           v1.0.0
-  foundry-redis:          v1.0.0
-  foundry-redis-streams:  v1.0.0
-  foundry-temporal:       v1.0.0
-  foundry-tenancy:        v1.0.0
-  foundry-service-router: v1.0.0
+  foundry-http:     v1.0.0
+  foundry-postgres: v1.0.0
+  foundry-auth-ocm: v1.0.0
+  foundry-health:   v1.0.0
+  foundry-metrics:  v1.0.0
+  foundry-tenancy:  v1.0.0
 
 # Core data resources.
 resources:
@@ -62,6 +51,10 @@ resources:
       - name: node_count
         type: int
         required: false
+      - name: org_id
+        type: string
+        required: true
+        max_length: 36      # OCM organization ID (tenant key)
       - name: created_at
         type: timestamp
         auto: created
@@ -72,7 +65,6 @@ resources:
         type: timestamp
         soft_delete: true
     operations: [create, read, update, delete, list]
-    events: true
 
   - name: ClusterUpgrade
     plural: cluster-upgrades
@@ -92,10 +84,10 @@ resources:
         type: string
         required: true
         max_length: 32
-      - name: state
+      - name: status
         type: string
         required: true
-        max_length: 32      # scheduled, running, completed, failed, cancelled
+        max_length: 32      # pending, in-progress, complete, failed
       - name: scheduled_at
         type: timestamp
         required: false
@@ -114,8 +106,7 @@ resources:
       - name: deleted_at
         type: timestamp
         soft_delete: true
-    operations: [create, read, update, list]
-    events: true
+    operations: [create, read, update, delete, list]
 
   - name: NodePool
     plural: node-pools
@@ -138,15 +129,10 @@ resources:
       - name: replica_count
         type: int
         required: true
-      - name: autoscaling_enabled
-        type: bool
-        required: false
-      - name: min_replicas
-        type: int
-        required: false
-      - name: max_replicas
-        type: int
-        required: false
+      - name: status
+        type: string
+        required: true
+        max_length: 32      # ready, scaling, failed
       - name: created_at
         type: timestamp
         auto: created
@@ -157,205 +143,41 @@ resources:
         type: timestamp
         soft_delete: true
     operations: [create, read, update, delete, list]
-    events: false
 
-# API surface.
+# REST API.
 api:
   rest:
     base_path: /api/fleet-manager/v1
     version_header: true
-  grpc:
-    enabled: true
-    port: 9000
 
-# Authentication (Red Hat SSO / OCM token validation).
+# OCM (OpenShift Cluster Manager) authentication.
 auth:
-  type: jwt
-  jwk_url: "${JWK_CERT_URL}"
+  type: ocm
+  ocm_url: "${OCM_BASE_URL}"
   required: true
-  allow_mock: "${OCM_MOCK_ENABLED}"
+  cache_ttl: 5m
+  allowed_orgs: []
 
-# Database.
+# PostgreSQL database with auto-migrations.
 database:
   type: postgres
-  migrations: auto
+  dsn: "${DATABASE_DSN}"
+  max_open_conns: 20
+  max_idle_conns: 5
 
 # Observability.
 observability:
   health_check:
     port: 8083
-    path: /healthz
   metrics:
-    port: 8080
+    port: 8084
     path: /metrics
 
-# Multi-tenant organization isolation.
+# Row-level multi-tenancy (by OCM organization).
 tenancy:
   field: org_id
   strategy: row
   header: X-Organization-Id
-
-# Fine-grained authorization via SpiceDB.
-authz:
-  backend: spicedb
-  schema_file: authz/schema.zed
-  relations:
-    - resource: Cluster
-      relation: owner
-      subject: Organization
-    - resource: Cluster
-      relation: viewer
-      subject: User
-    - resource: Cluster
-      relation: editor
-      subject: User
-    - resource: NodePool
-      relation: owner
-      subject: Cluster
-
-# Graph topology (Apache AGE) — cluster-to-node relationships.
-graph:
-  backend: age
-  graph_name: fleet_topology
-  node_types:
-    - label: Cluster
-      id_field: id
-      properties: [name, provider, region, status, version]
-    - label: NodePool
-      id_field: id
-      properties: [name, instance_type, replica_count]
-    - label: Workload
-      id_field: id
-      properties: [name, namespace, replicas, image]
-  edge_types:
-    - label: HAS_NODE_POOL
-      from: Cluster
-      to: NodePool
-      properties: [created_at]
-    - label: RUNS
-      from: NodePool
-      to: Workload
-      properties: [scheduled_at, cpu_request, memory_request]
-    - label: DEPENDS_ON
-      from: Workload
-      to: Workload
-      properties: [dependency_type]
-
-# Distributed services — separate deployable binaries.
-services:
-  - name: api-server
-    role: gateway
-    description: Handles all inbound REST and gRPC client requests.
-    components:
-      - foundry-http
-      - foundry-grpc
-      - foundry-postgres
-      - foundry-auth-jwt
-      - foundry-auth-spicedb
-      - foundry-health
-      - foundry-metrics
-      - foundry-tenancy
-      - foundry-service-router
-    port: 8000
-
-  - name: provisioner
-    role: worker
-    description: Executes cluster provisioning and upgrade Temporal workflows.
-    components:
-      - foundry-postgres
-      - foundry-temporal
-      - foundry-kafka
-      - foundry-redis
-      - foundry-health
-      - foundry-metrics
-    port: 8001
-
-  - name: graph-indexer
-    role: worker
-    description: Consumes cluster lifecycle events and maintains the graph topology.
-    components:
-      - foundry-postgres
-      - foundry-graph-age
-      - foundry-nats
-      - foundry-redis-streams
-      - foundry-health
-      - foundry-metrics
-    port: 8002
-
-# Event streaming configuration.
-events:
-  backend: kafka
-  broker_url: "${KAFKA_BROKER_URL}"
-  topics:
-    - name: fleet.cluster.lifecycle
-      resource: Cluster
-      operations: [create, update, delete]
-      partitions: 12
-      retention_hours: 168    # 7 days
-    - name: fleet.upgrade.state
-      resource: ClusterUpgrade
-      operations: [create, update]
-      partitions: 6
-      retention_hours: 720    # 30 days
-    - name: fleet.nodepool.changes
-      resource: NodePool
-      operations: [create, update, delete]
-      partitions: 6
-      retention_hours: 168
-
-# Temporal.io workflow engine configuration.
-workflows:
-  namespace: fleet-manager
-  worker_queue: fleet-provisioning
-  workflows:
-    - name: ProvisionCluster
-      resource: Cluster
-      trigger: create
-      activities:
-        - ValidateProviderQuota
-        - CreateNetworkInfrastructure
-        - ProvisionControlPlane
-        - RegisterWorkerNodes
-        - ConfigureNetworking
-        - WaitForClusterReady
-        - PublishClusterReady
-    - name: UpgradeCluster
-      resource: ClusterUpgrade
-      trigger: create
-      activities:
-        - ValidateUpgradePath
-        - BackupClusterState
-        - DrainAndUpgradeControlPlane
-        - RollingUpgradeWorkerNodes
-        - ValidateClusterHealth
-        - PublishUpgradeComplete
-    - name: DeprovisionCluster
-      resource: Cluster
-      trigger: delete
-      activities:
-        - GraceFullyEvictWorkloads
-        - DeleteNodePools
-        - ReleaseNetworkResources
-        - PurgeGraphNodes
-        - ArchiveClusterHistory
-
-# Distributed state (Redis).
-state:
-  backend: redis
-  url: "${REDIS_URL}"
-  keys:
-    - name: cluster_provision_lock
-      resource: Cluster
-      strategy: distributed_lock
-      ttl_seconds: 3600
-    - name: upgrade_window_lock
-      resource: ClusterUpgrade
-      strategy: distributed_lock
-      ttl_seconds: 7200
-    - name: cluster_status_cache
-      resource: Cluster
-      strategy: cache
-      ttl_seconds: 30
 
 # Lifecycle hooks — human-written Go files at injection points.
 hooks:
@@ -371,12 +193,3 @@ hooks:
     point: post-handler
     routes: ["/api/fleet-manager/v1/clusters"]
     implementation: hooks/cluster_status_enricher.go
-
-  - name: event-schema-validator
-    point: pre-publish
-    implementation: hooks/event_schema_validator.go
-
-  - name: graph-sync-consumer
-    point: post-consume
-    topic: fleet.cluster.lifecycle
-    implementation: hooks/graph_sync_consumer.go

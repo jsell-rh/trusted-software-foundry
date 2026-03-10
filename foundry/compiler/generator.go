@@ -45,32 +45,23 @@ func newGeneratorWithSpecDir(outputDir, foundryPath, specDir string) *Generator 
 // Lower index = registered earlier.
 //
 // Ordering rationale:
-//  1. foundry-postgres first — sets the DB; auth/tenancy/graph components depend on it
+//  1. foundry-postgres first — sets the DB; auth/tenancy components depend on it
 //  2. Auth providers before HTTP — middleware is installed during HTTP setup
 //  3. foundry-tenancy before HTTP — tenant row-isolation middleware must wrap all handlers
-//  4. foundry-http / foundry-grpc — HTTP/gRPC servers wire in registered middleware
+//  4. foundry-http — HTTP server wires in registered middleware
 //  5. Observability (health, metrics) — standalone, no ordering deps
-//  6. Messaging and streaming backends — standalone, no ordering deps
-//  7. foundry-graph-age — uses Postgres (via AGE extension), registers after postgres
-//  8. foundry-service-router last — routes traffic to already-registered services
+//  6. Infrastructure (logging, error tracking) — standalone, no ordering deps
 var componentPriority = map[string]int{
-	"foundry-postgres":       0,
-	"foundry-auth-jwt":       1,
-	"foundry-auth-ocm":       1,
-	"foundry-auth-spicedb":   2,
-	"foundry-tenancy":        3,
-	"foundry-http":           4,
-	"foundry-grpc":           5,
-	"foundry-health":         6,
-	"foundry-metrics":        7,
-	"foundry-events":         8,
-	"foundry-kafka":          9,
-	"foundry-nats":           10,
-	"foundry-redis":          11,
-	"foundry-redis-streams":  12,
-	"foundry-temporal":       13,
-	"foundry-graph-age":      14,
-	"foundry-service-router": 15,
+	"foundry-postgres":            0,
+	"foundry-auth-jwt":            1,
+	"foundry-auth-ocm":            1,
+	"foundry-tenancy":             2,
+	"foundry-http":                3,
+	"foundry-health":              4,
+	"foundry-metrics":             5,
+	"foundry-logging":             6,
+	"foundry-errortracker":        7,
+	"foundry-errortracker-sentry": 8,
 }
 
 // sortComponents returns a copy of components sorted into safe registration order.
@@ -207,7 +198,7 @@ func main() {
 	// Runtime secrets (DSN, broker URLs) are always read from environment variables.
 	configs := map[string]spec.ComponentConfig{
 {{ if .IR.Database }}		"foundry-postgres": {"dsn": env("DATABASE_DSN", "host=localhost user=postgres dbname=postgres sslmode=disable")},
-{{ end }}{{ if .IR.Auth }}{{ if eq .IR.Auth.Type "ocm" }}		"foundry-auth-ocm": {"ocm_url": {{ goStr .IR.Auth.OCMURL }}, "jwks_url": {{ goStr .IR.Auth.JWKSOverride }}, "required": {{ .IR.Auth.Required }}, "cache_ttl": {{ goStr .IR.Auth.CacheTTL }}, "allowed_orgs": []interface{}{ {{ range .IR.Auth.AllowedOrgs }}{{ goStr . }}, {{ end }} }},
+{{ end }}{{ if .IR.Auth }}{{ if eq .IR.Auth.Type "ocm" }}		"foundry-auth-ocm": {"ocm_url": {{ envVar .IR.Auth.OCMURL }}, "jwks_url": {{ goStr .IR.Auth.JWKSOverride }}, "required": {{ .IR.Auth.Required }}, "cache_ttl": {{ goStr .IR.Auth.CacheTTL }}, "allowed_orgs": []interface{}{ {{ range .IR.Auth.AllowedOrgs }}{{ goStr . }}, {{ end }} }},
 {{ else }}		"foundry-auth-jwt": {"type": {{ goStr .IR.Auth.Type }}, "jwk_url": {{ envVar .IR.Auth.JWKURL }}, "required": {{ .IR.Auth.Required }}, "allow_mock": env("ALLOW_MOCK_AUTH", "false")},
 {{ end }}
 {{ end }}{{ if .IR.API }}{{ if .IR.API.REST }}		"foundry-http":    {"base_path": {{ goStr .IR.API.REST.BasePath }}, "version_header": {{ .IR.API.REST.VersionHeader }}},

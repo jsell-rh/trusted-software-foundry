@@ -60,30 +60,25 @@ func TestGenerateHelm_FleetManager(t *testing.T) {
 		}
 	}
 
-	// Assert: templates for all 3 fleet-manager services exist.
-	for _, svc := range []string{"api-server", "provisioner", "graph-indexer"} {
-		for _, tmpl := range []string{"deployment.yaml", "service.yaml"} {
-			p := filepath.Join(helmDir, "templates", svc+"-"+tmpl)
-			data, err := os.ReadFile(p)
-			if err != nil {
-				t.Errorf("templates/%s-%s not generated: %v", svc, tmpl, err)
-				continue
-			}
-			s := string(data)
-			// Every template should reference Helm helpers.
-			if !strings.Contains(s, "{{") {
-				t.Errorf("templates/%s-%s has no Helm template directives", svc, tmpl)
-			}
+	// Assert: deployment and service templates exist (single-service app).
+	for _, tmpl := range []string{"deployment.yaml", "service.yaml"} {
+		p := filepath.Join(helmDir, "templates", tmpl)
+		data, err := os.ReadFile(p)
+		if err != nil {
+			t.Errorf("templates/%s not generated: %v", tmpl, err)
+			continue
+		}
+		if !strings.Contains(string(data), "{{") {
+			t.Errorf("templates/%s has no Helm template directives", tmpl)
 		}
 	}
 
-	// Assert: secret template generated and references correct keys.
+	// Assert: secret template generated.
 	secretTmpl, err := os.ReadFile(filepath.Join(helmDir, "templates", "secret.yaml"))
 	if err != nil {
 		t.Fatalf("templates/secret.yaml not generated: %v", err)
 	}
-	secretStr := string(secretTmpl)
-	if !strings.Contains(secretStr, "kind: Secret") {
+	if !strings.Contains(string(secretTmpl), "kind: Secret") {
 		t.Error("templates/secret.yaml missing 'kind: Secret'")
 	}
 }

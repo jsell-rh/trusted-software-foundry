@@ -22,19 +22,13 @@ var allComponents = []struct {
 	{"foundry-http", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/foundry/components/http"},
 	{"foundry-postgres", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/foundry/components/postgres"},
 	{"foundry-auth-jwt", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/foundry/components/auth/jwt"},
-	{"foundry-grpc", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/foundry/components/grpc"},
+	{"foundry-auth-ocm", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/foundry/components/auth/ocm"},
 	{"foundry-health", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/foundry/components/health"},
 	{"foundry-metrics", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/foundry/components/metrics"},
-	{"foundry-events", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/foundry/components/events"},
-	{"foundry-auth-spicedb", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/foundry/components/spicedb"},
-	{"foundry-graph-age", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/foundry/components/graph/age"},
-	{"foundry-kafka", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/foundry/components/kafka"},
-	{"foundry-nats", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/foundry/components/nats"},
-	{"foundry-redis", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/foundry/components/redis"},
-	{"foundry-redis-streams", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/foundry/components/redis-streams"},
-	{"foundry-temporal", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/foundry/components/temporal"},
 	{"foundry-tenancy", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/foundry/components/tenancy"},
-	{"foundry-service-router", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/foundry/components/service-router"},
+	{"foundry-logging", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/foundry/components/logging"},
+	{"foundry-errortracker", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/foundry/components/errortracker"},
+	{"foundry-errortracker-sentry", "v1.0.0", "github.com/jsell-rh/trusted-software-foundry/foundry/components/errortracker-sentry"},
 }
 
 func testdataRegistryDir(t *testing.T) string {

@@ -27,7 +27,6 @@ func TestScaffold_Basic(t *testing.T) {
 		"name: Gadget",
 		"plural: gadgets",
 		"operations: [create, read, update, delete, list]",
-		"events: true",
 	} {
 		if !strings.Contains(spec, want) {
 			t.Errorf("scaffold missing %q", want)
@@ -43,14 +42,14 @@ func TestScaffold_DefaultResource(t *testing.T) {
 	}
 }
 
-// TestScaffold_AllComponents verifies all 7 core trusted components are present.
-// Scaffold intentionally includes only core components; advanced components
-// (spicedb, kafka, etc.) are added by the developer as needed.
+// TestScaffold_AllComponents verifies all 5 core trusted components are present.
+// Scaffold includes the rh-trex parity components; additional components
+// (auth-ocm, tenancy, etc.) are added by the developer as needed.
 func TestScaffold_AllComponents(t *testing.T) {
 	spec := renderScaffold("app", "1.0.0", nil)
 	for _, comp := range []string{
 		"foundry-http", "foundry-postgres", "foundry-auth-jwt",
-		"foundry-grpc", "foundry-health", "foundry-metrics", "foundry-events",
+		"foundry-health", "foundry-metrics",
 	} {
 		if !strings.Contains(spec, comp) {
 			t.Errorf("scaffold missing component %q", comp)
@@ -139,8 +138,8 @@ func TestExplain_DinosaurRegistry(t *testing.T) {
 	}
 }
 
-// TestExplain_FleetManager verifies that explain surfaces all 8 advanced IR blocks
-// for the comprehensive fleet-manager reference spec.
+// TestExplain_FleetManager verifies that explain surfaces the core rh-trex-parity
+// blocks for the fleet-manager reference spec (OCM auth, tenancy, hooks).
 func TestExplain_FleetManager(t *testing.T) {
 	specPath := filepath.Join("..", "..", "foundry", "examples", "fleet-manager", "app.foundry.yaml")
 	if _, err := os.Stat(specPath); os.IsNotExist(err) {
@@ -152,47 +151,26 @@ func TestExplain_FleetManager(t *testing.T) {
 	for _, want := range []string{
 		// Core blocks
 		"Application: fleet-manager",
-		"Components (16)",
+		"Components (6)",
 		"Resources (3)",
+		// API
+		"API:",
+		// Auth (OCM)
+		"Auth:",
+		// Database
+		"Database:",
+		// Observability
+		"Health:",
+		"Metrics:",
 		// Tenancy
 		"Tenancy:",
 		"strategy=row",
-		// Authz
-		"Authz: backend=spicedb",
-		"schema=authz/schema.zed",
-		"Relations (4)",
-		"Cluster.owner",
-		// Graph
-		"Graph: backend=age",
-		"graph=fleet_topology",
-		"Nodes (3)",
-		"Edges (3)",
-		"HAS_NODE_POOL(Cluster→NodePool)",
-		// Services
-		"Services (3)",
-		"api-server",
-		"role:gateway",
-		"provisioner",
-		"graph-indexer",
-		// Events
-		"Events: backend=kafka",
-		"fleet.cluster.lifecycle",
-		"fleet.upgrade.state",
-		// State
-		"State: backend=redis",
-		"cluster_provision_lock",
-		"strategy:distributed_lock",
-		// Workflows
-		"Workflows: namespace=fleet-manager",
-		"queue=fleet-provisioning",
-		"ProvisionCluster",
-		"DeprovisionCluster",
 		// Hooks
-		"Hooks (5)",
+		"Hooks (3)",
 		"audit-logger",
 		"point:pre-db",
-		"graph-sync-consumer",
-		"topic:fleet.cluster.lifecycle",
+		"tenant-isolation-check",
+		"cluster-status-enricher",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("explain output missing %q\nOutput:\n%s", want, out)
@@ -200,23 +178,21 @@ func TestExplain_FleetManager(t *testing.T) {
 	}
 }
 
-// TestDiffSpecs_AdvancedBlocks verifies that diffSpecs detects changes in
-// tenancy, authz, graph, services, events, state, workflows, and hooks.
-func TestDiffSpecs_AdvancedBlocks(t *testing.T) {
+// TestDiffSpecs_ParityBlocks verifies that diffSpecs detects changes in
+// tenancy and hooks — the rh-trex parity lifecycle extension points.
+func TestDiffSpecs_ParityBlocks(t *testing.T) {
 	const baseYAML = `apiVersion: foundry/v1
 kind: Application
 metadata:
   name: diff-test-app
   version: 1.0.0
 components:
-  foundry-http:           v1.0.0
-  foundry-postgres:       v1.0.0
-  foundry-auth-spicedb:   v1.0.0
-  foundry-graph-age:      v1.0.0
-  foundry-kafka:          v1.0.0
-  foundry-temporal:       v1.0.0
-  foundry-tenancy:        v1.0.0
-  foundry-redis:          v1.0.0
+  foundry-http:     v1.0.0
+  foundry-postgres: v1.0.0
+  foundry-auth-jwt: v1.0.0
+  foundry-health:   v1.0.0
+  foundry-metrics:  v1.0.0
+  foundry-tenancy:  v1.0.0
 resources:
   - name: Item
     plural: items
@@ -225,48 +201,12 @@ resources:
         type: uuid
         required: true
     operations: [create, read]
-    events: false
 database:
   type: postgres
   migrations: auto
 tenancy:
   field: org_id
   strategy: row
-authz:
-  backend: spicedb
-  relations:
-    - resource: Item
-      relation: owner
-      subject: User
-graph:
-  backend: age
-  graph_name: app_graph
-  node_types:
-    - label: Item
-      id_field: id
-      properties: [name]
-  edge_types: []
-services:
-  - name: api
-    role: gateway
-    port: 8080
-events:
-  backend: kafka
-  topics:
-    - name: app.items
-      partitions: 3
-state:
-  backend: redis
-  keys:
-    - name: item_lock
-      strategy: distributed_lock
-      ttl_seconds: 60
-workflows:
-  namespace: app-ns
-  worker_queue: app-queue
-  workflows:
-    - name: ProcessItem
-      trigger: create
 hooks:
   - name: audit
     point: pre-db
@@ -279,14 +219,12 @@ metadata:
   name: diff-test-app
   version: 1.1.0
 components:
-  foundry-http:           v1.0.0
-  foundry-postgres:       v1.0.0
-  foundry-auth-spicedb:   v1.0.0
-  foundry-graph-age:      v1.0.0
-  foundry-kafka:          v1.0.0
-  foundry-temporal:       v1.0.0
-  foundry-tenancy:        v1.0.0
-  foundry-redis:          v1.0.0
+  foundry-http:     v1.0.0
+  foundry-postgres: v1.0.0
+  foundry-auth-jwt: v1.0.0
+  foundry-health:   v1.0.0
+  foundry-metrics:  v1.0.0
+  foundry-tenancy:  v1.0.0
 resources:
   - name: Item
     plural: items
@@ -295,64 +233,12 @@ resources:
         type: uuid
         required: true
     operations: [create, read]
-    events: false
 database:
   type: postgres
   migrations: auto
 tenancy:
   field: tenant_id
   strategy: row
-authz:
-  backend: spicedb
-  relations:
-    - resource: Item
-      relation: owner
-      subject: User
-    - resource: Item
-      relation: viewer
-      subject: Organization
-graph:
-  backend: age
-  graph_name: app_graph
-  node_types:
-    - label: Item
-      id_field: id
-      properties: [name]
-    - label: Tag
-      id_field: id
-      properties: [label]
-  edge_types: []
-services:
-  - name: api
-    role: gateway
-    port: 8080
-  - name: worker
-    role: worker
-    port: 8081
-events:
-  backend: kafka
-  topics:
-    - name: app.items
-      partitions: 3
-    - name: app.tags
-      partitions: 1
-state:
-  backend: redis
-  keys:
-    - name: item_lock
-      strategy: distributed_lock
-      ttl_seconds: 60
-    - name: tag_cache
-      strategy: cache
-      ttl_seconds: 30
-workflows:
-  namespace: app-ns-v2
-  worker_queue: app-queue
-  workflows:
-    - name: ProcessItem
-      trigger: create
-    - name: ProcessTag
-      trigger: create
 hooks:
   - name: audit
     point: pre-db
@@ -389,20 +275,6 @@ hooks:
 		"~ version: 1.0.0 → 1.1.0",
 		// tenancy field change
 		"~ tenancy.field: org_id → tenant_id",
-		// new authz relation
-		"+ authz.relation: Item.viewer → Organization",
-		// new graph node
-		"+ graph.node: Tag (added)",
-		// new service
-		"+ service: worker",
-		// new event topic
-		"+ events.topic: app.tags (added)",
-		// new state key
-		"+ state.key: tag_cache (added",
-		// workflow namespace change
-		"~ workflows.namespace: app-ns → app-ns-v2",
-		// new workflow
-		"+ workflow: ProcessTag (added)",
 		// new hook
 		"+ hook: notify",
 	} {
