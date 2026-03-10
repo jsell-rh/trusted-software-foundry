@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -140,6 +141,11 @@ func (h *collectionHandler) handleCreate(w spec.ResponseWriter, r *spec.Request)
 		return
 	}
 
+	if errs := validateFieldLengths(h.resource.Fields, normalised); len(errs) > 0 {
+		writeError(w, 400, "field validation failed: "+strings.Join(errs, "; "))
+		return
+	}
+
 	id, err := h.dao.Create(ctx(r), normalised)
 	if err != nil {
 		writeError(w, 500, "create failed: "+err.Error())
@@ -251,6 +257,30 @@ func validateRequired(fields []spec.FieldDefinition, input map[string]any) []str
 		}
 	}
 	return missing
+}
+
+// validateFieldLengths checks string fields against their declared max_length constraint.
+// Returns a slice of error messages (field: value too long, max N); empty slice = valid.
+func validateFieldLengths(fields []spec.FieldDefinition, input map[string]any) []string {
+	var errs []string
+	for _, f := range fields {
+		if f.MaxLength <= 0 || f.Type != "string" {
+			continue
+		}
+		name := strings.ToLower(f.Name)
+		v, ok := input[name]
+		if !ok {
+			continue
+		}
+		s, ok := v.(string)
+		if !ok {
+			continue
+		}
+		if len(s) > f.MaxLength {
+			errs = append(errs, fmt.Sprintf("%s: value too long (%d chars, max %d)", f.Name, len(s), f.MaxLength))
+		}
+	}
+	return errs
 }
 
 func writeJSON(w spec.ResponseWriter, status int, v any) {
