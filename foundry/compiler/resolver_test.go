@@ -494,7 +494,7 @@ func TestCopyHookFiles_EmptyImplementation(t *testing.T) {
 	// No source files exist → both hooks skipped (empty-impl via continue,
 	// with-impl via ReadFile error graceful skip).
 	outDir := t.TempDir()
-	if err := copyHookFiles(ir, outDir, ""); err != nil {
+	if _, err := copyHookFiles(ir, outDir, ""); err != nil {
 		t.Fatalf("copyHookFiles: %v", err)
 	}
 	// Output directory should be empty — no files copied.
