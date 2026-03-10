@@ -23,22 +23,22 @@ import (
 // service code, or DAO code — those live in the trusted components.
 type Generator struct {
 	outputDir   string
-	rhtexAIPath string // local filesystem path to trusted-software-foundry checkout (for go.mod replace)
+	foundryPath string // local filesystem path to trusted-software-foundry checkout (for go.mod replace)
 	specDir     string // directory containing the spec file; used to resolve relative hook paths
 }
 
 // NewGenerator creates a Generator that writes into outputDir.
-// rhtexAIPath is the absolute path to the local trusted-software-foundry checkout used in the
+// foundryPath is the absolute path to the local trusted-software-foundry checkout used in the
 // go.mod replace directive, enabling the generated project to `go build` immediately.
 // Pass an empty string to omit the replace directive (for published modules).
-func NewGenerator(outputDir, rhtexAIPath string) *Generator {
-	return &Generator{outputDir: outputDir, rhtexAIPath: rhtexAIPath}
+func NewGenerator(outputDir, foundryPath string) *Generator {
+	return &Generator{outputDir: outputDir, foundryPath: foundryPath}
 }
 
 // newGeneratorWithSpecDir is like NewGenerator but also records the directory
 // that contains the spec file so that relative hook paths can be resolved correctly.
-func newGeneratorWithSpecDir(outputDir, rhtexAIPath, specDir string) *Generator {
-	return &Generator{outputDir: outputDir, rhtexAIPath: rhtexAIPath, specDir: specDir}
+func newGeneratorWithSpecDir(outputDir, foundryPath, specDir string) *Generator {
+	return &Generator{outputDir: outputDir, foundryPath: foundryPath, specDir: specDir}
 }
 
 // componentPriority defines the registration order for trusted components.
@@ -124,8 +124,12 @@ func (g *Generator) Generate(ir *spec.IRSpec, components []ResolvedComponent) er
 	if err := g.writeHookRegistry(ir, appModule); err != nil {
 		return fmt.Errorf("generating hook_registry.go: %w", err)
 	}
-	if err := copyHookFiles(ir, g.outputDir, g.specDir); err != nil {
+	missingHooks, err := copyHookFiles(ir, g.outputDir, g.specDir)
+	if err != nil {
 		return fmt.Errorf("copying hook files: %w", err)
+	}
+	if err := g.writeHookStubs(missingHooks); err != nil {
+		return fmt.Errorf("generating hook stubs: %w", err)
 	}
 	if err := g.writeAuthzSchemaStub(ir); err != nil {
 		return fmt.Errorf("generating authz schema stub: %w", err)
@@ -263,14 +267,14 @@ module {{ .AppModule }}
 go 1.24.0
 
 require github.com/jsell-rh/trusted-software-foundry v0.0.0
-{{ if .RhtexAIPath }}
-replace github.com/jsell-rh/trusted-software-foundry => {{ .RhtexAIPath }}
+{{ if .FoundryPath }}
+replace github.com/jsell-rh/trusted-software-foundry => {{ .FoundryPath }}
 {{ end }}`))
 
 type goModData struct {
 	AppName     string
 	AppModule   string
-	RhtexAIPath string // absolute path to trusted-software-foundry local checkout for replace directive
+	FoundryPath string // absolute path to trusted-software-foundry local checkout for replace directive
 }
 
 func (g *Generator) writeGoMod(ir *spec.IRSpec, _ []ResolvedComponent) error {
@@ -279,7 +283,7 @@ func (g *Generator) writeGoMod(ir *spec.IRSpec, _ []ResolvedComponent) error {
 	data := goModData{
 		AppName:     ir.Metadata.Name,
 		AppModule:   appModule,
-		RhtexAIPath: g.rhtexAIPath,
+		FoundryPath: g.foundryPath,
 	}
 
 	var buf bytes.Buffer
