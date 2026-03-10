@@ -29,24 +29,25 @@ trusted components. New features are YAML fields, not code diffs.
 
 ---
 
-## Demo: Kartograph in 3 Commands
+## Demo: Fleet Manager in 3 Commands
 
-Kartograph is an enterprise bi-temporal knowledge graph platform. Its entire infrastructure is
-described in [`foundry/examples/kartograph/app.foundry.yaml`](./foundry/examples/kartograph/app.foundry.yaml) —
-PostgreSQL/AGE graph storage, SpiceDB fine-grained authz, JWT auth, Kafka events, multi-tenancy,
-and 4 lifecycle hooks.
+Fleet Manager is a multi-tenant SaaS control plane for managing OpenShift cluster lifecycles.
+Its entire infrastructure is described in
+[`foundry/examples/fleet-manager/app.foundry.yaml`](./foundry/examples/fleet-manager/app.foundry.yaml) —
+PostgreSQL, SpiceDB fine-grained authz, JWT auth, Kafka events, Redis distributed state,
+multi-tenancy, and 5 lifecycle hooks.
 
 ```bash
 # 1. Build the forge compiler
 go build -o /usr/local/bin/forge ./cmd/forge
 
-# 2. Compile the Kartograph spec into a runnable Go project
-forge compile foundry/examples/kartograph/app.foundry.yaml \
+# 2. Compile the Fleet Manager spec into a runnable Go project
+forge compile foundry/examples/fleet-manager/app.foundry.yaml \
   --foundry-path $(pwd) \
-  -o /tmp/kartograph
+  -o /tmp/fleet-manager
 
 # 3. Build the generated project — exits 0
-cd /tmp/kartograph && go build -o kartograph .
+cd /tmp/fleet-manager && go build -o fleet-manager .
 ```
 
 That's it. A production-ready binary with REST API, graph database, auth, events, health checks,
@@ -55,17 +56,14 @@ and metrics — from a YAML file. No code written by a human or AI.
 **What was generated:**
 
 ```
-/tmp/kartograph/
+/tmp/fleet-manager/
   main.go                  ← component wiring (DO NOT EDIT — generated)
   hook_registry.go         ← hook call sites (DO NOT EDIT — generated)
   hooks/
     stubs_generated.go     ← stub hooks (replace with your real logic)
   migrations/
-    0001_graphs.sql
-    0002_nodes.sql
-    0003_edges.sql
-    0004_queries.sql
-  authz/schema.zed         ← SpiceDB schema stub
+    0001_clusters.sql
+    0002_cluster_upgrades.sql
   go.mod / go.sum
 ```
 
@@ -258,9 +256,8 @@ foundry/
   components/         Trusted component library (15 components, 60+ tests)
   compiler/           Forge compiler: parse → validate → resolve → generate
   examples/
-    kartograph/       Enterprise bi-temporal knowledge graph (hero demo)
     dinosaur-registry/ Simple CRUD service (quick-start reference)
-    fleet-manager/    Multi-service with hooks (advanced patterns)
+    fleet-manager/    Multi-service with hooks and events (hero demo)
 cmd/
   forge/              forge CLI (compile, scaffold, lint, explain, diff, sbom, verify, deploy)
 docs/                 Hook contract, IR field reference

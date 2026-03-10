@@ -16,7 +16,7 @@ applications from pre-audited, version-pinned trusted components.
 foundry/spec/           Core interfaces: Component, Application, Registrar, JSON Schema
 foundry/components/     Trusted component library (15 components, 60+ tests)
 foundry/compiler/       Foundry compiler: parse → validate → resolve → generate
-foundry/examples/       Reference applications (kartograph, dinosaur-registry, fleet-manager)
+foundry/examples/       Reference applications (dinosaur-registry, fleet-manager)
 cmd/forge/              forge CLI (compile, init, scaffold, lint, explain, diff, sbom, verify, deploy)
 docs/                   Complex IR extension design docs
 FOUNDRY-ARCHITECTURE.md Full architecture reference
@@ -49,11 +49,11 @@ cd my-service/
 ### Compile an example spec
 
 ```bash
-/tmp/forge compile foundry/examples/kartograph/app.foundry.yaml \
+/tmp/forge compile foundry/examples/fleet-manager/app.foundry.yaml \
   --foundry-path $(pwd) \
-  -o /tmp/kartograph-out
+  -o /tmp/fleet-manager-out
 
-cd /tmp/kartograph-out && go build -o app .
+cd /tmp/fleet-manager-out && go build -o app .
 ```
 
 ### Validate a spec
@@ -65,7 +65,7 @@ cd /tmp/kartograph-out && go build -o app .
 ### Explain what a spec builds
 
 ```bash
-/tmp/forge explain foundry/examples/kartograph/app.foundry.yaml
+/tmp/forge explain foundry/examples/fleet-manager/app.foundry.yaml
 ```
 
 ## IR Spec Format

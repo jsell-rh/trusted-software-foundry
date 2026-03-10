@@ -73,7 +73,6 @@ jobs:
         run: |
           /tmp/forge lint foundry/examples/dinosaur-registry/app.foundry.yaml
           /tmp/forge lint foundry/examples/fleet-manager/app.foundry.yaml
-          /tmp/forge lint foundry/examples/kartograph/app.foundry.yaml
 
       - name: forge compile dinosaur-registry
         run: |
@@ -88,10 +87,3 @@ jobs:
             --foundry-path $(pwd) \
             -o /tmp/fleet-out
           cd /tmp/fleet-out && go build -o fleet-manager .
-
-      - name: forge compile kartograph (hook stubs)
-        run: |
-          /tmp/forge compile foundry/examples/kartograph/app.foundry.yaml \
-            --foundry-path $(pwd) \
-            -o /tmp/kartograph-out
-          cd /tmp/kartograph-out && go build -o kartograph .
