@@ -29,6 +29,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"regexp"
 	"strings"
 	"sync"
@@ -119,6 +120,9 @@ func (c *Component) Configure(cfg spec.ComponentConfig) error {
 	}
 
 	if v, ok := cfg["graph_name"].(string); ok && v != "" {
+		if !reValidLabel.MatchString(v) {
+			return fmt.Errorf("foundry-graph-age: invalid graph_name %q: must match ^[A-Za-z][A-Za-z0-9_]*$", v)
+		}
 		c.cfg.graphName = v
 	}
 	if v, ok := cfg["max_depth"].(int); ok && v > 0 {
@@ -363,7 +367,8 @@ func (c *Component) handleQuery(w spec.ResponseWriter, r *spec.Request) {
 	}
 	results, err := c.Query(r.Context, req.Cypher)
 	if err != nil {
-		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		fmt.Fprintf(os.Stderr, "foundry-graph-age: cypher query: %v\n", err)
+		writeJSON(w, 500, map[string]string{"error": "internal server error"})
 		return
 	}
 	writeJSON(w, 200, map[string]any{"results": results})
@@ -386,7 +391,8 @@ func (c *Component) handleNodeCRUD(w spec.ResponseWriter, r *spec.Request) {
 			return
 		}
 		if err := c.CreateNode(r.Context, req.Type, req.ID, req.Props); err != nil {
-			writeJSON(w, 500, map[string]string{"error": err.Error()})
+			fmt.Fprintf(os.Stderr, "foundry-graph-age: create node: %v\n", err)
+			writeJSON(w, 500, map[string]string{"error": "internal server error"})
 			return
 		}
 		writeJSON(w, 201, map[string]string{"status": "created", "id": req.ID})
@@ -404,7 +410,8 @@ func (c *Component) handleNodeCRUD(w spec.ResponseWriter, r *spec.Request) {
 			return
 		}
 		if err := c.DeleteNode(r.Context, req.Type, req.ID); err != nil {
-			writeJSON(w, 500, map[string]string{"error": err.Error()})
+			fmt.Fprintf(os.Stderr, "foundry-graph-age: delete node: %v\n", err)
+			writeJSON(w, 500, map[string]string{"error": "internal server error"})
 			return
 		}
 		writeJSON(w, 200, map[string]string{"status": "deleted"})
@@ -431,7 +438,8 @@ func (c *Component) handleEdgeCRUD(w spec.ResponseWriter, r *spec.Request) {
 			return
 		}
 		if err := c.CreateEdge(r.Context, req.Type, req.From, req.To, req.Props); err != nil {
-			writeJSON(w, 500, map[string]string{"error": err.Error()})
+			fmt.Fprintf(os.Stderr, "foundry-graph-age: create edge: %v\n", err)
+			writeJSON(w, 500, map[string]string{"error": "internal server error"})
 			return
 		}
 		writeJSON(w, 201, map[string]string{"status": "created"})
@@ -450,7 +458,8 @@ func (c *Component) handleEdgeCRUD(w spec.ResponseWriter, r *spec.Request) {
 			return
 		}
 		if err := c.DeleteEdge(r.Context, req.Type, req.From, req.To); err != nil {
-			writeJSON(w, 500, map[string]string{"error": err.Error()})
+			fmt.Fprintf(os.Stderr, "foundry-graph-age: delete edge: %v\n", err)
+			writeJSON(w, 500, map[string]string{"error": "internal server error"})
 			return
 		}
 		writeJSON(w, 200, map[string]string{"status": "deleted"})
@@ -481,7 +490,8 @@ func (c *Component) handleBulkMutations(w spec.ResponseWriter, r *spec.Request) 
 	}
 
 	if err := c.ApplyMutations(r.Context, mutations); err != nil {
-		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		fmt.Fprintf(os.Stderr, "foundry-graph-age: bulk mutations: %v\n", err)
+		writeJSON(w, 500, map[string]string{"error": "internal server error"})
 		return
 	}
 	writeJSON(w, 200, map[string]any{"applied": len(mutations)})

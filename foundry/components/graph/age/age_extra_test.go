@@ -630,6 +630,13 @@ func TestHandleQuery_DBError(t *testing.T) {
 	if rw.statusCode != 500 {
 		t.Errorf("expected 500, got %d", rw.statusCode)
 	}
+	respBody := string(rw.body)
+	if strings.Contains(respBody, "db error") {
+		t.Errorf("response leaks internal DB error: %s", respBody)
+	}
+	if !strings.Contains(respBody, "internal server error") {
+		t.Errorf("expected generic error in body, got: %s", respBody)
+	}
 }
 
 func TestHandleQuery_Success(t *testing.T) {
@@ -681,6 +688,13 @@ func TestHandleNodeCRUD_POST_DBError(t *testing.T) {
 	if rw.statusCode != 500 {
 		t.Errorf("expected 500, got %d", rw.statusCode)
 	}
+	respBody := string(rw.body)
+	if strings.Contains(respBody, "db error") {
+		t.Errorf("response leaks internal DB error: %s", respBody)
+	}
+	if !strings.Contains(respBody, "internal server error") {
+		t.Errorf("expected generic error in body, got: %s", respBody)
+	}
 }
 
 func TestHandleNodeCRUD_POST_Success(t *testing.T) {
@@ -727,6 +741,13 @@ func TestHandleNodeCRUD_DELETE_DBError(t *testing.T) {
 	})
 	if rw.statusCode != 500 {
 		t.Errorf("expected 500, got %d", rw.statusCode)
+	}
+	respBody := string(rw.body)
+	if strings.Contains(respBody, "db error") {
+		t.Errorf("response leaks internal DB error: %s", respBody)
+	}
+	if !strings.Contains(respBody, "internal server error") {
+		t.Errorf("expected generic error in body, got: %s", respBody)
 	}
 }
 
@@ -792,6 +813,13 @@ func TestHandleEdgeCRUD_POST_DBError(t *testing.T) {
 	if rw.statusCode != 500 {
 		t.Errorf("expected 500, got %d", rw.statusCode)
 	}
+	respBody := string(rw.body)
+	if strings.Contains(respBody, "db error") {
+		t.Errorf("response leaks internal DB error: %s", respBody)
+	}
+	if !strings.Contains(respBody, "internal server error") {
+		t.Errorf("expected generic error in body, got: %s", respBody)
+	}
 }
 
 func TestHandleEdgeCRUD_POST_Success(t *testing.T) {
@@ -838,6 +866,13 @@ func TestHandleEdgeCRUD_DELETE_DBError(t *testing.T) {
 	})
 	if rw.statusCode != 500 {
 		t.Errorf("expected 500, got %d", rw.statusCode)
+	}
+	respBody := string(rw.body)
+	if strings.Contains(respBody, "db error") {
+		t.Errorf("response leaks internal DB error: %s", respBody)
+	}
+	if !strings.Contains(respBody, "internal server error") {
+		t.Errorf("expected generic error in body, got: %s", respBody)
 	}
 }
 
@@ -918,6 +953,13 @@ func TestHandleBulkMutations_ApplyError(t *testing.T) {
 	})
 	if rw.statusCode != 500 {
 		t.Errorf("expected 500, got %d", rw.statusCode)
+	}
+	respBody := string(rw.body)
+	if strings.Contains(respBody, "db error") {
+		t.Errorf("response leaks internal DB error: %s", respBody)
+	}
+	if !strings.Contains(respBody, "internal server error") {
+		t.Errorf("expected generic error in body, got: %s", respBody)
 	}
 }
 
@@ -1187,5 +1229,41 @@ func TestHandleEdgeCRUD_DELETE_InvalidLabel_Returns400(t *testing.T) {
 	})
 	if rw.statusCode != 400 {
 		t.Errorf("expected 400 for invalid edge label, got %d; body: %s", rw.statusCode, rw.body)
+	}
+}
+
+// --------------------------------------------------------------------------
+// Configure — graph_name validation
+// --------------------------------------------------------------------------
+
+func TestConfigure_ValidGraphName(t *testing.T) {
+	for _, name := range []string{"foundry_graph", "MyGraph", "graph123", "A"} {
+		c := New()
+		if err := c.Configure(spec.ComponentConfig{"graph_name": name}); err != nil {
+			t.Errorf("Configure(%q) unexpected error: %v", name, err)
+		}
+		if c.cfg.graphName != name {
+			t.Errorf("graphName = %q, want %q", c.cfg.graphName, name)
+		}
+	}
+}
+
+func TestConfigure_InvalidGraphName_RejectsInjection(t *testing.T) {
+	// graph_name is interpolated directly into every Cypher query; any character
+	// outside [A-Za-z][A-Za-z0-9_]* must be rejected to prevent injection.
+	invalid := []string{
+		"'; DROP GRAPH foundry_graph; --",
+		"graph name",   // space
+		"123graph",     // starts with digit
+		"graph-name",   // hyphen
+		"graph.name",   // dot
+		"graph\nname",  // newline
+	}
+	for _, name := range invalid {
+		c := New()
+		err := c.Configure(spec.ComponentConfig{"graph_name": name})
+		if err == nil {
+			t.Errorf("Configure(%q) expected error for invalid graph_name, got nil", name)
+		}
 	}
 }
