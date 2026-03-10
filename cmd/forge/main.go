@@ -10,8 +10,12 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -76,6 +80,13 @@ func compileCmd() *cobra.Command {
 				registry = compiler.NewStubRegistry()
 			}
 
+			// Auto-detect foundry path when not explicitly provided.
+			// This makes `forge compile` work out-of-the-box when forge was
+			// built from the trusted-software-foundry repo.
+			if foundryPath == "" {
+				foundryPath = autoDetectFoundryPath()
+			}
+
 			c := compiler.New(registry, sourceDir, foundryPath)
 			if err := c.Compile(specPath, outputDir); err != nil {
 				return fmt.Errorf("compilation failed: %w", err)
@@ -97,4 +108,47 @@ func compileCmd() *cobra.Command {
 	cmd.Flags().StringVar(&foundryPath, "foundry-path", "", "Absolute path to local trusted-software-foundry checkout (adds replace directive to generated go.mod)")
 
 	return cmd
+}
+
+// autoDetectFoundryPath finds the trusted-software-foundry repo by walking up from the
+// forge binary's location. This enables `forge compile` to work immediately when forge
+// is built directly from the TSF repository without needing --foundry-path.
+func autoDetectFoundryPath() string {
+	// Try the directory containing the forge binary first.
+	exe, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	exe, err = filepath.EvalSymlinks(exe)
+	if err != nil {
+		return ""
+	}
+
+	// Walk up from the binary looking for a go.mod that declares the foundry module.
+	dir := filepath.Dir(exe)
+	for i := 0; i < 8; i++ {
+		gomod := filepath.Join(dir, "go.mod")
+		if data, err := os.ReadFile(gomod); err == nil {
+			if bytes.Contains(data, []byte("github.com/jsell-rh/trusted-software-foundry")) {
+				abs, err := filepath.Abs(dir)
+				if err == nil {
+					return abs
+				}
+			}
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+
+	// Fallback: ask `go env GOPATH` and check the module cache (best-effort).
+	if out, err := exec.Command("go", "list", "-m", "-f", "{{.Dir}}", "github.com/jsell-rh/trusted-software-foundry").Output(); err == nil {
+		if p := strings.TrimSpace(string(out)); p != "" {
+			return p
+		}
+	}
+
+	return ""
 }
