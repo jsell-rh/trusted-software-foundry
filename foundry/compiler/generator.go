@@ -322,17 +322,20 @@ CREATE TABLE IF NOT EXISTS {{ .TableName }} (
     created_at TIMESTAMP    NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP    NOT NULL DEFAULT NOW(),
     deleted_at TIMESTAMP,
-{{ range .Columns }}    {{ .ColumnName }} {{ .SQLType }}{{ if .NotNull }} NOT NULL{{ end }},
+{{ if .TenantField }}    {{ .TenantField }} TEXT         NOT NULL DEFAULT '',
+{{ end }}{{ range .Columns }}    {{ .ColumnName }} {{ .SQLType }}{{ if .NotNull }} NOT NULL{{ end }},
 {{ end }}    PRIMARY KEY (id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_{{ .TableName }}_deleted_at ON {{ .TableName }} (deleted_at);
-`))
+{{ if .TenantField }}CREATE INDEX IF NOT EXISTS idx_{{ .TableName }}_{{ .TenantField }} ON {{ .TableName }} ({{ .TenantField }});
+{{ end }}`))
 
 type migrationData struct {
-	Resource  spec.IRResource
-	TableName string
-	Columns   []migrationColumn
+	Resource    spec.IRResource
+	TableName   string
+	TenantField string // column name for row-level tenancy, empty if not configured
+	Columns     []migrationColumn
 }
 
 type migrationColumn struct {
@@ -347,6 +350,12 @@ func (g *Generator) writeMigrations(ir *spec.IRSpec) error {
 		return fmt.Errorf("creating migrations directory: %w", err)
 	}
 
+	// Determine the tenant isolation column, if tenancy is declared.
+	tenantField := ""
+	if ir.Tenancy != nil {
+		tenantField = ir.Tenancy.Field
+	}
+
 	for i, res := range ir.Resources {
 		tableName := strings.ToLower(res.Plural)
 		if tableName == "" {
@@ -359,6 +368,10 @@ func (g *Generator) writeMigrations(ir *spec.IRSpec) error {
 			if f.Auto == "created" || f.Auto == "updated" || f.SoftDelete {
 				continue
 			}
+			// Skip the tenant field if already declared in the resource — we inject it above.
+			if tenantField != "" && strings.EqualFold(f.Name, tenantField) {
+				continue
+			}
 			cols = append(cols, migrationColumn{
 				ColumnName: strings.ToLower(f.Name),
 				SQLType:    irTypeToSQL(f.Type, f.MaxLength),
@@ -367,9 +380,10 @@ func (g *Generator) writeMigrations(ir *spec.IRSpec) error {
 		}
 
 		data := migrationData{
-			Resource:  res,
-			TableName: tableName,
-			Columns:   cols,
+			Resource:    res,
+			TableName:   tableName,
+			TenantField: tenantField,
+			Columns:     cols,
 		}
 
 		var buf bytes.Buffer
