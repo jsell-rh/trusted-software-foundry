@@ -625,3 +625,104 @@ func TestExtra_RefreshKeys_InvalidRSAKey_BadE(t *testing.T) {
 		t.Fatal("expected error for invalid RSA E, got nil")
 	}
 }
+
+// --------------------------------------------------------------------------
+// skip_paths — path-confusion bypass prevention (security)
+// --------------------------------------------------------------------------
+
+// invokeURL calls the middleware with a specific URL and no Authorization header,
+// allowing skip_paths tests to confirm whether auth is bypassed.
+func invokeURL(c *authjwt.Component, rawURL string) (fw *fakeResponseWriter, handlerCalled bool) {
+	fw = &fakeResponseWriter{}
+	mw := c.Middleware()
+	wrapped := mw(handlerFunc(func(w spec.ResponseWriter, r *spec.Request) {
+		handlerCalled = true
+	}))
+	wrapped.ServeHTTP(fw, &spec.Request{
+		Method:  "GET",
+		URL:     rawURL,
+		Headers: map[string][]string{},
+		Context: context.Background(),
+	})
+	return
+}
+
+// startHMACWithSkipPaths returns a started HMAC component with the given skip paths.
+func startHMACWithSkipPaths(t *testing.T, skipPaths []interface{}) *authjwt.Component {
+	t.Helper()
+	return startHMACExtra(t, "test-secret", spec.ComponentConfig{
+		"skip_paths": skipPaths,
+	})
+}
+
+func TestExtra_SkipPath_ExactMatch_Bypasses(t *testing.T) {
+	// /healthz configured as skip path; exact match must bypass authentication.
+	c := startHMACWithSkipPaths(t, []interface{}{"/healthz"})
+	_, called := invokeURL(c, "/healthz")
+	if !called {
+		t.Error("handler not called for exact skip-path match /healthz — auth bypass failed")
+	}
+}
+
+func TestExtra_SkipPath_SubPath_Bypasses(t *testing.T) {
+	// /healthz/live is a sub-path of /healthz; must bypass authentication.
+	c := startHMACWithSkipPaths(t, []interface{}{"/healthz"})
+	_, called := invokeURL(c, "/healthz/live")
+	if !called {
+		t.Error("handler not called for sub-path /healthz/live — auth bypass failed")
+	}
+}
+
+func TestExtra_SkipPath_WithQuery_Bypasses(t *testing.T) {
+	// /healthz?probe=1 starts with /healthz followed by '?'; must bypass authentication.
+	c := startHMACWithSkipPaths(t, []interface{}{"/healthz"})
+	_, called := invokeURL(c, "/healthz?probe=1")
+	if !called {
+		t.Error("handler not called for /healthz?probe=1 — auth bypass failed")
+	}
+}
+
+func TestExtra_SkipPath_PathConfusion_DoesNotBypass(t *testing.T) {
+	// /healthzmypath shares the prefix /healthz but is a DIFFERENT route.
+	// A plain strings.HasPrefix check would incorrectly bypass auth here.
+	// The pathMatchesSkip boundary check must reject this.
+	c := startHMACWithSkipPaths(t, []interface{}{"/healthz"})
+	fw, called := invokeURL(c, "/healthzmypath")
+	if called {
+		t.Error("handler was called for /healthzmypath — path-confusion bypass is present!")
+	}
+	if fw.code != 401 {
+		t.Errorf("expected 401 for /healthzmypath, got %d", fw.code)
+	}
+}
+
+func TestExtra_SkipPath_Unrelated_DoesNotBypass(t *testing.T) {
+	// /api/data does not match the skip prefix /healthz at all — must require auth.
+	c := startHMACWithSkipPaths(t, []interface{}{"/healthz"})
+	fw, called := invokeURL(c, "/api/data")
+	if called {
+		t.Error("handler was called for /api/data without auth — unrelated path bypassed!")
+	}
+	if fw.code != 401 {
+		t.Errorf("expected 401 for /api/data, got %d", fw.code)
+	}
+}
+
+func TestExtra_SkipPath_MultipleSkips_MatchesCorrectOne(t *testing.T) {
+	// Multiple skip paths; the matching one (/readyz) grants bypass while the
+	// non-matching request (/metrics) is still protected.
+	c := startHMACWithSkipPaths(t, []interface{}{"/healthz", "/readyz"})
+
+	_, readyzCalled := invokeURL(c, "/readyz")
+	if !readyzCalled {
+		t.Error("handler not called for /readyz — should bypass auth")
+	}
+
+	fw, metricsCalled := invokeURL(c, "/metrics")
+	if metricsCalled {
+		t.Error("handler called for /metrics without auth — should require auth")
+	}
+	if fw.code != 401 {
+		t.Errorf("expected 401 for /metrics, got %d", fw.code)
+	}
+}
