@@ -347,10 +347,16 @@ func (d *resourceDAO) Create(ctx context.Context, obj map[string]any) (string, e
 	table := strings.ToLower(d.resource.Plural)
 	cols, placeholders, vals := buildInsert(d.filterWritable(obj))
 
-	query := fmt.Sprintf(
-		"INSERT INTO %s (%s) VALUES (%s) RETURNING id",
-		table, strings.Join(cols, ", "), strings.Join(placeholders, ", "),
-	)
+	var query string
+	if len(cols) == 0 {
+		// No user-supplied fields — insert with all database defaults.
+		query = fmt.Sprintf("INSERT INTO %s DEFAULT VALUES RETURNING id", table)
+	} else {
+		query = fmt.Sprintf(
+			"INSERT INTO %s (%s) VALUES (%s) RETURNING id",
+			table, strings.Join(cols, ", "), strings.Join(placeholders, ", "),
+		)
+	}
 
 	var id string
 	err := d.db.QueryRowContext(ctx, query, vals...).Scan(&id)
@@ -391,6 +397,10 @@ func (d *resourceDAO) Get(ctx context.Context, id string) (map[string]any, error
 func (d *resourceDAO) Update(ctx context.Context, id string, obj map[string]any) error {
 	table := strings.ToLower(d.resource.Plural)
 	sets, vals := buildUpdate(d.filterWritable(obj))
+	if len(sets) == 0 {
+		// Nothing to update — all fields were filtered or only id was provided.
+		return fmt.Errorf("update %s: no writable fields provided", d.resource.Name)
+	}
 	vals = append(vals, id)
 	tenantSQL, tenantVals := d.tenantClause(ctx, len(vals)+1)
 	vals = append(vals, tenantVals...)
